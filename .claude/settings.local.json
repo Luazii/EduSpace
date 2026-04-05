@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /c/Users/lwazi/LearnerManagement/LearniVerseNew/apps/web/convex/*.ts)",
+      "Bash(xargs grep:*)",
+      "Bash(xargs wc:*)",
+      "Bash(grep -E '\\\\.cs$')",
+      "Bash(xargs basename:*)",
+      "Bash(npx convex:*)",
+      "Bash(gh auth:*)",
+      "Bash(git -C \"c:/Users/lwazi/LearnerManagement\" config user.name)",
+      "Bash(git -C \"c:/Users/lwazi/LearnerManagement\" config user.email)"
+    ]
+  }
+}
