@@ -1,0 +1,1345 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\Microsoft.ML.OnnxRuntime.1.17.1\build\netstandard2.0\Microsoft.ML.OnnxRuntime.props" Condition="Exists('..\packages\Microsoft.ML.OnnxRuntime.1.17.1\build\netstandard2.0\Microsoft.ML.OnnxRuntime.props')" />
+  <Import Project="..\packages\EntityFramework.6.4.4\build\EntityFramework.props" Condition="Exists('..\packages\EntityFramework.6.4.4\build\EntityFramework.props')" />
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>
+    </ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{D2CBA443-3103-43ED-AF39-26C2EC3F704F}</ProjectGuid>
+    <ProjectTypeGuids>{349c5851-65df-11da-9384-00065b846f21};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>LearniVerseNew</RootNamespace>
+    <AssemblyName>LearniVerseNew</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <MvcBuildViews>false</MvcBuildViews>
+    <UseIISExpress>true</UseIISExpress>
+    <Use64BitIISExpress />
+    <IISExpressSSLPort>44394</IISExpressSSLPort>
+    <IISExpressAnonymousAuthentication />
+    <IISExpressWindowsAuthentication />
+    <IISExpressUseClassicPipelineMode />
+    <UseGlobalApplicationHostFile />
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Azure.Core, Version=1.40.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8, processorArchitecture=MSIL">
+      <HintPath>..\packages\Azure.Core.1.40.0\lib\net472\Azure.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Azure.Identity, Version=1.12.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8, processorArchitecture=MSIL">
+      <HintPath>..\packages\Azure.Identity.1.12.0\lib\netstandard2.0\Azure.Identity.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Azure.Storage.Blobs, Version=12.20.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8, processorArchitecture=MSIL">
+      <HintPath>..\packages\Azure.Storage.Blobs.12.20.0\lib\netstandard2.0\Azure.Storage.Blobs.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Azure.Storage.Common, Version=12.19.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8, processorArchitecture=MSIL">
+      <HintPath>..\packages\Azure.Storage.Common.12.19.0\lib\netstandard2.0\Azure.Storage.Common.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Azure.Storage.Files.Shares, Version=12.18.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8, processorArchitecture=MSIL">
+      <HintPath>..\packages\Azure.Storage.Files.Shares.12.18.0\lib\netstandard2.0\Azure.Storage.Files.Shares.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Azure.Storage.Queues, Version=12.18.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8, processorArchitecture=MSIL">
+      <HintPath>..\packages\Azure.Storage.Queues.12.18.0\lib\netstandard2.0\Azure.Storage.Queues.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="BitMiracle.LibTiff.NET, Version=2.4.649.0, Culture=neutral, PublicKeyToken=53879b3e20e7a7d6, processorArchitecture=MSIL">
+      <HintPath>..\packages\BitMiracle.LibTiff.NET.2.4.649\lib\net40\BitMiracle.LibTiff.NET.dll</HintPath>
+    </Reference>
+    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\packages\EntityFramework.6.4.4\lib\net45\EntityFramework.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\packages\EntityFramework.6.4.4\lib\net45\EntityFramework.SqlServer.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="IronBarCode, Version=2024.5.0.3, Culture=neutral, PublicKeyToken=b971bb3971bdf306, processorArchitecture=MSIL">
+      <HintPath>..\packages\BarCode.Slim.2024.5.3\lib\netstandard2.0\IronBarCode.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="IronBarcodeDetection, Version=2024.5.0.3, Culture=neutral, PublicKeyToken=b971bb3971bdf306, processorArchitecture=MSIL">
+      <HintPath>..\packages\BarCode.2024.5.3\lib\netstandard2.0\IronBarcodeDetection.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="IronSoftware.Abstractions, Version=2024.1.0.7, Culture=neutral, PublicKeyToken=212d70e9efeae4c7, processorArchitecture=MSIL">
+      <HintPath>..\packages\IronSoftware.Common.2024.1.7\lib\netstandard2.0\IronSoftware.Abstractions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="IronSoftware.Drawing.Common, Version=2024.5.0.1, Culture=neutral, PublicKeyToken=8d7e55c97b3e9835, processorArchitecture=MSIL">
+      <HintPath>..\packages\IronSoftware.System.Drawing.2024.5.1\lib\netstandard2.0\IronSoftware.Drawing.Common.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="IronSoftware.Logger, Version=2024.1.0.7, Culture=neutral, PublicKeyToken=212d70e9efeae4c7, processorArchitecture=MSIL">
+      <HintPath>..\packages\IronSoftware.Common.2024.1.7\lib\netstandard2.0\IronSoftware.Logger.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="IronSoftware.Shared, Version=2024.1.0.7, Culture=neutral, PublicKeyToken=212d70e9efeae4c7, processorArchitecture=MSIL">
+      <HintPath>..\packages\IronSoftware.Common.2024.1.7\lib\netstandard2.0\IronSoftware.Shared.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.SignalR.Core, Version=2.4.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.AspNet.SignalR.Core.2.4.3\lib\net45\Microsoft.AspNet.SignalR.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.SignalR.SystemWeb, Version=2.4.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.AspNet.SignalR.SystemWeb.2.4.3\lib\net45\Microsoft.AspNet.SignalR.SystemWeb.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Azure.KeyVault.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Azure.KeyVault.Core.1.0.0\lib\net40\Microsoft.Azure.KeyVault.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Bcl.AsyncInterfaces.6.0.0\lib\net461\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.CodeDom.Providers.DotNetCompilerPlatform, Version=4.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.4.1.0\lib\net472\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Configuration.ConfigurationBuilders.Base, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Configuration.ConfigurationBuilders.Base.2.0.0\lib\Net471\Microsoft.Configuration.ConfigurationBuilders.Base.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Configuration.ConfigurationBuilders.UserSecrets, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Configuration.ConfigurationBuilders.UserSecrets.2.0.0\lib\Net471\Microsoft.Configuration.ConfigurationBuilders.UserSecrets.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Microsoft.Extensions.Azure, Version=1.7.3.0, Culture=neutral, PublicKeyToken=92742159e12e44c8, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Azure.1.7.3\lib\netstandard2.0\Microsoft.Extensions.Azure.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Configuration, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Configuration.6.0.0\lib\net461\Microsoft.Extensions.Configuration.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Configuration.Abstractions, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Configuration.Abstractions.6.0.0\lib\net461\Microsoft.Extensions.Configuration.Abstractions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Configuration.Binder, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Configuration.Binder.6.0.0\lib\net461\Microsoft.Extensions.Configuration.Binder.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Configuration.FileExtensions, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Configuration.FileExtensions.6.0.0\lib\net461\Microsoft.Extensions.Configuration.FileExtensions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Configuration.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Configuration.Json.6.0.0\lib\net461\Microsoft.Extensions.Configuration.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.DependencyInjection, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.6.0.0\lib\net461\Microsoft.Extensions.DependencyInjection.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.6.0.0\lib\net461\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.FileProviders.Abstractions, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.FileProviders.Abstractions.6.0.0\lib\net461\Microsoft.Extensions.FileProviders.Abstractions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.FileProviders.Physical, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.FileProviders.Physical.6.0.0\lib\net461\Microsoft.Extensions.FileProviders.Physical.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.FileSystemGlobbing, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.FileSystemGlobbing.6.0.0\lib\net461\Microsoft.Extensions.FileSystemGlobbing.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Logging, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Logging.6.0.0\lib\net461\Microsoft.Extensions.Logging.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Logging.Abstractions.6.0.0\lib\net461\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Options, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Options.6.0.0\lib\net461\Microsoft.Extensions.Options.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Primitives, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Extensions.Primitives.6.0.0\lib\net461\Microsoft.Extensions.Primitives.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Identity.Client, Version=4.61.3.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Identity.Client.4.61.3\lib\net462\Microsoft.Identity.Client.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.Identity.Client.Extensions.Msal, Version=4.61.3.0, Culture=neutral, PublicKeyToken=0a613f4dd989e8ae, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Identity.Client.Extensions.Msal.4.61.3\lib\netstandard2.0\Microsoft.Identity.Client.Extensions.Msal.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.IdentityModel.Abstractions, Version=6.35.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.IdentityModel.Abstractions.6.35.0\lib\net472\Microsoft.IdentityModel.Abstractions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.ML.OnnxRuntime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=f27f157f0a5b7bb6, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.ML.OnnxRuntime.Managed.1.17.1\lib\netstandard2.0\Microsoft.ML.OnnxRuntime.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Microsoft.WindowsAzure.Storage, Version=9.3.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\WindowsAzure.Storage.9.3.3\lib\net45\Microsoft.WindowsAzure.Storage.dll</HintPath>
+    </Reference>
+    <Reference Include="PayStack.Net, Version=1.1.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Paystack.Net.1.1.1\lib\netstandard2.0\PayStack.Net.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp, Version=6.1.1.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp.6.1.1\lib\netstandard2.0\PdfSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.Charting, Version=6.1.1.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp.6.1.1\lib\netstandard2.0\PdfSharp.Charting.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.Quality, Version=6.1.1.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp.6.1.1\lib\netstandard2.0\PdfSharp.Quality.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.Snippets, Version=6.1.1.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp.6.1.1\lib\netstandard2.0\PdfSharp.Snippets.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.System, Version=6.1.1.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp.6.1.1\lib\netstandard2.0\PdfSharp.System.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.WPFonts, Version=6.1.1.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <HintPath>..\packages\PDFsharp.6.1.1\lib\netstandard2.0\PdfSharp.WPFonts.dll</HintPath>
+    </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="QRCoder, Version=1.6.0.0, Culture=neutral, PublicKeyToken=c4ed5b9ae8358a28, processorArchitecture=MSIL">
+      <HintPath>..\packages\QRCoder.1.6.0\lib\net40\QRCoder.dll</HintPath>
+    </Reference>
+    <Reference Include="QuestPDF, Version=2024.3.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\QuestPDF.2024.3.2\lib\netstandard2.0\QuestPDF.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SixLabors.Fonts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=d998eea7b14cab13, processorArchitecture=MSIL">
+      <HintPath>..\packages\SixLabors.Fonts.1.0.0\lib\netstandard2.0\SixLabors.Fonts.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="SixLabors.ImageSharp, Version=2.0.0.0, Culture=neutral, PublicKeyToken=d998eea7b14cab13, processorArchitecture=MSIL">
+      <HintPath>..\packages\SixLabors.ImageSharp.2.1.9\lib\net472\SixLabors.ImageSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="SixLabors.ImageSharp.Drawing, Version=1.0.0.0, Culture=neutral, PublicKeyToken=d998eea7b14cab13, processorArchitecture=MSIL">
+      <HintPath>..\packages\SixLabors.ImageSharp.Drawing.1.0.0\lib\net472\SixLabors.ImageSharp.Drawing.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
+    </Reference>
+    <Reference Include="System.ClientModel, Version=1.0.0.0, Culture=neutral, PublicKeyToken=92742159e12e44c8, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.ClientModel.1.0.0\lib\netstandard2.0\System.ClientModel.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.Configuration.ConfigurationManager, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Configuration.ConfigurationManager.6.0.0\lib\net461\System.Configuration.ConfigurationManager.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.OracleClient" />
+    <Reference Include="System.Diagnostics.DiagnosticSource, Version=6.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Diagnostics.DiagnosticSource.6.0.1\lib\net461\System.Diagnostics.DiagnosticSource.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.IdentityModel" />
+    <Reference Include="System.IO, Version=4.1.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.IO.4.3.0\lib\net462\System.IO.dll</HintPath>
+      <Private>True</Private>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.IO.Compression, Version=4.1.2.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.IO.Compression.4.3.0\lib\net46\System.IO.Compression.dll</HintPath>
+      <Private>True</Private>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.IO.FileSystem.AccessControl, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.IO.FileSystem.AccessControl.5.0.0\lib\net461\System.IO.FileSystem.AccessControl.dll</HintPath>
+    </Reference>
+    <Reference Include="System.IO.Hashing, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.IO.Hashing.6.0.0\lib\net461\System.IO.Hashing.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Memory, Version=4.0.1.2, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Memory.4.5.5\lib\net461\System.Memory.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Memory.Data, Version=1.0.2.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Memory.Data.1.0.2\lib\net461\System.Memory.Data.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Net" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Numerics.Vectors, Version=4.1.4.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Numerics.Vectors.4.5.0\lib\net46\System.Numerics.Vectors.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime, Version=4.1.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.4.3.0\lib\net462\System.Runtime.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.0.0\lib\net461\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Security.AccessControl, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Security.AccessControl.6.0.0\lib\net461\System.Security.AccessControl.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Security.Cryptography.Algorithms, Version=4.2.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Security.Cryptography.Algorithms.4.3.1\lib\net463\System.Security.Cryptography.Algorithms.dll</HintPath>
+      <Private>True</Private>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Security.Cryptography.Encoding, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Security.Cryptography.Encoding.4.3.0\lib\net46\System.Security.Cryptography.Encoding.dll</HintPath>
+      <Private>True</Private>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Security.Cryptography.Primitives, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Security.Cryptography.Primitives.4.3.0\lib\net46\System.Security.Cryptography.Primitives.dll</HintPath>
+      <Private>True</Private>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Security.Cryptography.ProtectedData, Version=4.0.5.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Security.Cryptography.ProtectedData.4.7.0\lib\net461\System.Security.Cryptography.ProtectedData.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Security.Permissions, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Security.Permissions.6.0.0\lib\net461\System.Security.Permissions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Security.Principal.Windows, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Security.Principal.Windows.5.0.0\lib\net461\System.Security.Principal.Windows.dll</HintPath>
+    </Reference>
+    <Reference Include="System.ServiceProcess" />
+    <Reference Include="System.Text.Encoding.CodePages, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Text.Encoding.CodePages.5.0.0\lib\net461\System.Text.Encoding.CodePages.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Text.Encodings.Web, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Text.Encodings.Web.6.0.0\lib\net461\System.Text.Encodings.Web.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Text.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Text.Json.6.0.0\lib\net461\System.Text.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Threading.Tasks.Extensions.4.5.4\lib\net461\System.Threading.Tasks.Extensions.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Transactions" />
+    <Reference Include="System.ValueTuple, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.ValueTuple.4.5.0\lib\net47\System.ValueTuple.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.DynamicData" />
+    <Reference Include="System.Web.Entity" />
+    <Reference Include="System.Web.ApplicationServices" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Web.Helpers, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.AspNet.WebPages.3.3.0\lib\net45\System.Web.Helpers.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Mvc, Version=5.3.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.AspNet.Mvc.5.3.0\lib\net45\System.Web.Mvc.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.Razor, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.AspNet.Razor.3.3.0\lib\net45\System.Web.Razor.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.WebPages, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.AspNet.WebPages.3.3.0\lib\net45\System.Web.WebPages.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.WebPages.Deployment, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.AspNet.WebPages.3.3.0\lib\net45\System.Web.WebPages.Deployment.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Web.WebPages.Razor, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.AspNet.WebPages.3.3.0\lib\net45\System.Web.WebPages.Razor.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Web.Abstractions" />
+    <Reference Include="System.Web.Routing" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Web.Services" />
+    <Reference Include="System.EnterpriseServices" />
+    <Reference Include="Microsoft.Web.Infrastructure, Version=2.0.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <Private>True</Private>
+      <HintPath>..\packages\Microsoft.Web.Infrastructure.2.0.1\lib\net40\Microsoft.Web.Infrastructure.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Net.Http">
+    </Reference>
+    <Reference Include="System.Net.Http.WebRequest">
+    </Reference>
+    <Reference Include="System.Web.Optimization">
+      <HintPath>..\packages\Microsoft.AspNet.Web.Optimization.1.1.3\lib\net40\System.Web.Optimization.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\packages\Newtonsoft.Json.13.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="WebGrease">
+      <Private>True</Private>
+      <HintPath>..\packages\WebGrease.1.6.0\lib\WebGrease.dll</HintPath>
+    </Reference>
+    <Reference Include="Antlr3.Runtime">
+      <Private>True</Private>
+      <HintPath>..\packages\Antlr.3.5.0.2\lib\Antlr3.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.AspNet.Identity.Core">
+      <HintPath>..\packages\Microsoft.AspNet.Identity.Core.2.2.4\lib\net45\Microsoft.AspNet.Identity.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.Identity.Owin">
+      <HintPath>..\packages\Microsoft.AspNet.Identity.Owin.2.2.4\lib\net45\Microsoft.AspNet.Identity.Owin.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.Identity.EntityFramework">
+      <HintPath>..\packages\Microsoft.AspNet.Identity.EntityFramework.2.2.4\lib\net45\Microsoft.AspNet.Identity.EntityFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="Owin">
+      <HintPath>..\packages\Owin.1.0\lib\net40\Owin.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Owin">
+      <HintPath>..\packages\Microsoft.Owin.4.2.2\lib\net45\Microsoft.Owin.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Owin.Host.SystemWeb">
+      <HintPath>..\packages\Microsoft.Owin.Host.SystemWeb.4.2.2\lib\net45\Microsoft.Owin.Host.SystemWeb.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Owin.Security">
+      <HintPath>..\packages\Microsoft.Owin.Security.4.2.2\lib\net45\Microsoft.Owin.Security.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Owin.Security.Cookies">
+      <HintPath>..\packages\Microsoft.Owin.Security.Facebook.4.2.2\lib\net45\Microsoft.Owin.Security.Facebook.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Owin.Security.Cookies">
+      <HintPath>..\packages\Microsoft.Owin.Security.Cookies.4.2.2\lib\net45\Microsoft.Owin.Security.Cookies.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Owin.Security.Google">
+      <HintPath>..\packages\Microsoft.Owin.Security.Google.4.2.2\lib\net45\Microsoft.Owin.Security.Google.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Owin.Security.Twitter">
+      <HintPath>..\packages\Microsoft.Owin.Security.Twitter.4.2.2\lib\net45\Microsoft.Owin.Security.Twitter.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Owin.Security.MicrosoftAccount">
+      <HintPath>..\packages\Microsoft.Owin.Security.MicrosoftAccount.4.2.2\lib\net45\Microsoft.Owin.Security.MicrosoftAccount.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Owin.Security.OAuth">
+      <HintPath>..\packages\Microsoft.Owin.Security.OAuth.4.2.2\lib\net45\Microsoft.Owin.Security.OAuth.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="App_Start\BundleConfig.cs" />
+    <Compile Include="App_Start\FilterConfig.cs" />
+    <Compile Include="App_Start\IdentityConfig.cs" />
+    <Compile Include="App_Start\RouteConfig.cs" />
+    <Compile Include="App_Start\Startup.Auth.cs" />
+    <Compile Include="Controllers\AccountController.cs" />
+    <Compile Include="Controllers\AdminController.cs" />
+    <Compile Include="Controllers\AssignmentsController.cs" />
+    <Compile Include="Controllers\BodyComposistionsController.cs" />
+    <Compile Include="Controllers\BookingsController.cs" />
+    <Compile Include="Controllers\CategoriesController.cs" />
+    <Compile Include="Controllers\CoursesController.cs" />
+    <Compile Include="Controllers\EnrollmentsController.cs" />
+    <Compile Include="Controllers\FacultiesController.cs" />
+    <Compile Include="Controllers\FoodSearchController.cs" />
+    <Compile Include="Controllers\HomeController.cs" />
+    <Compile Include="Controllers\ManageController.cs" />
+    <Compile Include="Controllers\MembershipsController.cs" />
+    <Compile Include="Controllers\OrdersController.cs" />
+    <Compile Include="Controllers\PaymentsController.cs" />
+    <Compile Include="Controllers\PlansController.cs" />
+    <Compile Include="Controllers\ProductReviewsController.cs" />
+    <Compile Include="Controllers\ProductsController.cs" />
+    <Compile Include="Controllers\QualificationsController.cs" />
+    <Compile Include="Controllers\QuizController.cs" />
+    <Compile Include="Controllers\ResourcesController.cs" />
+    <Compile Include="Controllers\RoomsController.cs" />
+    <Compile Include="Controllers\StudentsController.cs" />
+    <Compile Include="Controllers\StudySessionsController.cs" />
+    <Compile Include="Controllers\TaskItemsController.cs" />
+    <Compile Include="Controllers\TeachersController.cs" />
+    <Compile Include="Controllers\TimeSlotsController.cs" />
+    <Compile Include="Controllers\TrackingController.cs" />
+    <Compile Include="Controllers\TrainersController.cs" />
+    <Compile Include="Controllers\TrainingActivitiesController.cs" />
+    <Compile Include="Controllers\TrainingSessionsController.cs" />
+    <Compile Include="Controllers\TransactionsController.cs" />
+    <Compile Include="Controllers\WebhooksController.cs" />
+    <Compile Include="Controllers\WorkoutsController.cs" />
+    <Compile Include="Global.asax.cs">
+      <DependentUpon>Global.asax</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405021646535_Initial-Create.cs" />
+    <Compile Include="Migrations\202405021646535_Initial-Create.Designer.cs">
+      <DependentUpon>202405021646535_Initial-Create.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405021652580_Added Payment Table.cs" />
+    <Compile Include="Migrations\202405021652580_Added Payment Table.Designer.cs">
+      <DependentUpon>202405021652580_Added Payment Table.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405021653518_Payment Table Added For Real.cs" />
+    <Compile Include="Migrations\202405021653518_Payment Table Added For Real.Designer.cs">
+      <DependentUpon>202405021653518_Payment Table Added For Real.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405061022554_Quiz Entities to Db.cs" />
+    <Compile Include="Migrations\202405061022554_Quiz Entities to Db.Designer.cs">
+      <DependentUpon>202405061022554_Quiz Entities to Db.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405061038102_Added quiz start and end times.cs" />
+    <Compile Include="Migrations\202405061038102_Added quiz start and end times.Designer.cs">
+      <DependentUpon>202405061038102_Added quiz start and end times.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405061047346_Added Relationships between course and quiz.cs" />
+    <Compile Include="Migrations\202405061047346_Added Relationships between course and quiz.Designer.cs">
+      <DependentUpon>202405061047346_Added Relationships between course and quiz.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405061107013_Changed teacher ID datatype for quiz to string.cs" />
+    <Compile Include="Migrations\202405061107013_Changed teacher ID datatype for quiz to string.Designer.cs">
+      <DependentUpon>202405061107013_Changed teacher ID datatype for quiz to string.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405061113042_Fixed Datatype discrepencies.cs" />
+    <Compile Include="Migrations\202405061113042_Fixed Datatype discrepencies.Designer.cs">
+      <DependentUpon>202405061113042_Fixed Datatype discrepencies.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405061253204_Added weighting to Question.cs" />
+    <Compile Include="Migrations\202405061253204_Added weighting to Question.Designer.cs">
+      <DependentUpon>202405061253204_Added weighting to Question.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405061618570_Changed QuizID toGUID.cs" />
+    <Compile Include="Migrations\202405061618570_Changed QuizID toGUID.Designer.cs">
+      <DependentUpon>202405061618570_Changed QuizID toGUID.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405070730105_Changed correct answer to string.cs" />
+    <Compile Include="Migrations\202405070730105_Changed correct answer to string.Designer.cs">
+      <DependentUpon>202405070730105_Changed correct answer to string.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405070929542_Added question number.cs" />
+    <Compile Include="Migrations\202405070929542_Added question number.Designer.cs">
+      <DependentUpon>202405070929542_Added question number.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405090956583_Added Duration to Quiz.cs" />
+    <Compile Include="Migrations\202405090956583_Added Duration to Quiz.Designer.cs">
+      <DependentUpon>202405090956583_Added Duration to Quiz.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405101355474_Added NSC stuff.cs" />
+    <Compile Include="Migrations\202405101355474_Added NSC stuff.Designer.cs">
+      <DependentUpon>202405101355474_Added NSC stuff.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405130855586_Added IsRejected to enrollments.cs" />
+    <Compile Include="Migrations\202405130855586_Added IsRejected to enrollments.Designer.cs">
+      <DependentUpon>202405130855586_Added IsRejected to enrollments.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405131036018_Added-Booking Tables.cs" />
+    <Compile Include="Migrations\202405131036018_Added-Booking Tables.Designer.cs">
+      <DependentUpon>202405131036018_Added-Booking Tables.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405131054403_Added timeslot nav to booking.cs" />
+    <Compile Include="Migrations\202405131054403_Added timeslot nav to booking.Designer.cs">
+      <DependentUpon>202405131054403_Added timeslot nav to booking.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405211803286_Adding study center.cs" />
+    <Compile Include="Migrations\202405211803286_Adding study center.Designer.cs">
+      <DependentUpon>202405211803286_Adding study center.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405221458128_Fix booking .cs" />
+    <Compile Include="Migrations\202405221458128_Fix booking .Designer.cs">
+      <DependentUpon>202405221458128_Fix booking .cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405221721568_Add- Assignment and submission tables .cs" />
+    <Compile Include="Migrations\202405221721568_Add- Assignment and submission tables .Designer.cs">
+      <DependentUpon>202405221721568_Add- Assignment and submission tables .cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405221751557_File name in Submission.cs" />
+    <Compile Include="Migrations\202405221751557_File name in Submission.Designer.cs">
+      <DependentUpon>202405221751557_File name in Submission.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202405222349578_Added Student Final MArks Table.cs" />
+    <Compile Include="Migrations\202405222349578_Added Student Final MArks Table.Designer.cs">
+      <DependentUpon>202405222349578_Added Student Final MArks Table.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202408071431569_Added Membership and BodyComposition Entities.cs" />
+    <Compile Include="Migrations\202408071431569_Added Membership and BodyComposition Entities.Designer.cs">
+      <DependentUpon>202408071431569_Added Membership and BodyComposition Entities.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202408081128457_Added Membrship Plans.cs" />
+    <Compile Include="Migrations\202408081128457_Added Membrship Plans.Designer.cs">
+      <DependentUpon>202408081128457_Added Membrship Plans.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202408121036216_Added Plan Code from Paystack to Database.cs" />
+    <Compile Include="Migrations\202408121036216_Added Plan Code from Paystack to Database.Designer.cs">
+      <DependentUpon>202408121036216_Added Plan Code from Paystack to Database.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202408121224526_Added Place to store payment for Memberships.cs" />
+    <Compile Include="Migrations\202408121224526_Added Place to store payment for Memberships.Designer.cs">
+      <DependentUpon>202408121224526_Added Place to store payment for Memberships.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202408121308193_Added payment form membrships id tp the membrship table.cs" />
+    <Compile Include="Migrations\202408121308193_Added payment form membrships id tp the membrship table.Designer.cs">
+      <DependentUpon>202408121308193_Added payment form membrships id tp the membrship table.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202408121754030_Added cancel flag to membership.cs" />
+    <Compile Include="Migrations\202408121754030_Added cancel flag to membership.Designer.cs">
+      <DependentUpon>202408121754030_Added cancel flag to membership.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202408131047180_Sub cancel table added.cs" />
+    <Compile Include="Migrations\202408131047180_Sub cancel table added.Designer.cs">
+      <DependentUpon>202408131047180_Sub cancel table added.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202408151445014_Added Models for Meal Planner.cs" />
+    <Compile Include="Migrations\202408151445014_Added Models for Meal Planner.Designer.cs">
+      <DependentUpon>202408151445014_Added Models for Meal Planner.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202409011456517_Added Models for Workout Planner.cs" />
+    <Compile Include="Migrations\202409011456517_Added Models for Workout Planner.Designer.cs">
+      <DependentUpon>202409011456517_Added Models for Workout Planner.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202409011556239_Random Fix.cs" />
+    <Compile Include="Migrations\202409011556239_Random Fix.Designer.cs">
+      <DependentUpon>202409011556239_Random Fix.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202409011602400_Added AttendanceGoal .cs" />
+    <Compile Include="Migrations\202409011602400_Added AttendanceGoal .Designer.cs">
+      <DependentUpon>202409011602400_Added AttendanceGoal .cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202409011617586_Added Date Created .cs" />
+    <Compile Include="Migrations\202409011617586_Added Date Created .Designer.cs">
+      <DependentUpon>202409011617586_Added Date Created .cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202409011748028_Sets and Reps Added.cs" />
+    <Compile Include="Migrations\202409011748028_Sets and Reps Added.Designer.cs">
+      <DependentUpon>202409011748028_Sets and Reps Added.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202409011806206_Times Trained.cs" />
+    <Compile Include="Migrations\202409011806206_Times Trained.Designer.cs">
+      <DependentUpon>202409011806206_Times Trained.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202409022142558_Added Workout Goal Table.cs" />
+    <Compile Include="Migrations\202409022142558_Added Workout Goal Table.Designer.cs">
+      <DependentUpon>202409022142558_Added Workout Goal Table.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410021114001_AddOnlineStoreTables.cs" />
+    <Compile Include="Migrations\202410021114001_AddOnlineStoreTables.Designer.cs">
+      <DependentUpon>202410021114001_AddOnlineStoreTables.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410021116218_AddImageNameToProductTable.cs" />
+    <Compile Include="Migrations\202410021116218_AddImageNameToProductTable.Designer.cs">
+      <DependentUpon>202410021116218_AddImageNameToProductTable.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410021240425_AddedCategoryTable.cs" />
+    <Compile Include="Migrations\202410021240425_AddedCategoryTable.Designer.cs">
+      <DependentUpon>202410021240425_AddedCategoryTable.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410041329228_ImageURLaddedtoproducts.cs" />
+    <Compile Include="Migrations\202410041329228_ImageURLaddedtoproducts.Designer.cs">
+      <DependentUpon>202410041329228_ImageURLaddedtoproducts.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410081517084_Updated Shipping Address.cs" />
+    <Compile Include="Migrations\202410081517084_Updated Shipping Address.Designer.cs">
+      <DependentUpon>202410081517084_Updated Shipping Address.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410091801115_AddedTransactionTable.cs" />
+    <Compile Include="Migrations\202410091801115_AddedTransactionTable.Designer.cs">
+      <DependentUpon>202410091801115_AddedTransactionTable.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410101332339_TransactionTypeadded.cs" />
+    <Compile Include="Migrations\202410101332339_TransactionTypeadded.Designer.cs">
+      <DependentUpon>202410101332339_TransactionTypeadded.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410101419084_OrderStatusadded.cs" />
+    <Compile Include="Migrations\202410101419084_OrderStatusadded.Designer.cs">
+      <DependentUpon>202410101419084_OrderStatusadded.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410101501419_AddedTrackingHistory.cs" />
+    <Compile Include="Migrations\202410101501419_AddedTrackingHistory.Designer.cs">
+      <DependentUpon>202410101501419_AddedTrackingHistory.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410101509534_Added trcking History to order.cs" />
+    <Compile Include="Migrations\202410101509534_Added trcking History to order.Designer.cs">
+      <DependentUpon>202410101509534_Added trcking History to order.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410151129135_ProductReview added.cs" />
+    <Compile Include="Migrations\202410151129135_ProductReview added.Designer.cs">
+      <DependentUpon>202410151129135_ProductReview added.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410151208477_Added UserID to product review.cs" />
+    <Compile Include="Migrations\202410151208477_Added UserID to product review.Designer.cs">
+      <DependentUpon>202410151208477_Added UserID to product review.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410151708322_AddedNotificationsfForLowstock.cs" />
+    <Compile Include="Migrations\202410151708322_AddedNotificationsfForLowstock.Designer.cs">
+      <DependentUpon>202410151708322_AddedNotificationsfForLowstock.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410211134355_Added Personal Trainer Role.cs" />
+    <Compile Include="Migrations\202410211134355_Added Personal Trainer Role.Designer.cs">
+      <DependentUpon>202410211134355_Added Personal Trainer Role.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410211229391_Added trainer table to db.cs" />
+    <Compile Include="Migrations\202410211229391_Added trainer table to db.Designer.cs">
+      <DependentUpon>202410211229391_Added trainer table to db.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410211504494_Added Training Sessions.cs" />
+    <Compile Include="Migrations\202410211504494_Added Training Sessions.Designer.cs">
+      <DependentUpon>202410211504494_Added Training Sessions.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\202410211532478_Added Training ACtivities.cs" />
+    <Compile Include="Migrations\202410211532478_Added Training ACtivities.Designer.cs">
+      <DependentUpon>202410211532478_Added Training ACtivities.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Migrations\Configuration.cs" />
+    <Compile Include="Models\AccountViewModels.cs" />
+    <Compile Include="Models\ApplicationModels\AdminNotification.cs" />
+    <Compile Include="Models\ApplicationModels\Assignment.cs" />
+    <Compile Include="Models\ApplicationModels\Booking.cs" />
+    <Compile Include="Models\ApplicationModels\Course.cs" />
+    <Compile Include="Models\ApplicationModels\Enrollment.cs" />
+    <Compile Include="Models\ApplicationModels\Faculty.cs" />
+    <Compile Include="Models\ApplicationModels\Gym Models\BodyComposistion.cs" />
+    <Compile Include="Models\ApplicationModels\Gym Models\Membership.cs" />
+    <Compile Include="Models\ApplicationModels\Gym Models\MembershipPayment.cs" />
+    <Compile Include="Models\ApplicationModels\Gym Models\Plans.cs" />
+    <Compile Include="Models\ApplicationModels\Gym Models\SubscriptionCancellationRequest.cs" />
+    <Compile Include="Models\ApplicationModels\Meal Planner Models\APIResponse.cs" />
+    <Compile Include="Models\ApplicationModels\Meal Planner Models\Food.cs" />
+    <Compile Include="Models\ApplicationModels\Meal Planner Models\FoodItem.cs" />
+    <Compile Include="Models\ApplicationModels\Meal Planner Models\FoodItemDTO.cs" />
+    <Compile Include="Models\ApplicationModels\Meal Planner Models\FoodRecord.cs" />
+    <Compile Include="Models\ApplicationModels\Meal Planner Models\Foods.cs" />
+    <Compile Include="Models\ApplicationModels\Meal Planner Models\Meal.cs" />
+    <Compile Include="Models\ApplicationModels\Meal Planner Models\MealDTO.cs" />
+    <Compile Include="Models\ApplicationModels\NSCSubmission.cs" />
+    <Compile Include="Models\ApplicationModels\Payment.cs" />
+    <Compile Include="Models\ApplicationModels\Qualification.cs" />
+    <Compile Include="Models\ApplicationModels\Question.cs" />
+    <Compile Include="Models\ApplicationModels\Quiz.cs" />
+    <Compile Include="Models\ApplicationModels\QuizAttempt.cs" />
+    <Compile Include="Models\ApplicationModels\Regimen Models\Exercise.cs" />
+    <Compile Include="Models\ApplicationModels\Regimen Models\ExerciseDTO.cs" />
+    <Compile Include="Models\ApplicationModels\Regimen Models\ExerciseResponse.cs" />
+    <Compile Include="Models\ApplicationModels\Regimen Models\Regimen.cs" />
+    <Compile Include="Models\ApplicationModels\Regimen Models\Workout.cs" />
+    <Compile Include="Models\ApplicationModels\Regimen Models\WorkoutDTO.cs" />
+    <Compile Include="Models\ApplicationModels\Regimen Models\WorkoutGoal.cs" />
+    <Compile Include="Models\ApplicationModels\Resource.cs" />
+    <Compile Include="Models\ApplicationModels\Room.cs" />
+    <Compile Include="Models\ApplicationModels\Store Models\CartItem.cs" />
+    <Compile Include="Models\ApplicationModels\Store Models\Category.cs" />
+    <Compile Include="Models\ApplicationModels\Store Models\Order.cs" />
+    <Compile Include="Models\ApplicationModels\Store Models\OrderItem.cs" />
+    <Compile Include="Models\ApplicationModels\Store Models\OrderTrackingHistory.cs" />
+    <Compile Include="Models\ApplicationModels\Store Models\Product.cs" />
+    <Compile Include="Models\ApplicationModels\Store Models\ProductReview.cs" />
+    <Compile Include="Models\ApplicationModels\Store Models\Transaction.cs" />
+    <Compile Include="Models\ApplicationModels\Student.cs" />
+    <Compile Include="Models\ApplicationModels\StudentFinalMark.cs" />
+    <Compile Include="Models\ApplicationModels\Submission.cs" />
+    <Compile Include="Models\ApplicationModels\TaskItem.cs" />
+    <Compile Include="Models\ApplicationModels\Teacher.cs" />
+    <Compile Include="Models\ApplicationModels\Trainer Models\Trainer.cs" />
+    <Compile Include="Models\ApplicationModels\Trainer Models\TrainingActivity.cs" />
+    <Compile Include="Models\ApplicationModels\Trainer Models\TrainingSession.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\AdminViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\AssignmentSubmissionsViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\AssignmentsViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\CalculateFinalMarksViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\ClassroomViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\CourseDetailsViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\CourseQuizAttempts.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\CourseSelectionViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\CourseViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\CreateSubmissionLinkViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\EnrolViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\MealPlannerViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\ProductCreateViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\ProgressCenterViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\ProgressViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\QuizViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\RegisterTeacherViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\RegisterTrainerViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\ReviewApplicationViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\StudentDashboardViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\StudentMarksViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\StudySessionViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\SubmitAssignmentViewMode.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\TrainerDashboardViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\UploadViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\WarehouseDashboardViewModel.cs" />
+    <Compile Include="Models\ApplicationModels\ViewModels\WeightingViewModel.cs" />
+    <Compile Include="Models\Helpers\BlobHelper.cs" />
+    <Compile Include="Models\Helpers\EmailHelper.cs" />
+    <Compile Include="Models\Helpers\ExerciseHelper.cs" />
+    <Compile Include="Models\Helpers\FatsecretHelper.cs" />
+    <Compile Include="Models\Helpers\InMemoryTokenStore.cs" />
+    <Compile Include="Models\Helpers\PaystackHelper.cs" />
+    <Compile Include="Models\Helpers\PaystackWebhookEvent.cs" />
+    <Compile Include="Models\Helpers\PdfHelper.cs" />
+    <Compile Include="Models\Helpers\QRHelper.cs" />
+    <Compile Include="Models\Helpers\ShippoHelper.cs" />
+    <Compile Include="Models\Helpers\TrackingHelper.cs" />
+    <Compile Include="Models\IdentityModels.cs" />
+    <Compile Include="Models\ManageViewModels.cs" />
+    <Compile Include="Models\ApplicationModels\StudySession.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Startup.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Content\bootstrap-grid.css" />
+    <Content Include="Content\bootstrap-grid.min.css" />
+    <Content Include="Content\bootstrap-grid.rtl.css" />
+    <Content Include="Content\bootstrap-grid.rtl.min.css" />
+    <Content Include="Content\bootstrap-reboot.css" />
+    <Content Include="Content\bootstrap-reboot.min.css" />
+    <Content Include="Content\bootstrap-reboot.rtl.css" />
+    <Content Include="Content\bootstrap-reboot.rtl.min.css" />
+    <Content Include="Content\bootstrap-utilities.css" />
+    <Content Include="Content\bootstrap-utilities.min.css" />
+    <Content Include="Content\bootstrap-utilities.rtl.css" />
+    <Content Include="Content\bootstrap-utilities.rtl.min.css" />
+    <Content Include="Content\bootstrap.css" />
+    <Content Include="Content\bootstrap.min.css" />
+    <Content Include="Content\bootstrap.rtl.css" />
+    <Content Include="Content\bootstrap.rtl.min.css" />
+    <Content Include="favicon.ico" />
+    <Content Include="Global.asax" />
+    <Content Include="Content\Site.css" />
+    <Content Include="images\default.jpg" />
+    <Content Include="images\Learniverse.png" />
+    <Content Include="Scripts\bootstrap.bundle.js" />
+    <Content Include="Scripts\bootstrap.bundle.min.js" />
+    <Content Include="Scripts\bootstrap.esm.js" />
+    <Content Include="Scripts\bootstrap.esm.min.js" />
+    <Content Include="Scripts\bootstrap.js" />
+    <Content Include="Scripts\bootstrap.min.js" />
+    <None Include="Properties\PublishProfiles\LearniVerse - Web Deploy.pubxml" />
+    <None Include="Scripts\jquery-3.7.1.intellisense.js" />
+    <Content Include="Scripts\jquery-3.7.1.js" />
+    <Content Include="Scripts\jquery-3.7.1.min.js" />
+    <Content Include="Scripts\jquery-3.7.1.slim.js" />
+    <Content Include="Scripts\jquery-3.7.1.slim.min.js" />
+    <None Include="Scripts\jquery.validate-vsdoc.js" />
+    <Content Include="Scripts\jquery.signalR-2.4.3.js" />
+    <Content Include="Scripts\jquery.signalR-2.4.3.min.js" />
+    <Content Include="Scripts\jquery.validate.js" />
+    <Content Include="Scripts\jquery.validate.min.js" />
+    <Content Include="Scripts\jquery.validate.unobtrusive.js" />
+    <Content Include="Scripts\jquery.validate.unobtrusive.min.js" />
+    <Content Include="Scripts\modernizr-2.8.3.js" />
+    <Content Include="Web.config" />
+    <Content Include="Web.Debug.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </Content>
+    <Content Include="Web.Release.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </Content>
+    <Content Include="Views\Web.config" />
+    <Content Include="Views\_ViewStart.cshtml" />
+    <Content Include="Views\Shared\Error.cshtml" />
+    <Content Include="Views\Shared\_Layout.cshtml" />
+    <Content Include="Views\Home\About.cshtml" />
+    <Content Include="Views\Home\Contact.cshtml" />
+    <Content Include="Views\Home\Index.cshtml" />
+    <Content Include="Views\Account\_ExternalLoginsListPartial.cshtml" />
+    <Content Include="Views\Account\ConfirmEmail.cshtml" />
+    <Content Include="Views\Account\ExternalLoginConfirmation.cshtml" />
+    <Content Include="Views\Account\ExternalLoginFailure.cshtml" />
+    <Content Include="Views\Account\ForgotPassword.cshtml" />
+    <Content Include="Views\Account\ForgotPasswordConfirmation.cshtml" />
+    <Content Include="Views\Account\Login.cshtml" />
+    <Content Include="Views\Account\Register.cshtml" />
+    <Content Include="Views\Account\ResetPassword.cshtml" />
+    <Content Include="Views\Account\ResetPasswordConfirmation.cshtml" />
+    <Content Include="Views\Account\SendCode.cshtml" />
+    <Content Include="Views\Account\VerifyCode.cshtml" />
+    <Content Include="Views\Manage\AddPhoneNumber.cshtml" />
+    <Content Include="Views\Manage\ChangePassword.cshtml" />
+    <Content Include="Views\Manage\Index.cshtml" />
+    <Content Include="Views\Manage\ManageLogins.cshtml" />
+    <Content Include="Views\Manage\SetPassword.cshtml" />
+    <Content Include="Views\Manage\VerifyPhoneNumber.cshtml" />
+    <Content Include="Views\Shared\Lockout.cshtml" />
+    <Content Include="Views\Shared\_LoginPartial.cshtml" />
+    <Content Include="Views\Students\Create.cshtml" />
+    <Content Include="Views\Students\Delete.cshtml" />
+    <Content Include="Views\Students\Details.cshtml" />
+    <Content Include="Views\Students\Edit.cshtml" />
+    <Content Include="Views\Students\Index.cshtml" />
+    <Content Include="Views\Students\Home.cshtml" />
+    <Content Include="Views\Students\MyCourses.cshtml" />
+    <Content Include="Views\Faculties\Create.cshtml" />
+    <Content Include="Views\Faculties\Delete.cshtml" />
+    <Content Include="Views\Faculties\Details.cshtml" />
+    <Content Include="Views\Faculties\Edit.cshtml" />
+    <Content Include="Views\Faculties\Index.cshtml" />
+    <Content Include="Views\Qualifications\Create.cshtml" />
+    <Content Include="Views\Qualifications\Delete.cshtml" />
+    <Content Include="Views\Qualifications\Details.cshtml" />
+    <Content Include="Views\Qualifications\Edit.cshtml" />
+    <Content Include="Views\Qualifications\Index.cshtml" />
+    <Content Include="Views\Courses\Create.cshtml" />
+    <Content Include="Views\Courses\Delete.cshtml" />
+    <Content Include="Views\Courses\Details.cshtml" />
+    <Content Include="Views\Courses\Edit.cshtml" />
+    <Content Include="Views\Courses\Index.cshtml" />
+    <Content Include="Views\Teachers\Create.cshtml" />
+    <Content Include="Views\Teachers\Delete.cshtml" />
+    <Content Include="Views\Teachers\Details.cshtml" />
+    <Content Include="Views\Teachers\Edit.cshtml" />
+    <Content Include="Views\Teachers\Index.cshtml" />
+    <Content Include="Views\Enrollments\Create.cshtml" />
+    <Content Include="Views\Enrollments\Delete.cshtml" />
+    <Content Include="Views\Enrollments\Details.cshtml" />
+    <Content Include="Views\Enrollments\Edit.cshtml" />
+    <Content Include="Views\Enrollments\Index.cshtml" />
+    <Content Include="Views\Enrollments\SelectFaculty.cshtml" />
+    <Content Include="Views\Enrollments\SelectQualification.cshtml" />
+    <Content Include="Views\Enrollments\SelectCourses.cshtml" />
+    <Content Include="Views\Enrollments\Confirmation.cshtml" />
+    <Content Include="Views\Enrollments\EnrollmentPending.cshtml" />
+    <Content Include="Views\Enrollments\PendingApplications.cshtml" />
+    <Content Include="Views\Enrollments\MyEnrollments.cshtml" />
+    <Content Include="Views\Enrollments\EnrollmentDetails.cshtml" />
+    <Content Include="Views\Courses\Classroom.cshtml" />
+    <Content Include="Views\Resources\Upload.cshtml" />
+    <Content Include="Views\Quiz\Create.cshtml" />
+    <Content Include="Views\Quiz\Delete.cshtml" />
+    <Content Include="Views\Quiz\Details.cshtml" />
+    <Content Include="Views\Quiz\Edit.cshtml" />
+    <Content Include="Views\Quiz\Index.cshtml" />
+    <Content Include="Views\Quiz\AddQuestions.cshtml" />
+    <Content Include="Views\Quiz\Quiz.cshtml" />
+    <Content Include="Views\Quiz\ReviewAttempt.cshtml" />
+    <Content Include="Views\Quiz\Review.cshtml" />
+    <Content Include="Views\Quiz\TakeQuiz.cshtml" />
+    <Content Include="Views\Quiz\QuizNotAvailable.cshtml" />
+    <Content Include="Views\Enrollments\UploadNSC.cshtml" />
+    <Content Include="Views\Enrollments\ReviewEnrollment.cshtml" />
+    <Content Include="Views\Enrollments\RejectedApplications.cshtml" />
+    <Content Include="Views\Bookings\Create.cshtml" />
+    <Content Include="Views\Bookings\Delete.cshtml" />
+    <Content Include="Views\Bookings\Details.cshtml" />
+    <Content Include="Views\Bookings\Edit.cshtml" />
+    <Content Include="Views\Bookings\Index.cshtml" />
+    <Content Include="Views\TimeSlots\Create.cshtml" />
+    <Content Include="Views\TimeSlots\Delete.cshtml" />
+    <Content Include="Views\TimeSlots\Details.cshtml" />
+    <Content Include="Views\TimeSlots\Edit.cshtml" />
+    <Content Include="Views\TimeSlots\Index.cshtml" />
+    <Content Include="Views\Rooms\Create.cshtml" />
+    <Content Include="Views\Rooms\Delete.cshtml" />
+    <Content Include="Views\Rooms\Details.cshtml" />
+    <Content Include="Views\Rooms\Edit.cshtml" />
+    <Content Include="Views\Rooms\Index.cshtml" />
+    <Content Include="Views\Admin\Home.cshtml" />
+    <Content Include="Views\Payments\Create.cshtml" />
+    <Content Include="Views\Payments\Delete.cshtml" />
+    <Content Include="Views\Payments\Details.cshtml" />
+    <Content Include="Views\Payments\Edit.cshtml" />
+    <Content Include="Views\Payments\Index.cshtml" />
+    <Content Include="Views\Payments\MyPayments.cshtml" />
+    <Content Include="Views\Teachers\Home.cshtml" />
+    <Content Include="Views\Teachers\MyCourses.cshtml" />
+    <Content Include="Views\Payments\Payments.cshtml" />
+    <Content Include="Views\StudySessions\Create.cshtml" />
+    <Content Include="Views\StudySessions\Delete.cshtml" />
+    <Content Include="Views\StudySessions\Details.cshtml" />
+    <Content Include="Views\StudySessions\Edit.cshtml" />
+    <Content Include="Views\StudySessions\Index.cshtml" />
+    <Content Include="Views\TaskItems\Create.cshtml" />
+    <Content Include="Views\TaskItems\Delete.cshtml" />
+    <Content Include="Views\TaskItems\Details.cshtml" />
+    <Content Include="Views\TaskItems\Edit.cshtml" />
+    <Content Include="Views\TaskItems\Index.cshtml" />
+    <Content Include="Views\StudySessions\StudySession.cshtml" />
+    <Content Include="Views\Students\ProgressCenter.cshtml" />
+    <Content Include="Views\Students\QuizProgress.cshtml" />
+    <Content Include="Views\Students\ProgressReport.cshtml" />
+    <Content Include="Views\Assignments\Create.cshtml" />
+    <Content Include="Views\Assignments\Delete.cshtml" />
+    <Content Include="Views\Assignments\Details.cshtml" />
+    <Content Include="Views\Assignments\Edit.cshtml" />
+    <Content Include="Views\Assignments\Index.cshtml" />
+    <Content Include="Views\Assignments\SubmitAssignment.cshtml" />
+    <Content Include="Views\Assignments\ViewSubmissions.cshtml" />
+    <Content Include="Views\Teachers\SetWeightings.cshtml" />
+    <Content Include="Views\Teachers\ViewCourse.cshtml" />
+    <Content Include="Views\Teachers\CalculateFinalMarks.cshtml" />
+    <Content Include="Views\Teachers\CourseDetails.cshtml" />
+    <Content Include="Views\Bookings\MyBookings.cshtml" />
+    <Content Include="Views\Assignments\MyAssignments.cshtml" />
+    <Content Include="Views\Quiz\QuizSubmitted.cshtml" />
+    <Content Include="Views\Payments\PaymentSuccessful.cshtml" />
+    <Content Include="Views\Memberships\Create.cshtml" />
+    <Content Include="Views\Memberships\Delete.cshtml" />
+    <Content Include="Views\Memberships\Details.cshtml" />
+    <Content Include="Views\Memberships\Edit.cshtml" />
+    <Content Include="Views\Memberships\Index.cshtml" />
+    <Content Include="Views\BodyComposistions\Create.cshtml" />
+    <Content Include="Views\BodyComposistions\Delete.cshtml" />
+    <Content Include="Views\BodyComposistions\Details.cshtml" />
+    <Content Include="Views\BodyComposistions\Edit.cshtml" />
+    <Content Include="Views\BodyComposistions\Index.cshtml" />
+    <Content Include="Views\Home\Gainz.cshtml" />
+    <Content Include="Views\Memberships\Plans.cshtml" />
+    <Content Include="Views\Plans\Create.cshtml" />
+    <Content Include="Views\Plans\Delete.cshtml" />
+    <Content Include="Views\Plans\Details.cshtml" />
+    <Content Include="Views\Plans\Edit.cshtml" />
+    <Content Include="Views\Plans\Index.cshtml" />
+    <Content Include="Views\Memberships\SubscriptionSuccess.cshtml" />
+    <Content Include="Views\Memberships\MyMemberships.cshtml" />
+    <Content Include="Views\Memberships\RequestCancel.cshtml" />
+    <Content Include="Views\Memberships\RequestConfirmed.cshtml" />
+    <Content Include="Views\Memberships\CancelRequests.cshtml" />
+    <Content Include="Views\Memberships\AllCancelRequests.cshtml" />
+    <Content Include="Views\Payments\AllGymPayments.cshtml" />
+    <Content Include="Views\BodyComposistions\NewComposition.cshtml" />
+    <Content Include="Views\BodyComposistions\MyBody.cshtml" />
+    <Content Include="Views\FoodSearch\Index.cshtml" />
+    <Content Include="Views\FoodSearch\Dashboard.cshtml" />
+    <Content Include="Views\FoodSearch\RecordMeal.cshtml" />
+    <Content Include="Views\Home\MembershipHome.cshtml" />
+    <Content Include="Views\BodyComposistions\NoBodyCompositions.cshtml" />
+    <Content Include="Views\Workouts\CreateRegimen.cshtml" />
+    <Content Include="Views\Workouts\WorkoutDashboard.cshtml" />
+    <Content Include="Views\Workouts\NoRegimen.cshtml" />
+    <Content Include="Views\Workouts\CreateWorkout.cshtml" />
+    <Content Include="Views\Workouts\AttendanceRecorded.cshtml" />
+    <Content Include="Views\Workouts\ViewWorkout.cshtml" />
+    <Content Include="Views\Workouts\NewGoal.cshtml" />
+    <Content Include="Views\Workouts\ViewAllGoals.cshtml" />
+    <Content Include="Views\Products\AddProduct.cshtml" />
+    <Content Include="Views\Products\Delete.cshtml" />
+    <Content Include="Views\Products\Details.cshtml" />
+    <Content Include="Views\Products\Edit.cshtml" />
+    <Content Include="Views\Products\Index.cshtml" />
+    <Content Include="Views\Categories\Create.cshtml" />
+    <Content Include="Views\Categories\Delete.cshtml" />
+    <Content Include="Views\Categories\Details.cshtml" />
+    <Content Include="Views\Categories\Edit.cshtml" />
+    <Content Include="Views\Categories\Index.cshtml" />
+    <Content Include="Views\Products\StoreFront.cshtml" />
+    <Content Include="Views\Products\Cart.cshtml" />
+    <Content Include="Views\Products\ViewProduct.cshtml" />
+    <Content Include="Views\Products\PaymentSuccess.cshtml" />
+    <Content Include="Views\Products\ShippingAddress.cshtml" />
+    <Content Include="Views\Transactions\Create.cshtml" />
+    <Content Include="Views\Transactions\Delete.cshtml" />
+    <Content Include="Views\Transactions\Details.cshtml" />
+    <Content Include="Views\Transactions\Edit.cshtml" />
+    <Content Include="Views\Transactions\Index.cshtml" />
+    <Content Include="Views\Orders\Create.cshtml" />
+    <Content Include="Views\Orders\Delete.cshtml" />
+    <Content Include="Views\Orders\Details.cshtml" />
+    <Content Include="Views\Orders\Edit.cshtml" />
+    <Content Include="Views\Orders\Index.cshtml" />
+    <Content Include="Views\Orders\OrderHistory.cshtml" />
+    <Content Include="Views\Orders\OrderDetails.cshtml" />
+    <Content Include="Views\Admin\WarehouseDashboard.cshtml" />
+    <Content Include="Views\Tracking\OrderUpdated.cshtml" />
+    <Content Include="Views\Admin\Notifications.cshtml" />
+    <Content Include="Views\Orders\CancelOrderConfirmation.cshtml" />
+    <Content Include="Views\Orders\OrderCancelled.cshtml" />
+    <Content Include="Views\Trainers\Create.cshtml" />
+    <Content Include="Views\Trainers\Edit.cshtml" />
+    <Content Include="Views\Trainers\Delete.cshtml" />
+    <Content Include="Views\Trainers\Index.cshtml" />
+    <Content Include="Views\Trainers\Details.cshtml" />
+    <Content Include="Views\TrainingSessions\Create.cshtml" />
+    <Content Include="Views\TrainingSessions\Delete.cshtml" />
+    <Content Include="Views\TrainingSessions\Details.cshtml" />
+    <Content Include="Views\TrainingSessions\Edit.cshtml" />
+    <Content Include="Views\TrainingSessions\Index.cshtml" />
+    <Content Include="Views\TrainingActivities\Create.cshtml" />
+    <Content Include="Views\TrainingActivities\Delete.cshtml" />
+    <Content Include="Views\TrainingActivities\Details.cshtml" />
+    <Content Include="Views\TrainingActivities\Edit.cshtml" />
+    <Content Include="Views\TrainingActivities\Index.cshtml" />
+    <Content Include="Views\TrainingSessions\AvailableSessions.cshtml" />
+    <Content Include="Views\TrainingSessions\MySessions.cshtml" />
+    <Content Include="Views\TrainingSessions\MyAllSessions.cshtml" />
+    <Content Include="Views\Trainers\Dashboard.cshtml" />
+    <Content Include="Views\Trainers\ViewSessionParticipants.cshtml" />
+    <Content Include="Views\TrainingSessions\PastSessions.cshtml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="App_Data\" />
+    <Folder Include="Views\ProductReviews\" />
+    <Folder Include="Views\Webhooks\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Content\bootstrap.rtl.min.css.map" />
+    <Content Include="Content\bootstrap.rtl.css.map" />
+    <Content Include="Content\bootstrap.min.css.map" />
+    <Content Include="Content\bootstrap.css.map" />
+    <Content Include="Content\bootstrap-utilities.rtl.min.css.map" />
+    <Content Include="Content\bootstrap-utilities.rtl.css.map" />
+    <Content Include="Content\bootstrap-utilities.min.css.map" />
+    <Content Include="Content\bootstrap-utilities.css.map" />
+    <Content Include="Content\bootstrap-reboot.rtl.min.css.map" />
+    <Content Include="Content\bootstrap-reboot.rtl.css.map" />
+    <Content Include="Content\bootstrap-reboot.min.css.map" />
+    <Content Include="Content\bootstrap-reboot.css.map" />
+    <Content Include="Content\bootstrap-grid.rtl.min.css.map" />
+    <Content Include="Content\bootstrap-grid.rtl.css.map" />
+    <Content Include="Content\bootstrap-grid.min.css.map" />
+    <Content Include="Content\bootstrap-grid.css.map" />
+    <None Include="packages.config" />
+    <Content Include="Scripts\bootstrap.min.js.map" />
+    <Content Include="Scripts\bootstrap.js.map" />
+    <Content Include="Scripts\bootstrap.esm.min.js.map" />
+    <Content Include="Scripts\bootstrap.esm.js.map" />
+    <Content Include="Scripts\bootstrap.bundle.min.js.map" />
+    <Content Include="Scripts\bootstrap.bundle.js.map" />
+    <Content Include="Scripts\jquery-3.7.1.slim.min.map" />
+    <Content Include="Scripts\jquery-3.7.1.min.map" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Migrations\202405021646535_Initial-Create.resx">
+      <DependentUpon>202405021646535_Initial-Create.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405021652580_Added Payment Table.resx">
+      <DependentUpon>202405021652580_Added Payment Table.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405021653518_Payment Table Added For Real.resx">
+      <DependentUpon>202405021653518_Payment Table Added For Real.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405061022554_Quiz Entities to Db.resx">
+      <DependentUpon>202405061022554_Quiz Entities to Db.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405061038102_Added quiz start and end times.resx">
+      <DependentUpon>202405061038102_Added quiz start and end times.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405061047346_Added Relationships between course and quiz.resx">
+      <DependentUpon>202405061047346_Added Relationships between course and quiz.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405061107013_Changed teacher ID datatype for quiz to string.resx">
+      <DependentUpon>202405061107013_Changed teacher ID datatype for quiz to string.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405061113042_Fixed Datatype discrepencies.resx">
+      <DependentUpon>202405061113042_Fixed Datatype discrepencies.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405061253204_Added weighting to Question.resx">
+      <DependentUpon>202405061253204_Added weighting to Question.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405061618570_Changed QuizID toGUID.resx">
+      <DependentUpon>202405061618570_Changed QuizID toGUID.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405070730105_Changed correct answer to string.resx">
+      <DependentUpon>202405070730105_Changed correct answer to string.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405070929542_Added question number.resx">
+      <DependentUpon>202405070929542_Added question number.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405090956583_Added Duration to Quiz.resx">
+      <DependentUpon>202405090956583_Added Duration to Quiz.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405101355474_Added NSC stuff.resx">
+      <DependentUpon>202405101355474_Added NSC stuff.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405130855586_Added IsRejected to enrollments.resx">
+      <DependentUpon>202405130855586_Added IsRejected to enrollments.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405131036018_Added-Booking Tables.resx">
+      <DependentUpon>202405131036018_Added-Booking Tables.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405131054403_Added timeslot nav to booking.resx">
+      <DependentUpon>202405131054403_Added timeslot nav to booking.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405211803286_Adding study center.resx">
+      <DependentUpon>202405211803286_Adding study center.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405221458128_Fix booking .resx">
+      <DependentUpon>202405221458128_Fix booking .cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405221721568_Add- Assignment and submission tables .resx">
+      <DependentUpon>202405221721568_Add- Assignment and submission tables .cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405221751557_File name in Submission.resx">
+      <DependentUpon>202405221751557_File name in Submission.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202405222349578_Added Student Final MArks Table.resx">
+      <DependentUpon>202405222349578_Added Student Final MArks Table.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202408071431569_Added Membership and BodyComposition Entities.resx">
+      <DependentUpon>202408071431569_Added Membership and BodyComposition Entities.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202408081128457_Added Membrship Plans.resx">
+      <DependentUpon>202408081128457_Added Membrship Plans.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202408121036216_Added Plan Code from Paystack to Database.resx">
+      <DependentUpon>202408121036216_Added Plan Code from Paystack to Database.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202408121224526_Added Place to store payment for Memberships.resx">
+      <DependentUpon>202408121224526_Added Place to store payment for Memberships.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202408121308193_Added payment form membrships id tp the membrship table.resx">
+      <DependentUpon>202408121308193_Added payment form membrships id tp the membrship table.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202408121754030_Added cancel flag to membership.resx">
+      <DependentUpon>202408121754030_Added cancel flag to membership.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202408131047180_Sub cancel table added.resx">
+      <DependentUpon>202408131047180_Sub cancel table added.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202408151445014_Added Models for Meal Planner.resx">
+      <DependentUpon>202408151445014_Added Models for Meal Planner.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202409011456517_Added Models for Workout Planner.resx">
+      <DependentUpon>202409011456517_Added Models for Workout Planner.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202409011556239_Random Fix.resx">
+      <DependentUpon>202409011556239_Random Fix.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202409011602400_Added AttendanceGoal .resx">
+      <DependentUpon>202409011602400_Added AttendanceGoal .cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202409011617586_Added Date Created .resx">
+      <DependentUpon>202409011617586_Added Date Created .cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202409011748028_Sets and Reps Added.resx">
+      <DependentUpon>202409011748028_Sets and Reps Added.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202409011806206_Times Trained.resx">
+      <DependentUpon>202409011806206_Times Trained.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202409022142558_Added Workout Goal Table.resx">
+      <DependentUpon>202409022142558_Added Workout Goal Table.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410021114001_AddOnlineStoreTables.resx">
+      <DependentUpon>202410021114001_AddOnlineStoreTables.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410021116218_AddImageNameToProductTable.resx">
+      <DependentUpon>202410021116218_AddImageNameToProductTable.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410021240425_AddedCategoryTable.resx">
+      <DependentUpon>202410021240425_AddedCategoryTable.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410041329228_ImageURLaddedtoproducts.resx">
+      <DependentUpon>202410041329228_ImageURLaddedtoproducts.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410081517084_Updated Shipping Address.resx">
+      <DependentUpon>202410081517084_Updated Shipping Address.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410091801115_AddedTransactionTable.resx">
+      <DependentUpon>202410091801115_AddedTransactionTable.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410101332339_TransactionTypeadded.resx">
+      <DependentUpon>202410101332339_TransactionTypeadded.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410101419084_OrderStatusadded.resx">
+      <DependentUpon>202410101419084_OrderStatusadded.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410101501419_AddedTrackingHistory.resx">
+      <DependentUpon>202410101501419_AddedTrackingHistory.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410101509534_Added trcking History to order.resx">
+      <DependentUpon>202410101509534_Added trcking History to order.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410151129135_ProductReview added.resx">
+      <DependentUpon>202410151129135_ProductReview added.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410151208477_Added UserID to product review.resx">
+      <DependentUpon>202410151208477_Added UserID to product review.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410151708322_AddedNotificationsfForLowstock.resx">
+      <DependentUpon>202410151708322_AddedNotificationsfForLowstock.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410211134355_Added Personal Trainer Role.resx">
+      <DependentUpon>202410211134355_Added Personal Trainer Role.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410211229391_Added trainer table to db.resx">
+      <DependentUpon>202410211229391_Added trainer table to db.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410211504494_Added Training Sessions.resx">
+      <DependentUpon>202410211504494_Added Training Sessions.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Migrations\202410211532478_Added Training ACtivities.resx">
+      <DependentUpon>202410211532478_Added Training ACtivities.cs</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
+    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+  </PropertyGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(VSToolsPath)\WebApplications\Microsoft.WebApplication.targets" Condition="'$(VSToolsPath)' != ''" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" Condition="false" />
+  <Target Name="MvcBuildViews" AfterTargets="AfterBuild" Condition="'$(MvcBuildViews)'=='true'">
+    <AspNetCompiler VirtualPath="temp" PhysicalPath="$(WebProjectOutputDir)" />
+  </Target>
+  <ProjectExtensions>
+    <VisualStudio>
+      <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
+        <WebProjectProperties>
+          <UseIIS>True</UseIIS>
+          <AutoAssignPort>True</AutoAssignPort>
+          <DevelopmentServerPort>62573</DevelopmentServerPort>
+          <DevelopmentServerVPath>/</DevelopmentServerVPath>
+          <IISUrl>https://localhost:44394/</IISUrl>
+          <NTLMAuthentication>False</NTLMAuthentication>
+          <UseCustomServer>False</UseCustomServer>
+          <CustomServerUrl>
+          </CustomServerUrl>
+          <SaveServerSettingsInUserFile>False</SaveServerSettingsInUserFile>
+        </WebProjectProperties>
+      </FlavorProperties>
+    </VisualStudio>
+  </ProjectExtensions>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.4.1.0\build\net472\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.4.1.0\build\net472\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.targets'))" />
+    <Error Condition="!Exists('..\packages\EntityFramework.6.4.4\build\EntityFramework.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\EntityFramework.6.4.4\build\EntityFramework.props'))" />
+    <Error Condition="!Exists('..\packages\EntityFramework.6.4.4\build\EntityFramework.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\EntityFramework.6.4.4\build\EntityFramework.targets'))" />
+    <Error Condition="!Exists('..\packages\QuestPDF.2024.3.2\build\net4\QuestPDF.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\QuestPDF.2024.3.2\build\net4\QuestPDF.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.Extensions.Logging.Abstractions.6.0.0\build\Microsoft.Extensions.Logging.Abstractions.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Extensions.Logging.Abstractions.6.0.0\build\Microsoft.Extensions.Logging.Abstractions.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.ML.OnnxRuntime.Managed.1.17.1\build\netstandard2.0\Microsoft.ML.OnnxRuntime.Managed.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.ML.OnnxRuntime.Managed.1.17.1\build\netstandard2.0\Microsoft.ML.OnnxRuntime.Managed.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.ML.OnnxRuntime.1.17.1\build\netstandard2.0\Microsoft.ML.OnnxRuntime.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.ML.OnnxRuntime.1.17.1\build\netstandard2.0\Microsoft.ML.OnnxRuntime.props'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.ML.OnnxRuntime.1.17.1\build\netstandard2.0\Microsoft.ML.OnnxRuntime.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.ML.OnnxRuntime.1.17.1\build\netstandard2.0\Microsoft.ML.OnnxRuntime.targets'))" />
+    <Error Condition="!Exists('..\packages\System.Text.Json.6.0.0\build\System.Text.Json.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\System.Text.Json.6.0.0\build\System.Text.Json.targets'))" />
+    <Error Condition="!Exists('..\packages\BarCode.Slim.2024.5.3\build\net\BarCode.Slim.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\BarCode.Slim.2024.5.3\build\net\BarCode.Slim.targets'))" />
+  </Target>
+  <Import Project="..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.4.1.0\build\net472\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.targets" Condition="Exists('..\packages\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.4.1.0\build\net472\Microsoft.CodeDom.Providers.DotNetCompilerPlatform.targets')" />
+  <Import Project="..\packages\EntityFramework.6.4.4\build\EntityFramework.targets" Condition="Exists('..\packages\EntityFramework.6.4.4\build\EntityFramework.targets')" />
+  <Import Project="..\packages\QuestPDF.2024.3.2\build\net4\QuestPDF.targets" Condition="Exists('..\packages\QuestPDF.2024.3.2\build\net4\QuestPDF.targets')" />
+  <Import Project="..\packages\Microsoft.Extensions.Logging.Abstractions.6.0.0\build\Microsoft.Extensions.Logging.Abstractions.targets" Condition="Exists('..\packages\Microsoft.Extensions.Logging.Abstractions.6.0.0\build\Microsoft.Extensions.Logging.Abstractions.targets')" />
+  <Import Project="..\packages\Microsoft.ML.OnnxRuntime.Managed.1.17.1\build\netstandard2.0\Microsoft.ML.OnnxRuntime.Managed.targets" Condition="Exists('..\packages\Microsoft.ML.OnnxRuntime.Managed.1.17.1\build\netstandard2.0\Microsoft.ML.OnnxRuntime.Managed.targets')" />
+  <Import Project="..\packages\Microsoft.ML.OnnxRuntime.1.17.1\build\netstandard2.0\Microsoft.ML.OnnxRuntime.targets" Condition="Exists('..\packages\Microsoft.ML.OnnxRuntime.1.17.1\build\netstandard2.0\Microsoft.ML.OnnxRuntime.targets')" />
+  <Import Project="..\packages\System.Text.Json.6.0.0\build\System.Text.Json.targets" Condition="Exists('..\packages\System.Text.Json.6.0.0\build\System.Text.Json.targets')" />
+  <Import Project="..\packages\BarCode.Slim.2024.5.3\build\net\BarCode.Slim.targets" Condition="Exists('..\packages\BarCode.Slim.2024.5.3\build\net\BarCode.Slim.targets')" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target> -->
+</Project>

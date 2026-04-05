@@ -1,0 +1,240 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Regimen_Models.Regimen
+@{
+    ViewBag.Title = "Create Workout";
+}
+
+<div class="container mt-5">
+    <h2>Create Workout</h2>
+
+    <div class="row mt-4">
+        <!-- Search and Results Column -->
+        <div class="col-md-6">
+            <!-- Search Form -->
+            <div class="card p-3 mb-4">
+                <h4>Search for Exercises</h4>
+                <form id="searchForm">
+                    <input type="text" id="query" class="form-control mb-2" placeholder="Search for exercises...">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </form>
+            </div>
+
+            <!-- Search Results -->
+            <div id="results" class="card p-3" style="max-height: 300px; overflow-y: auto;">
+                <h4>Search Results</h4>
+                <!-- Results will be appended here -->
+            </div>
+        </div>
+
+        <!-- Selected Exercises and Workout Details Column -->
+        <div class="col-md-6">
+            <div class="card p-3 mb-4">
+                <h4>Selected Exercises</h4>
+                <div id="selectedExercises" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Selected exercises for the workout will be appended here -->
+                </div>
+            </div>
+
+            <!-- Workout Summary and Save Workout Button -->
+            <div class="card p-3">
+                <h4>Workout Summary</h4>
+                <div class="mb-3">
+                    <label for="workoutCategory" class="form-label">Workout Category:</label>
+                    <select id="workoutCategory" class="form-select">
+                        <option value="Chest">Chest</option>
+                        <option value="Back">Back</option>
+                        <option value="Arms">Arms</option>
+                        <option value="Legs">Legs</option>
+                        <option value="Shoulders">Shoulders</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="dayOfWeek" class="form-label">Day of the Week:</label>
+                    <select id="dayOfWeek" class="form-select">
+                        <option value="Monday">Monday</option>
+                        <option value="Tuesday">Tuesday</option>
+                        <option value="Wednesday">Wednesday</option>
+                        <option value="Thursday">Thursday</option>
+                        <option value="Friday">Friday</option>
+                        <option value="Saturday">Saturday</option>
+                        <option value="Sunday">Sunday</option>
+                    </select>
+                </div>
+                <button id="saveWorkoutButton" class="btn btn-success btn-block">Save Workout</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="exerciseModal" class="modal fade" tabindex="-1" aria-labelledby="exerciseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exerciseModalLabel">Exercise Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="exerciseDescription"></p>
+                <label for="reps" class="form-label">Reps:</label>
+                <input type="number" id="reps" class="form-control" placeholder="Enter reps">
+                <label for="sets" class="form-label">Sets:</label>
+                <input type="number" id="sets" class="form-control" placeholder="Enter sets">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="addExerciseButton">Add Exercise</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+    <script type="text/javascript">
+        $(document).ready(function () {
+            function updateWorkoutSummary() {
+                // This function can be used to update any summary information about the workout if needed
+            }
+
+            $('#searchForm').on('submit', function (e) {
+                e.preventDefault();
+                var query = $('#query').val().trim();
+
+                if (!query) {
+                    alert('Please enter a search query.');
+                    return;
+                }
+
+                $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("Search", "Workouts")',
+                    data: { query: query },
+                    success: function (response) {
+                        if (response.success) {
+
+                            console.log(response.data.Exercises);
+                            var resultsHtml = '<ul class="list-group">';
+                            $.each(response.data.Exercises, function (index, exercise) {
+                                resultsHtml += `<li class="list-group-item">${exercise.Name}
+                                    <button class="btn btn-info btn-sm ms-2 view-exercise"
+                                        data-name="${exercise.Name}"
+                                        data-description="${exercise.Muscle}"
+                                        data-difficulty="${exercise.Type}"
+                                        data-instructions="${exercise.Instructions}">
+                                        Select
+                                    </button>
+                                </li>`;
+                            });
+                            resultsHtml += '</ul>';
+                            $('#results').html(resultsHtml);
+                        } else {
+                            $('#results').html(`<p>${response.message}</p>`);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        $('#results').html(`<p>Error: ${error}</p>`);
+                    }
+                });
+            });
+
+            $('#results').on('click', '.view-exercise', function () {
+                var exerciseName = $(this).data('name');
+                var exerciseDescription = $(this).data('description');
+                var exerciseDifficulty = $(this).data('difficulty');
+                var exerciseInstructions = $(this).data('instructions');
+
+                $('#exerciseModal').data('exerciseName', exerciseName)
+                    .data('exerciseDescription', exerciseDescription)
+                    .data('exerciseDifficulty', exerciseDifficulty)
+                    .data('exerciseInstructions', exerciseInstructions);
+
+                // Update modal content
+                $('#exerciseModalLabel').text(exerciseName);
+                $('#exerciseDescription').html(`
+                    <strong>Description:</strong> ${exerciseDescription}<br>
+                    <strong>Difficulty:</strong> ${exerciseDifficulty}<br>
+                `);
+
+                // Show the modal
+                $('#exerciseModal').modal('show');
+            });
+
+            $('#addExerciseButton').on('click', function () {
+                var exerciseName = $('#exerciseModal').data('exerciseName');
+                var exerciseDifficulty = $('#exerciseModal').data('exerciseDifficulty');
+                var exerciseInstructions = $('#exerciseModal').data('exerciseInstructions');
+                var exerciseMuscle = $('#exerciseModal').data('exerciseMuscle');
+                var exerciseEquipment = $('#exerciseModal').data('exerciseEquipment');
+                var reps = $('#reps').val();
+                var sets = $('#sets').val();
+
+                if (exerciseName && reps && sets) {
+                    var exerciseContainer = $('#selectedExercises');
+                    exerciseContainer.append(`<li class="list-group-item" 
+                    data-name="${exerciseName}"
+                    data-difficulty="${exerciseDifficulty}"
+                    data-instructions="${exerciseInstructions}"
+                    data-muscle="${exerciseMuscle}"
+                    data-equipment="${exerciseEquipment}"
+                    data-reps="${reps}" 
+                    data-sets="${sets}">
+                    ${exerciseName} - ${sets} sets of ${reps} reps 
+                    <button class="btn btn-danger btn-sm ms-4 remove-exercise">Remove</button>
+                </li>`);
+                    $('#exerciseModal').modal('hide');
+                    $('#reps').val('');
+                    $('#sets').val('');
+                    updateWorkoutSummary();
+                } else {
+                    alert('Please enter all exercise details.');
+                }
+            });
+
+            $('#selectedExercises').on('click', '.remove-exercise', function () {
+                $(this).parent().remove();
+                updateWorkoutSummary();
+            });
+
+            $('#saveWorkoutButton').on('click', function () {
+                var workoutData = {
+                    Name: $('#workoutCategory').val(),
+                    DayOfWeek: $('#dayOfWeek').val(),
+                    Exercises: []
+                };
+
+                $('#selectedExercises li').each(function () {
+                    workoutData.Exercises.push({
+                        Name: $(this).data('name'),
+                        Difficulty: $(this).data('difficulty'),
+                        Instructions: $(this).data('instructions'),
+                        Muscle: $(this).data('muscle'),
+                        Equipment: $(this).data('equipment'),
+                        Reps: $(this).data('reps'),
+                        Sets: $(this).data('sets')
+                    });
+                });
+
+                console.log(JSON.stringify(workoutData)); // Debugging
+
+                $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("SaveWorkout", "Workouts")',
+                    contentType: 'application/json',
+                    data: JSON.stringify(workoutData),
+                    success: function (response) {
+                        if (response.success) {
+                            alert('Workout saved successfully!');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        alert('Error: ' + error);
+                    }
+                });
+            });
+        });
+    </script>
+}

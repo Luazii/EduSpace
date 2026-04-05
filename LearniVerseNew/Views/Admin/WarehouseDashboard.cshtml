@@ -1,0 +1,189 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.WarehouseDashboardViewModel
+
+<h2>Warehouse Dashboard</h2>
+
+<!-- Total Orders by Day -->
+<div class="row">
+    <div class="col-md-6">
+        <h4>Total Orders by Day</h4>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Total Orders</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var day in Model.OrdersByDay)
+                {
+                    <tr>
+                        <td>@day.Date.ToString()</td>
+                        <td>@day.TotalOrders</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="col-md-6">
+        <h4>Latest Orders</h4>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Student ID</th>
+                    <th>Status</th>
+                    <th>Date Ordered</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Model.LatestOrders)
+                {
+                    <tr>
+                        <td>@order.OrderID</td>
+                        <td>@order.StudentID</td>
+                        <td>@order.Status</td>
+                        <td>@order.DateOrdered.ToString("MM/dd/yyyy")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<h4>Unscanned Orders</h4>
+<table class="table table-warning">
+    <thead>
+        <tr>
+            <th>Order ID</th>
+            <th>Student ID</th>
+            <th>Date Ordered</th>
+            <th>Action</th> <!-- Added Action Column -->
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var order in Model.UnscannedOrders)
+        {
+            <tr>
+                <td>@order.OrderID</td>
+                <td>@order.StudentID</td>
+                <td>@order.DateOrdered.ToString("MM/dd/yyyy")</td>
+                <td>
+                    <!-- Scan Now Button -->
+                    @if (order.Status == "Sent-To-Warehouse")
+                    {
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#qrModal-@order.OrderID">
+                            <i class="bi bi-qr-code-scan"></i> Acknowledge receipt
+                        </button>
+
+                        <div class="modal fade" id="qrModal-@order.OrderID" tabindex="-1" aria-labelledby="qrModalLabel-@order.OrderID" aria-hidden="true">
+                            <div class="modal-dialog modal-sm modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="qrModalLabel-@order.OrderID">Send to Warehouse</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body text-center">
+                                        <img style="max-width: 100%; height: auto; max-height: 400px;" src="@Url.Action("GenerateAtWarehouseQRCode", "Tracking", new { orderId = order.OrderID })" alt="At Warehouse QR Code" />
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+<h4>At-Warehouse Orders</h4>
+<table class="table table-info">
+    <thead>
+        <tr>
+            <th>Order ID</th>
+            <th>Student ID</th>
+            <th>Date Ordered</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var order in Model.AtWarehouseOrders)
+        {
+            <tr>
+                <td>@order.OrderID</td>
+                <td>@order.StudentID</td>
+                <td>@order.DateOrdered.ToString("MM/dd/yyyy")</td>
+                <td>@order.Status</td>
+                <td>
+
+                    @if (order.Status == "At-Warehouse")
+                    {
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#qrModal-@order.OrderID">
+                            <i class="bi bi-qr-code-scan"></i> Send for delivery
+                        </button>
+
+                        <div class="modal fade" id="qrModal-@order.OrderID" tabindex="-1" aria-labelledby="qrModalLabel-@order.OrderID" aria-hidden="true">
+                            <div class="modal-dialog modal-sm modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="qrModalLabel-@order.OrderID">Send to Warehouse</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body text-center">
+                                        <img style="max-width: 100%; height: auto; max-height: 400px;" src="@Url.Action("GenerateOutForDeliveryQRCode", "Tracking", new { orderId = order.OrderID })" alt="At Warehouse QR Code" />
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                <td />
+            </tr>
+
+
+        }
+    </tbody>
+</table>
+
+<h4>Out-for-Delivery Orders</h4>
+<table class="table table-success">
+    <thead>
+        <tr>
+            <th>Order ID</th>
+            <th>Student ID</th>
+            <th>Date Ordered</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var order in Model.OutForDeliveryOrders)
+        {
+            <tr>
+                <td>@order.OrderID</td>
+                <td>@order.StudentID</td>
+                <td>@order.DateOrdered.ToString("MM/dd/yyyy")</td>
+                <td>@order.Status</td>
+                <td>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+@section scripts{
+    <script type="text/javascript">
+        // Trigger page reload when any modal is closed
+        $('.modal').on('hidden.bs.modal', function () {
+            location.reload(); // Reload the page when the modal closes
+        });</script>
+
+}

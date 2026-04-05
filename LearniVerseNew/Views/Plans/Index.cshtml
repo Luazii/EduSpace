@@ -1,0 +1,52 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Gym_Models.Plans>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>Index</h2>
+
+<p>
+    @Html.ActionLink("Create New", "Create")
+</p>
+<table class="table">
+    <tr>
+        <th>
+            @Html.DisplayNameFor(model => model.PlanName)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.PlanDuration)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.PlanCost)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.PlanCode)
+        </th>
+        <th></th>
+    </tr>
+
+@foreach (var item in Model) {
+    <tr>
+        <td>
+            @Html.DisplayFor(modelItem => item.PlanName)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.PlanDuration)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.PlanCost)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.PlanCode)
+        </td>
+
+        <td>
+            @Html.ActionLink("Edit", "Edit", new { id = item.PlanID }) |
+            @Html.ActionLink("Details", "Details", new { id = item.PlanID }) |
+            @Html.ActionLink("Delete", "Delete", new { id = item.PlanID })
+        </td>
+    </tr>
+}
+
+</table>

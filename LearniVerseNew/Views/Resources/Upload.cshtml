@@ -1,0 +1,39 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.UploadViewModel
+@{
+    ViewBag.Title = "Upload";
+}
+
+<h2>Upload</h2>
+
+@using (Html.BeginForm("Upload", "Resources", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{
+    @Html.AntiForgeryToken()
+
+    <div class="form-group">
+        @Html.LabelFor(model => model.FileName, htmlAttributes: new { @class = "control-label" })
+        @Html.TextBoxFor(model => model.FileName, new { @class = "form-control" })
+        @Html.ValidationMessageFor(model => model.FileName, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(model => model.File, htmlAttributes: new { @class = "control-label" })
+        <input type="file" name="File" id="File" class="form-control" accept=".pdf, .doc, .docx" /> <!-- Add the accept attribute to specify accepted file types -->
+        @Html.ValidationMessageFor(model => model.File, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(model => model.Description, htmlAttributes: new { @class = "control-label" })
+        @Html.TextAreaFor(model => model.Description, new { @class = "form-control" })
+        @Html.ValidationMessageFor(model => model.Description, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(model => model.CourseID, htmlAttributes: new { @class = "control-label" })
+        @Html.DropDownListFor(model => model.CourseID, (SelectList)ViewBag.Courses, "Select Course", new { @class = "form-control" })
+        @Html.ValidationMessageFor(model => model.CourseID, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        <input type="submit" value="Upload" class="btn btn-primary" />
+    </div>
+}

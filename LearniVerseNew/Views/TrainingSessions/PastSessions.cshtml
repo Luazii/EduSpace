@@ -1,0 +1,45 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Trainer_Models.TrainingSession>
+
+<h2>Past Training Sessions</h2>
+
+@if (Model.Any())
+{
+    var groupedSessions = Model.GroupBy(s => s.SessionDate);
+
+    foreach (var group in groupedSessions)
+    {
+        <h4>@group.Key.ToString("MMMM dd, yyyy")</h4>
+
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Session Name</th>
+                    <th>Start Time</th>
+                    <th>Duration</th>
+                    <th>Participants</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var session in group)
+                {
+                    <tr>
+                        <td>@session.SessionName</td>
+                        <td>@session.SessionStart</td>
+                        <td>@session.Duration minutes</td>
+                        <td>@session.Participants.Count()</td>
+                        <td>
+                            @Html.ActionLink("View Participants", "ViewSessionParticipants","Trainers", new { sessionId = session.TrainingSessionID }, new { @class = "btn btn-primary" })
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else
+{
+    <p>No past sessions available.</p>
+}
+
+<a href="@Url.Action("Dashboard", "Trainers")" class="btn btn-secondary">Back to Dashboard</a>

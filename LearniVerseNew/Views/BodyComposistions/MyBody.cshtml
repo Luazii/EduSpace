@@ -1,0 +1,311 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Gym_Models.BodyComposistion
+
+@{
+    ViewBag.Title = "My Body Metrics";
+
+    double height = @Model.Height;
+    int minHealthyWeight = Convert.ToInt32(18.5 * (height * height));
+    int maxHealthyWeight = Convert.ToInt32(24.9 * (height * height));
+
+
+}
+
+
+@if (Model == null)
+{
+    <div class="alert alert-info" role="alert">
+        You have not recorded any body compositions yet.
+    </div>
+}
+else
+{
+    <div class="container">
+
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h2 class="card-title">Welcome to Your Dashboard</h2>
+                    <p>Hi @Model.Student.StudentFirstName</p>
+                </div>
+            </div>
+        </div>
+        <!-- Needle Gauge for BMI -->
+        <div class="row mb-4">
+            <div class="col-md-9">
+                <div class="card mb-4">
+                    <div class="card-header bg-warning-subtle">
+                        <h4>Suggested Weight Goal</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>Your current BMI is: <strong>@Model.BMI</strong></p>
+                        @if (Model.BMI < 18.5)
+                        {
+                            <p>You are currently underweight. To reach a healthy BMI, your weight should be between <strong>@minHealthyWeight.ToString("F1")</strong> kg and <strong>@maxHealthyWeight.ToString("F1")</strong> kg.</p>
+                        }
+                        else if (Model.BMI >= 25 && Model.BMI < 30)
+                        {
+                            <p>You are currently overweight. To reach a healthy BMI, your weight should be between <strong>@minHealthyWeight.ToString("F1")</strong> kg and <strong>@maxHealthyWeight.ToString("F1")</strong> kg.</p>
+                        }
+                        else if (Model.BMI >= 30)
+                        {
+                            <p>You are currently obese. To reach a healthy BMI, your weight should be between <strong>@minHealthyWeight.ToString("F1")</strong> kg and <strong>@maxHealthyWeight.ToString("F1")</strong> kg.</p>
+                        }
+                        else
+                        {
+                            <p>Your weight is in the healthy range. Keep maintaining your current lifestyle to stay healthy!</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="col-md-3">
+                <div class="card mb-4">
+                    <div class="card-header bg-warning-subtle">
+                        <h4>Your BMI</h4>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">@Model.BMI</h5>
+                        <canvas id="bmichart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cards for Other Metrics -->
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body" style="background-color:#da8ee7;">
+                        <h5 class="card-title">BMR</h5>
+                        <p class="card-text">@Model.BMR kcal/day</p>
+                        <p class="card-text"><small>Basal Metabolic Rate</small></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body" style="background-color:#4dd091" ;>
+                        <h5 class="card-title">Body Fat %</h5>
+                        <p class="card-text">@Model.BodyFatPercentage %</p>
+                        <p class="card-text"><small>Body Fat Percentage</small></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body" style="background-color:#ff96c5;">
+                        <h5 class="card-title">Lean Muscle Mass</h5>
+                        <p class="card-text">@Model.LeanMuscleMass kg</p>
+                        <p class="card-text"><small>Lean Muscle Mass</small></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div id="status-Card" class="card-body">
+                        <h5 class="card-title">Status</h5>
+                        <p class="card-text">@Model.Status</p>
+                        <p class="card-text"><small>Body Composition Status</small></p>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="col-md-12 text-center">
+                <a href="@Url.Action("NewComposition", "BodyComposistions")" class="btn btn-danger mt-4">Add New Entry</a>
+            </div>
+
+
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <div class="card text-center">
+                        <div class="card-header bg-danger-subtle">
+                            <h4>Your Weight</h4>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="weightChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+
+@section Scripts {
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
+
+
+    <script>
+    // Get the BMI value from the model
+    var bmi = @Html.Raw(Json.Encode(Model.BMI));
+
+    // Get the context of the canvas element
+    var ctx = document.getElementById('bmichart').getContext('2d');
+
+    // Create a bar chart
+    var bmichart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['BMI'],
+            datasets: [{
+                label: 'Your BMI',
+                data: [bmi],
+                backgroundColor: 'rgba(75, 192, 192, 0.2)', // Light green
+                borderColor: 'rgba(75, 192, 192, 1)', // Dark green
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                x: {
+                    beginAtZero: true
+                },
+                y: {
+                    beginAtZero: true,
+                    min: 0,
+                    max: 40,
+                    ticks: {
+                        stepSize: 5, // Set step size to 5
+                        callback: function(value) {
+                            if (value === 0) return '0';
+                            if (value === 10) return '10';
+                            if (value === 20) return '20';
+                            if (value === 30) return '30';
+                            if (value === 40) return '40';
+                            return '';
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false // Hide the legend if not needed
+                }
+            }
+        }
+    });
+
+        // chart for weight
+      // Get the weight and date records from the ViewBag
+    var weightRecords = @Html.Raw(Json.Encode(ViewBag.WeightRecords));
+    var dateRecords = @Html.Raw(Json.Encode(ViewBag.DateRecords));
+    var minHealthyWeight = @minHealthyWeight;
+    var maxHealthyWeight = @maxHealthyWeight;
+
+    // Convert date strings to JavaScript Date objects
+    var formattedDateRecords = dateRecords.map(date => new Date(date).toISOString());
+
+    // Create a line chart
+    var ctx = document.getElementById('weightChart').getContext('2d');
+    var weightChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: formattedDateRecords, // Dates on X-axis
+            datasets: [{
+                label: 'Weight',
+                data: weightRecords, // Weights on Y-axis
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                fill: false
+            },
+            {
+                label: 'Min Healthy Weight',
+                data: Array(weightRecords.length).fill(minHealthyWeight),
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderDash: [5, 5],
+                fill: false
+            },
+            {
+                label: 'Max Healthy Weight',
+                data: Array(weightRecords.length).fill(maxHealthyWeight),
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderDash: [5, 5],
+                fill: false
+            }]
+        },
+        options: {
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day',
+                        tooltipFormat: 'MMM d, YYYY'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Date Recorded'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Weight (kg)'
+                    },
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true
+                }
+            }
+        }
+    });
+
+
+        
+    </script>
+
+    <script>
+    // Run the statusColorchanger function when the page loads
+    window.onload = function() {
+        statusColorchanger();
+    };
+
+    function statusColorchanger() {
+        // Get the status from the model
+        var status = @Html.Raw(Json.Encode(Model.Status));
+
+        // Get the card element by ID
+        var card = document.getElementById('status-Card');
+
+        // Change the card's background color based on the status
+        if (status === 'Normal') {
+            card.style.backgroundColor = '#abf7b1';
+        } else if (status === 'Underweight') {
+            card.style.backgroundColor = '#63e5ff';
+        } else if (status === 'Overweight') {
+            card.style.backgroundColor = '#ee9f27';
+        } else if (status === 'Obese') {
+            card.style.backgroundColor = '#fb3b1e';
+        } else {
+            card.style.backgroundColor = 'gray'; // Default color if status is undefined
+        }
+
+        }
+
+       
+
+
+    </script>
+
+    <script>
+   
+
+    </script>
+
+}
+
+

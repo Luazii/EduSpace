@@ -1,0 +1,22 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.WeightingViewModel
+
+@{
+    ViewBag.Title = "Set Weightings";
+}
+
+<h2>Set Weightings for Final Marks Calculation</h2>
+
+@using (Html.BeginForm("CalculateFinalMarks", "Teachers", FormMethod.Post))
+{
+    @Html.HiddenFor(m => m.CourseID)
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.QuizWeighting, "Quiz Weighting (%)")
+        @Html.TextBoxFor(m => m.QuizWeighting, new { @class = "form-control" })
+    </div>
+    <div class="form-group">
+        @Html.LabelFor(m => m.AssignmentWeighting, "Assignment Weighting (%)")
+        @Html.TextBoxFor(m => m.AssignmentWeighting, new { @class = "form-control" })
+    </div>
+    <button type="submit" class="btn btn-primary">Calculate Final Marks</button>
+}

@@ -1,0 +1,101 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Store_Models.Order>
+
+@{
+    ViewBag.Title = "Orders";
+}
+
+
+<h2 class="my-4">Orders</h2>
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Message"]
+    </div>
+}
+<!-- Search Form -->
+<div class="mb-3">
+    @using (Html.BeginForm("Index", "Orders", FormMethod.Get))
+    {
+        <div class="input-group">
+            @Html.TextBox("searchString", ViewBag.CurrentFilter as string, new { @class = "form-control", placeholder = "Search by name, address, or city..." })
+            <button class="btn btn-outline-dark" type="submit">
+                <i class="bi bi-search"></i> Search
+            </button>
+        </div>
+    }
+</div>
+
+<!-- Orders Table -->
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>@Html.DisplayNameFor(model => model.Student.StudentFirstName)</th>
+                <th>@Html.DisplayNameFor(model => model.DateOrdered)</th>
+                <th>@Html.DisplayNameFor(model => model.TotalPrice)</th>
+                <th>@Html.DisplayNameFor(model => model.ShippingAddress)</th>
+                <th>@Html.DisplayNameFor(model => model.City)</th>
+                <th>@Html.DisplayNameFor(model => model.State)</th>
+                <th>@Html.DisplayNameFor(model => model.PostalCode)</th>
+                <th>@Html.DisplayNameFor(model => model.IsDelivered)</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@Html.DisplayFor(modelItem => item.Student.StudentFirstName)</td>
+                    <td>@Html.DisplayFor(modelItem => item.DateOrdered)</td>
+                    <td>R @Html.DisplayFor(modelItem => item.TotalPrice)</td>
+                    <td>@Html.DisplayFor(modelItem => item.ShippingAddress)</td>
+                    <td>@Html.DisplayFor(modelItem => item.City)</td>
+                    <td>@Html.DisplayFor(modelItem => item.State)</td>
+                    <td>@Html.DisplayFor(modelItem => item.PostalCode)</td>
+                    <td>
+                        @if (item.Status == "Refunded")
+                        {
+                            <p>Canceled and Refunded</p>
+                        }
+                        else
+                        {
+                            @Html.DisplayFor(modelItem => item.IsDelivered)
+                        }
+
+                    </td>
+                    <td>
+                        <a href="@Url.Action("Details", "Orders", new { id = item.OrderID })" class="btn btn-outline-dark">
+                            <i class="bi bi-info-circle"></i> Details
+                        </a>
+
+                        <!-- Conditionally show the "Send to Warehouse" button if the order is in "Received" stage -->
+                        @if (item.Status == "Received")
+                        {
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#qrModal-@item.OrderID">
+                                <i class="bi bi-qr-code-scan"></i> Send to Warehouse
+                            </button>
+
+                            <div class="modal fade" id="qrModal-@item.OrderID" tabindex="-1" aria-labelledby="qrModalLabel-@item.OrderID" aria-hidden="true">
+                                <div class="modal-dialog modal-sm modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="qrModalLabel-@item.OrderID">Send to Warehouse</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body text-center">
+                                            <img style="max-width: 100%; height: auto; max-height: 400px;" src="@Url.Action("GenerateSendToWarehouseQRCode", "Tracking", new { orderId = item.OrderID })" alt="Send to Warehouse QR Code" />
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+

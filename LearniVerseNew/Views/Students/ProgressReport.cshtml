@@ -1,0 +1,42 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.ProgressViewModel
+
+@{
+    ViewBag.Title = "Progress Report";
+}
+
+<div class="container mt-5">
+    <h2 class="text-center">Progress Report</h2>
+
+    @foreach (var course in Model.CoursesQuizAttempts)
+    {
+        <div class="course-section mb-4">
+            <h3>@course.CourseName</h3>
+
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Quiz Description</th>
+                        <th>Attempt Date</th>
+                        <th>Mark Obtained</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var attempt in course.QuizAttempts)
+                    {
+                        <tr>
+                            <td>@attempt.Quiz.QuizDescription</td>
+                            <td>@attempt.AttemptDate.ToString("yyyy-MM-dd")</td>
+                            <td>@attempt.MarkObtained</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            
+        </div>
+    }
+</div>
+
+@section Scripts {
+
+}

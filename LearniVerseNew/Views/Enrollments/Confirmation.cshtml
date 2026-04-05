@@ -1,0 +1,50 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Course>
+@{
+    ViewBag.Title = "Confirmation";
+}
+
+<div class="container mt-5">
+    <h1 class="text-center">@ViewBag.Title</h1>
+    <p class="text-center">Please review your selected courses:</p>
+
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Course ID</th>
+                    <th>Course Name</th>
+                    <th>Description</th>
+                    <th>Semester</th>
+                    <th>Faculty</th>
+                    <th>Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var course in Model)
+                {
+                    <tr>
+                        <td>@course.CourseID</td>
+                        <td>@course.CourseName</td>
+                        <td>@course.Description</td>
+                        <td>@course.Semester</td>
+                        <td>@course.Department</td>
+                        <td>@course.Price</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <p class="text-center text-warning mt-2 mb-2">You will be subject to an application fee of R 1500</p>
+    <p class="text-center text-danger mb-2">This does not guarantee your appication will be accepted.</p>
+
+    @using (Html.BeginForm("Confirmation", "Enrollments", FormMethod.Post))
+    {
+        @Html.AntiForgeryToken()
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-success">Proceed to Payment</button>
+            <a href="@Url.Action("SelectFaculty")" class="btn btn-secondary ml-2">Cancel</a>
+        </div>
+    }
+</div>

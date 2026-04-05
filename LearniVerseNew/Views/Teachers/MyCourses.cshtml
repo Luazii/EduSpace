@@ -1,0 +1,48 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Teacher
+
+@{
+    ViewBag.Title = "MyCourses";
+}
+
+<h2>My Courses</h2>
+
+<div class="container">
+    <h1>@Model.TeacherFirstName @Model.TeacherLastName </h1>
+    <hr />
+
+    <div class="mb-3">
+        <a href="@Url.Action("Upload", "Resources")" class="btn btn-primary">Upload Resources</a>
+        <a href="@Url.Action("Create", "Quiz")" class="btn btn-success">Create Quiz</a>
+        <a href="@Url.Action("Create", "Assignments")" class="btn btn-info">Create Assignment</a>
+    </div>
+    <hr />
+    <h3>Current Courses:</h3>
+    @if (Model.Courses.Any())
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Course Name</th>
+                    <th>Description</th>
+                    <th>Time Frame</th>
+                    <th>Department</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var course in Model.Courses)
+                {
+                    <tr>
+                        <td>@course.CourseName</td>
+                        <td>@course.Description</td>
+                        <td>@course.Semester</td>
+                        <td>@course.Department</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>You are not Teaching in any courses.</p>
+    }
+</div>

@@ -1,0 +1,210 @@
+@model LearniVerseNew.Models.ApplicationModels.ViewModels.ProgressViewModel
+
+@{
+    ViewBag.Title = "Progress — " + Model.Coursename;
+}
+
+<div class="container mt-5">
+
+    <h2 class="mb-1">@Model.Coursename</h2>
+    <p class="text-muted mb-4">Academic Progress Summary</p>
+
+    <!-- KPI cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-3">
+            <div class="card text-center p-3 border-primary">
+                <div class="fs-2 fw-bold text-primary">@Model.HighestMark</div>
+                <div class="text-muted small">Highest Quiz Mark</div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="card text-center p-3">
+                <div class="fs-2 fw-bold">@Model.AverageMark.ToString("F1")</div>
+                <div class="text-muted small">Avg Quiz Mark (raw)</div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="card text-center p-3 border-info">
+                <div class="fs-2 fw-bold text-info">@Model.QuizPercent.ToString("F1")%</div>
+                <div class="text-muted small">Quiz Performance</div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="card text-center p-3 border-success">
+                <div class="fs-2 fw-bold text-success">@Model.AssignmentPercent.ToString("F1")%</div>
+                <div class="text-muted small">Assignment Performance</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Final mark banner -->
+    @if (Model.FinalMark.HasValue)
+    {
+        double fm = Model.FinalMark.Value;
+        <div class="alert @(fm >= 50 ? "alert-success" : "alert-danger") d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <strong>Overall Performance:</strong>
+                <span class="fs-4 ms-2">@fm.ToString("F1")%</span>
+                @if (fm >= 75) { <span class="ms-2">&#127775; Distinction</span> }
+                else if (fm >= 60) { <span class="ms-2">&#127881; Merit</span> }
+                else if (fm >= 50) { <span class="ms-2">&#9989; Pass</span> }
+                else { <span class="ms-2">&#9888;&#65039; Below Pass</span> }
+            </div>
+            <span class="badge bg-light text-dark fs-5">@fm.ToString("F1")%</span>
+        </div>
+    }
+
+    <!-- Chart -->
+    <div class="card mb-5 p-3">
+        <canvas id="progressChart"></canvas>
+    </div>
+
+    <!-- Quiz attempts table -->
+    <h4 class="mb-3">Quiz Attempts</h4>
+    @if (Model.QuizAttempts.Any())
+    {
+        <table class="table table-bordered table-striped align-middle mb-5">
+            <thead class="table-dark">
+                <tr>
+                    <th>Quiz</th>
+                    <th>Date</th>
+                    <th>Mark</th>
+                    <th>Max</th>
+                    <th>%</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model.QuizAttempts)
+                {
+                    int max   = a.Quiz?.QuizMaxMark ?? 0;
+                    double p  = max > 0 ? (double)a.MarkObtained / max * 100 : 0;
+                    <tr>
+                        <td>@a.Quiz?.QuizDescription</td>
+                        <td>@a.AttemptDate.ToString("yyyy-MM-dd")</td>
+                        <td>@a.MarkObtained</td>
+                        <td>@max</td>
+                        <td>
+                            <span class="badge @(p >= 50 ? "bg-success" : "bg-danger")">@p.ToString("F1")%</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p class="text-muted fst-italic mb-5">No quiz attempts recorded yet.</p>
+    }
+
+    <!-- Assignment submissions table -->
+    <h4 class="mb-3">Assignment Submissions</h4>
+    @if (Model.Submissions.Any())
+    {
+        <table class="table table-bordered table-striped align-middle mb-5">
+            <thead class="table-dark">
+                <tr>
+                    <th>Assignment</th>
+                    <th>Mark</th>
+                    <th>Max</th>
+                    <th>%</th>
+                    <th>Feedback</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model.Submissions)
+                {
+                    int maxM  = s.Assignment?.MaxMark ?? 100;
+                    double p  = s.Mark.HasValue && maxM > 0 ? (double)s.Mark.Value / maxM * 100 : 0;
+                    <tr>
+                        <td>@s.Assignment?.Title</td>
+                        <td>@(s.Mark.HasValue ? s.Mark.Value.ToString() : "Pending")</td>
+                        <td>@maxM</td>
+                        <td>
+                            @if (s.Mark.HasValue)
+                            {
+                                <span class="badge @(p >= 50 ? "bg-success" : "bg-danger")">@p.ToString("F1")%</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">—</span>
+                            }
+                        </td>
+                        <td class="fst-italic text-muted small">@(string.IsNullOrEmpty(s.Feedback) ? "—" : s.Feedback)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p class="text-muted fst-italic mb-5">No assignment submissions recorded yet.</p>
+    }
+
+    <a href="@Url.Action("ProgressCenter", "Students")" class="btn btn-secondary">Back to Course List</a>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var ctx = document.getElementById('progressChart').getContext('2d');
+
+        var quizLabels  = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.QuizAttempts.Select(a => a.Quiz != null ? a.Quiz.QuizDescription : "Quiz")));
+        var quizMarks   = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.QuizAttempts.Select(a => a.Quiz != null && a.Quiz.QuizMaxMark > 0 ? Math.Round((double)a.MarkObtained / a.Quiz.QuizMaxMark * 100, 1) : 0)));
+
+        var assignLabels = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Submissions.Select(s => s.Assignment != null ? s.Assignment.Title : "Assignment")));
+        var assignMarks  = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model.Submissions.Select(s => {
+            if (!s.Mark.HasValue) return (object)null;
+            int mx = s.Assignment?.MaxMark ?? 100;
+            return mx > 0 ? Math.Round((double)s.Mark.Value / mx * 100, 1) : (object)null;
+        })));
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [...quizLabels, ...assignLabels],
+                datasets: [
+                    {
+                        label: 'Quiz %',
+                        data: [...quizMarks, ...Array(assignLabels.length).fill(null)],
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor:     'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Assignment %',
+                        data: [...Array(quizLabels.length).fill(null), ...assignMarks],
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor:     'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Pass line (50%)',
+                        data: Array(quizLabels.length + assignLabels.length).fill(50),
+                        type: 'line',
+                        borderColor: 'rgba(255, 99, 132, 0.8)',
+                        borderDash: [8, 4],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: { display: true, text: 'Percentage (%)' }
+                    },
+                    x: {
+                        title: { display: true, text: 'Assessment' }
+                    }
+                }
+            }
+        });
+    });
+    </script>
+}

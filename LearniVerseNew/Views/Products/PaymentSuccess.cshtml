@@ -1,0 +1,38 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Store_Models.Order
+
+@{
+    ViewBag.Title = "Payment Success";
+}
+
+<h2>Payment Success</h2>
+
+<h3>Order Summary</h3>
+<p><strong>Order ID:</strong> @Model.OrderID</p>
+<p><strong>Date Ordered:</strong> @Model.DateOrdered.ToString("MM/dd/yyyy")</p>
+<p><strong>Total Price:</strong> @Model.TotalPrice.ToString("C")</p>
+<p><strong>Shipping Address:</strong> @Model.ShippingAddress</p>
+
+<h4>Order Items</h4>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Product Name</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.OrderItems)
+        {
+            <tr>
+                <td>@item.Product.ProductName</td>
+                <td>@item.Quantity</td>
+                <td>@item.Product.Price.ToString("C")</td>
+                <td>R@(item.Product.Price * item.Quantity)</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a href="@Url.Action("StoreFront", "Products")" class="btn btn-outline-warning">Continue Shopping</a>

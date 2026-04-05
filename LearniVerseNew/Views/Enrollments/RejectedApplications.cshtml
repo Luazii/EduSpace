@@ -1,0 +1,56 @@
+﻿@model List<LearniVerseNew.Models.ApplicationModels.Enrollment>
+
+@{
+    ViewBag.Title = "Rejected Enrollments";
+}
+
+<div class="container mt-5">
+    @if (ViewData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @ViewData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <h2>Rejected Enrollments</h2>
+
+    @if (Model.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Enrollment Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var enrollment in Model)
+                    {
+                        <tr>
+                            <td>@enrollment.Student.StudentFirstName @enrollment.Student.StudentLastName</td>
+                            <td>@enrollment.EnrollmentDate.ToString("yyyy-MM-dd")</td>
+                            <td>
+                                @using (Html.BeginForm("ReviewEnrollment", "Enrollments", new { id = enrollment.EnrollmentID }, FormMethod.Post))
+                                {
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-success">Review</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <p>No rejected enrollments found.</p>
+    }
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}

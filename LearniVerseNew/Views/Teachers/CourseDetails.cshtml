@@ -1,0 +1,28 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.CourseDetailsViewModel
+
+@{
+    ViewBag.Title = "Course Details";
+}
+
+<h2>@Model.CourseName - Course Details</h2>
+
+<h3>Final Marks</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Student ID</th>
+            <th>Student Name</th>
+            <th>Final Mark</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var studentMark in Model.StudentFinalMarks)
+        {
+            <tr>
+                <td>@studentMark.StudentID</td>
+                <td>@studentMark.StudentName</td>
+                <td>@studentMark.FinalMark</td>
+            </tr>
+        }
+    </tbody>
+</table>

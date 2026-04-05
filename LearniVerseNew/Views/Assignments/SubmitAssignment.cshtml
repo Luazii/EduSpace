@@ -1,0 +1,20 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.SubmitAssignmentViewMode
+
+@{
+    ViewBag.Title = "Submit Assignment";
+}
+
+<h2>Submit Assignment</h2>
+
+<h3>@Model.Title</h3>
+<p>@Model.Description</p>
+
+@using (Html.BeginForm("SubmitAssignment", "Assignments", FormMethod.Post, new { enctype = "multipart/form-data" }))
+{
+    @Html.HiddenFor(model => model.AssignmentID)
+    <div class="form-group mt-2">
+        <label for="submissionFile">Upload File</label>
+        <input type="file" name="submissionFile" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+}

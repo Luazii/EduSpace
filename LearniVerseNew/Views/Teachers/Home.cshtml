@@ -1,0 +1,130 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Teacher
+@{
+    ViewBag.Title = "Teacher Dashboard";
+}
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h2 class="card-title">Welcome to Your Dashboard</h2>
+                    <p>Hi @Model.TeacherFirstName @Model.TeacherLastName!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title">Teacher Information</h3>
+                    <p><strong>Email:</strong> @Model.TeacherEmail</p>
+                    <p><strong>Phone Number:</strong> @Model.TeacherPhoneNumber</p>
+                    <p><strong>Gender:</strong> @Model.Gender</p>
+                    <p><strong>Date of Birth:</strong> @Model.DOB.ToString("dd MMM yyyy")</p>
+                    <p><strong>Qualification:</strong> @Model.Qualification</p>
+                    <p><strong>Faculty:</strong> @Model.Faculty.FacultyName</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title">Total Courses</h3>
+                    <div class="card-text">@Model.Courses.Count()</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title">Your Courses</h3>
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Course Name</th>
+                                <th>Description</th>
+                                <th>Semester</th>
+                                <th>Department</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var course in Model.Courses)
+                            {
+                                <tr>
+                                    <td>@course.CourseName</td>
+                                    <td>@course.Description</td>
+                                    <td>@course.Semester</td>
+                                    <td>@course.Department</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row d-flex justify-content-center">
+        <div class="col-md-8 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title text-center">Course Distribution by Department</h3>
+                    <canvas id="courseDistributionChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        var allCourses = @Html.Raw(ViewBag.AllCourses);
+        var departmentCounts = {};
+
+        allCourses.forEach(function (course) {
+            if (!departmentCounts[course.Department]) {
+                departmentCounts[course.Department] = 0;
+            }
+            departmentCounts[course.Department]++;
+        });
+
+        var labels = Object.keys(departmentCounts);
+        var data = Object.values(departmentCounts);
+
+        var ctx = document.getElementById('courseDistributionChart').getContext('2d');
+        var courseDistributionChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Courses by Department',
+                    data: data,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            }
+        });
+    </script>
+    
+}

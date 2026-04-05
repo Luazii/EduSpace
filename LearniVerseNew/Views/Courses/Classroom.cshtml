@@ -1,0 +1,199 @@
+@model LearniVerseNew.Models.ApplicationModels.ViewModels.ClassroomViewModel
+
+@{
+    ViewBag.Title = "Classroom";
+}
+
+<!-- QR code modal -->
+<div class="modal fade" id="qrCodeModal" tabindex="-1" role="dialog" aria-labelledby="qrCodeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="qrCodeModalLabel">Download File</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="qrCodeImage" class="img-thumbnail" alt="QR Code" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <div class="text-center mb-4">
+        <h2>Classroom</h2>
+        <h4 class="text-muted">@Model.Course.CourseName</h4>
+        <hr />
+    </div>
+
+    <div class="row">
+
+        <!-- ── Left sidebar: Quizzes & Live Sessions ── -->
+        <div class="col-md-3">
+
+            <!-- Quizzes -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-bold">&#128221; Quizzes</div>
+                <div class="card-body p-2">
+                    @if (!Model.Quizzes.Any())
+                    {
+                        <p class="text-muted small p-2 mb-0">No quizzes available.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var quiz in Model.Quizzes)
+                            {
+                                <li class="list-group-item py-3">
+                                    <div class="fw-semibold">@quiz.QuizDescription</div>
+                                    <div class="text-muted small mb-2">
+                                        @quiz.QuizDate.ToString("yyyy-MM-dd") &bull;
+                                        @quiz.QuizStart.ToString(@"hh\:mm")–@quiz.QuizEnd.ToString(@"hh\:mm")
+                                    </div>
+                                    <form action="@Url.Action("TakeQuiz", "Quiz")" method="get">
+                                        <input type="hidden" name="QuizID" value="@quiz.QuizID" />
+                                        <button type="submit" class="btn btn-primary btn-sm w-100">Take Quiz</button>
+                                    </form>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+
+            <!-- Live Sessions -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+                    <span>&#127760; Live Classes</span>
+                </div>
+                <div class="card-body p-2">
+                    @if (Model.LiveSessions == null || !Model.LiveSessions.Any())
+                    {
+                        <p class="text-muted small p-2 mb-0">No live sessions scheduled.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var session in Model.LiveSessions)
+                            {
+                                bool isLive = session.IsLive;
+                                <li class="list-group-item py-3 @(isLive ? "list-group-item-success" : "")">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="fw-semibold">@session.Title</div>
+                                        @if (isLive)
+                                        {
+                                            <span class="badge bg-danger ms-2">&#128308; LIVE</span>
+                                        }
+                                    </div>
+                                    <div class="text-muted small mb-2">
+                                        @session.StartTime.ToString("yyyy-MM-dd HH:mm") –
+                                        @session.EndTime.ToString("HH:mm")
+                                    </div>
+                                    <a href="@Url.Action("Join", "LiveSessions", new { id = session.LiveSessionID })"
+                                       class="btn @(isLive ? "btn-danger" : "btn-outline-secondary") btn-sm w-100"
+                                       target="_blank">
+                                        @(isLive ? "Join Now" : "Session Link")
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ── Main content: Resources & Assignments ── -->
+        <div class="col-md-9 border-start">
+            <div class="card shadow-sm ms-2">
+                <div class="card-body">
+
+                    <!-- Learning Material -->
+                    <h4 class="card-title">&#128218; Learning Material</h4>
+                    @if (!Model.Resources.Any())
+                    {
+                        <p class="text-muted">No resources have been uploaded yet.</p>
+                    }
+                    else
+                    {
+                        @foreach (var file in Model.Resources)
+                        {
+                            <div class="mb-3">
+                                <div class="fw-semibold">@file.FileDescription</div>
+                                <div class="d-flex gap-2 mt-1">
+                                    <form id="downloadForm_@file.FileName" action="@Url.Action("DownloadBlob", "Resources")" method="post">
+                                        <input type="hidden" name="fileName" value="@file.FileName" />
+                                        <button type="submit" class="btn btn-link p-0">@file.FileName</button>
+                                    </form>
+                                    <button type="button" class="btn btn-outline-danger btn-sm"
+                                            onclick="generateQRCode('@file.FileName')">
+                                        QR Download
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    <hr />
+
+                    <!-- Assignments -->
+                    <h4 class="card-title">&#128196; Assignments</h4>
+                    @if (!Model.Assignments.Any())
+                    {
+                        <p class="text-muted">No assignments due.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var a in Model.Assignments)
+                            {
+                                <li class="list-group-item py-3">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <div class="fw-semibold">@a.Title</div>
+                                            <div class="text-muted small">@a.Description</div>
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="text-muted small">Due: @a.Deadline.ToString("yyyy-MM-dd")</div>
+                                            @if (a.MaxMark.HasValue)
+                                            {
+                                                <div class="text-muted small">Max mark: @a.MaxMark</div>
+                                            }
+                                        </div>
+                                    </div>
+                                    <a href="@Url.Action("SubmitAssignment", "Assignments", new { assignmentId = a.AssignmentID })"
+                                       class="btn btn-primary btn-sm mt-2">
+                                        Submit
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function generateQRCode(blobName) {
+            $.ajax({
+                url: '@Url.Action("GetQrCode", "Resources")',
+                type: 'GET',
+                data: { blobName: blobName },
+                success: function (response) {
+                    $('#qrCodeImage').attr('src', 'data:image/png;base64,' + response.QrCodeBase64);
+                    $('#qrCodeModal').modal('show');
+                },
+                error: function (xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        }
+    </script>
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+}

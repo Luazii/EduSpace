@@ -1,0 +1,140 @@
+@model LearniVerseNew.Models.ApplicationModels.ViewModels.AssignmentSubmissionsViewModel
+
+@{
+    ViewBag.Title = "Submissions — " + Model.Assignment.Title;
+    int maxMark = Model.Assignment.MaxMark ?? 100;
+}
+
+<div class="container mt-4">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@Url.Action("MyAssignments", "Assignments")">My Assignments</a></li>
+            <li class="breadcrumb-item active">@Model.Assignment.Title — Submissions</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h2 class="mb-1">@Model.Assignment.Title</h2>
+            <p class="text-muted mb-0">
+                @Model.Assignment.Course?.CourseName &bull;
+                Due: @Model.Assignment.Deadline.ToString("yyyy-MM-dd") &bull;
+                Max mark: <strong>@maxMark</strong>
+            </p>
+        </div>
+        <a href="@Url.Action("DownloadAllSubmissions", "Assignments", new { assignmentId = Model.Assignment.AssignmentID })"
+           class="btn btn-outline-success">
+            &#8681; Download All
+        </a>
+    </div>
+
+    <!-- Summary row -->
+    @{
+        int total   = Model.Submissions.Count;
+        int graded  = Model.Submissions.Count(s => s.Mark.HasValue);
+        int pending = total - graded;
+    }
+    <div class="row g-3 mb-4">
+        <div class="col-sm-4">
+            <div class="card text-center p-3 border-primary">
+                <div class="fs-3 fw-bold text-primary">@total</div>
+                <div class="text-muted small">Submissions</div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card text-center p-3 border-success">
+                <div class="fs-3 fw-bold text-success">@graded</div>
+                <div class="text-muted small">Graded</div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card text-center p-3 border-warning">
+                <div class="fs-3 fw-bold text-warning">@pending</div>
+                <div class="text-muted small">Pending</div>
+            </div>
+        </div>
+    </div>
+
+    <table class="table table-bordered table-striped align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>Student</th>
+                <th>File</th>
+                <th>Submitted</th>
+                <th>Mark (@maxMark)</th>
+                <th>%</th>
+                <th>Feedback</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var sub in Model.Submissions)
+            {
+                string studentName = sub.Student != null
+                    ? $"{sub.Student.StudentFirstName} {sub.Student.StudentLastName}"
+                    : sub.StudentID;
+
+                <tr>
+                    <td>@studentName</td>
+                    <td><a href="@sub.BlobUrl" target="_blank">@sub.FileName</a></td>
+                    <td class="text-nowrap text-muted small">—</td>
+
+                    @if (sub.Mark.HasValue)
+                    {
+                        double pct = maxMark > 0 ? (double)sub.Mark.Value / maxMark * 100 : 0;
+                        <td><strong>@sub.Mark</strong></td>
+                        <td>
+                            <span class="badge @(pct >= 50 ? "bg-success" : "bg-danger")">
+                                @pct.ToString("F1")%
+                            </span>
+                        </td>
+                        <td class="fst-italic text-muted small">@(string.IsNullOrEmpty(sub.Feedback) ? "—" : sub.Feedback)</td>
+                        <td>
+                            <!-- Re-grade form -->
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#regrade-@sub.SubmissionID">
+                                Re-grade
+                            </button>
+                            <div class="collapse mt-2" id="regrade-@sub.SubmissionID">
+                                <form action="@Url.Action("GradeSubmission", "Assignments")" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="submissionId" value="@sub.SubmissionID" />
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" name="mark" class="form-control" min="0" max="@maxMark"
+                                               value="@sub.Mark" placeholder="Mark" required />
+                                        <input type="text" name="feedback" class="form-control"
+                                               value="@sub.Feedback" placeholder="Feedback (optional)" />
+                                        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </td>
+                    }
+                    else
+                    {
+                        <td colspan="3">
+                            <form action="@Url.Action("GradeSubmission", "Assignments")" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="submissionId" value="@sub.SubmissionID" />
+                                <div class="input-group input-group-sm">
+                                    <input type="number" name="mark" class="form-control" min="0" max="@maxMark"
+                                           placeholder="Mark (max @maxMark)" required />
+                                    <input type="text" name="feedback" class="form-control"
+                                           placeholder="Feedback (optional)" />
+                                    <button type="submit" class="btn btn-success btn-sm">Grade</button>
+                                </div>
+                            </form>
+                        </td>
+                    }
+                </tr>
+            }
+            @if (!Model.Submissions.Any())
+            {
+                <tr><td colspan="7" class="text-center text-muted">No submissions yet.</td></tr>
+            }
+        </tbody>
+    </table>
+</div>

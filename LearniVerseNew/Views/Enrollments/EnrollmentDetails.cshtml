@@ -1,0 +1,68 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Student
+@{
+    ViewBag.Title = "Enrollment Details";
+}
+
+<div class="container mt-5 border border-dark rounded">
+    <h2 class="ms-4 mt-4">Enrollment Details</h2>
+
+    <div class="row mb-4 border-bottom border-dark">
+        <div class="col-md-8 offset-md-2">
+            <h3>Student Information</h3>
+            <p><strong>Name:</strong> @Model.StudentFirstName @Model.StudentLastName</p>
+            <p><strong>Date of Birth:</strong> @Model.DOB.ToShortDateString()</p>
+        </div>
+    </div>
+
+    <div class="row mb-4 border-bottom border-dark">
+        <div class="col-md-8 offset-md-2">
+            <h3>Faculty and Qualification</h3>
+            <p><strong>Faculty:</strong> @Model.Faculty.FacultyName</p>
+            <p><strong>Qualification:</strong> @Model.Qualification.Name</p>
+            <p><strong>Year:</strong> @DateTime.Now.Year</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-10 offset-md-1">
+            <h3>Courses</h3>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Course Name</th>
+                        <th>Description</th>
+                        <th>Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var enrollment in Model.Enrollments)
+                    {
+                        foreach (var course in enrollment.Courses)
+                        {
+                            <tr>
+                                <td>@course.CourseName</td>
+                                <td>@course.Description</td>
+                                <td>R @course.Price</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <h3>Total</h3>
+            <p>Course Total: R@(Model.Enrollments.Sum(e => e.Courses.Sum(c => c.Price)))</p>
+            <p>Application Fee: R1500</p>
+            <p><strong>Total Amount Paid:</strong> R@(Model.Enrollments.Sum(e => e.Courses.Sum(c => c.Price)) + 1500)</p>
+        </div>
+    </div>
+
+    <div class="row mt-4 mb-4">
+        <div class="col-md-8 offset-md-2">
+            <a href="@Url.Action("MyEnrollments", "Enrollments")" class="btn btn-secondary">Back to My Enrollments</a>
+        </div>
+    </div>
+</div>

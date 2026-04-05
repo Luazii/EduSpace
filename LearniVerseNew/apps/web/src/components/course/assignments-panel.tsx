@@ -1,0 +1,387 @@
+"use client";
+
+import { FormEvent, useMemo, useState } from "react";
+import { useMutation, useQuery } from "convex/react";
+import type { Id } from "../../../convex/_generated/dataModel";
+
+import { api } from "../../../convex/_generated/api";
+
+type AssignmentsPanelProps = {
+  courseId: string;
+};
+
+type GradeDraft = {
+  mark: string;
+  feedback: string;
+};
+
+export function AssignmentsPanel({ courseId }: AssignmentsPanelProps) {
+  const typedCourseId = courseId as Id<"courses">;
+  const currentUser = useQuery(api.users.current);
+  const assignments = useQuery(api.assignments.listByCourse, {
+    courseId: typedCourseId,
+  }) ?? [];
+  const createAssignment = useMutation(api.assignments.create);
+  const generateSubmissionUploadUrl = useMutation(api.submissions.generateUploadUrl);
+  const createSubmission = useMutation(api.submissions.create);
+  const gradeSubmission = useMutation(api.submissions.grade);
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [maxMark, setMaxMark] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [submittingAssignmentId, setSubmittingAssignmentId] = useState<string | null>(null);
+  const [gradingSubmissionId, setGradingSubmissionId] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({});
+  const [gradeDrafts, setGradeDrafts] = useState<Record<string, GradeDraft>>({});
+
+  const canCreateAssignments = useMemo(
+    () => currentUser?.role === "teacher" || currentUser?.role === "admin",
+    [currentUser?.role],
+  );
+  const canSubmitAssignments = useMemo(
+    () => currentUser?.role === "student" || currentUser?.role === "admin",
+    [currentUser?.role],
+  );
+
+  async function onCreateAssignment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!title.trim()) {
+      return;
+    }
+
+    setIsCreating(true);
+
+    try {
+      await createAssignment({
+        courseId: typedCourseId,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        deadline: deadline ? new Date(deadline).getTime() : undefined,
+        maxMark: maxMark ? Number(maxMark) : undefined,
+      });
+
+      setTitle("");
+      setDescription("");
+      setDeadline("");
+      setMaxMark("");
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  async function submitAssignment(assignmentId: Id<"assignments">) {
+    const file = selectedFiles[assignmentId];
+
+    if (!file) {
+      return;
+    }
+
+    setSubmittingAssignmentId(assignmentId);
+
+    try {
+      const uploadUrl = await generateSubmissionUploadUrl({});
+      const uploadResult = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+        },
+        body: file,
+      });
+
+      const { storageId } = (await uploadResult.json()) as { storageId: Id<"_storage"> };
+
+      await createSubmission({
+        assignmentId,
+        storageId,
+        fileName: file.name,
+      });
+
+      setSelectedFiles((current) => ({
+        ...current,
+        [assignmentId]: null,
+      }));
+    } finally {
+      setSubmittingAssignmentId(null);
+    }
+  }
+
+  async function saveGrade(
+    submissionId: Id<"submissions">,
+    fallbackMark?: number,
+    fallbackFeedback?: string,
+  ) {
+    const draft = gradeDrafts[submissionId];
+    const markText = draft?.mark ?? (typeof fallbackMark === "number" ? String(fallbackMark) : "");
+    const feedbackText = draft?.feedback ?? fallbackFeedback ?? "";
+
+    if (markText.trim() === "") {
+      return;
+    }
+
+    setGradingSubmissionId(submissionId);
+
+    try {
+      await gradeSubmission({
+        submissionId,
+        mark: Number(markText),
+        feedback: feedbackText.trim() || undefined,
+      });
+    } finally {
+      setGradingSubmissionId(null);
+    }
+  }
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+      {/* Assignments List */}
+      <div className="space-y-6">
+        {assignments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-4xl border border-dashed border-slate-300 bg-white/50 p-20 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400 mb-4">
+              <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-slate-950">No assignments yet</h3>
+            <p className="mt-2 text-sm text-slate-500 max-w-xs">
+              Stay tuned! Coursework will appear here once published by your teacher.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-6">
+            {assignments.map((assignment) => (
+              <article
+                key={assignment._id}
+                className="group relative rounded-4xl border border-slate-200 bg-white/60 p-8 transition hover:bg-white hover:shadow-[0_15px_40px_rgba(15,23,42,0.04)]"
+              >
+                <div className="flex flex-col gap-6">
+                  <header className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-2xl font-semibold tracking-tight text-slate-950">
+                        {assignment.title}
+                      </h3>
+                      <div className="mt-2 flex flex-wrap items-center gap-4 text-sm font-medium text-slate-500">
+                        {assignment.deadline && (
+                          <span className="flex items-center gap-1.5 text-rose-600">
+                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Due {new Date(assignment.deadline).toLocaleString()}
+                          </span>
+                        )}
+                        <span>&bull;</span>
+                        <span>{assignment.maxMark} Marks</span>
+                        <span>&bull;</span>
+                        <span>{assignment.submissionsCount} Submissions</span>
+                      </div>
+                    </div>
+                  </header>
+
+                  {assignment.description && (
+                    <p className="text-sm leading-8 text-slate-600">
+                      {assignment.description}
+                    </p>
+                  )}
+
+                  {/* Student Submission Action */}
+                  {canSubmitAssignments && !assignment.myLatestSubmission && (
+                    <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-6">
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <p className="text-sm font-bold text-slate-950">Readdy to submit?</p>
+                          <p className="text-xs text-slate-500">Upload your work as a PDF or Doc file.</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="file"
+                            id={`file-${assignment._id}`}
+                            className="hidden"
+                            onChange={(e) =>
+                              setSelectedFiles((prev) => ({
+                                ...prev,
+                                [assignment._id]: e.target.files?.[0] ?? null,
+                              }))
+                            }
+                          />
+                          <label
+                            htmlFor={`file-${assignment._id}`}
+                            className="cursor-pointer rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-bold uppercase tracking-widest text-slate-950 hover:border-slate-950 transition"
+                          >
+                            {selectedFiles[assignment._id] ? selectedFiles[assignment._id]?.name : "Select File"}
+                          </label>
+                          <button
+                            onClick={() => void submitAssignment(assignment._id)}
+                            disabled={submittingAssignmentId === assignment._id || !selectedFiles[assignment._id]}
+                            className="rounded-full bg-slate-950 px-6 py-2 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-slate-800 disabled:bg-slate-300"
+                          >
+                            {submittingAssignmentId === assignment._id ? "Uploading..." : "Submit"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Existing Submission status */}
+                  {assignment.myLatestSubmission && (
+                    <div className="mt-4 flex items-center justify-between rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-emerald-950">Work Submitted</p>
+                          <p className="text-xs text-emerald-700">
+                            {assignment.myLatestSubmission.fileName} &bull; {new Date(assignment.myLatestSubmission.submittedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {typeof assignment.myLatestSubmission.mark === "number" ? (
+                          <div className="text-right">
+                            <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">Grade</p>
+                            <p className="text-xl font-bold text-emerald-950">{assignment.myLatestSubmission.mark} / {assignment.maxMark}</p>
+                          </div>
+                        ) : (
+                          <span className="text-xs font-bold uppercase tracking-widest text-emerald-600">Awaiting Grade</span>
+                        )}
+                        {assignment.myLatestSubmission.url && (
+                          <a
+                            href={assignment.myLatestSubmission.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-widest text-emerald-950"
+                          >
+                            View
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Teacher Review Section */}
+                  {canCreateAssignments && assignment.latestStudentSubmissions.length > 0 && (
+                    <div className="mt-6 space-y-4">
+                      <h4 className="text-sm font-bold uppercase tracking-widest text-slate-400">Review Submissions</h4>
+                      <div className="grid gap-3">
+                        {assignment.latestStudentSubmissions.map((submission) => (
+                          <div key={submission._id} className="rounded-2xl border border-slate-100 bg-white p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                                  {submission.student?.fullName?.[0] ?? "S"}
+                                </div>
+                                <span className="text-sm font-semibold text-slate-900">{submission.student?.fullName}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  placeholder="Mark"
+                                  className="w-20 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-slate-950"
+                                  value={gradeDrafts[submission._id]?.mark ?? (typeof submission.mark === "number" ? String(submission.mark) : "")}
+                                  onChange={(e) => setGradeDrafts(prev => ({
+                                    ...prev,
+                                    [submission._id]: { mark: e.target.value, feedback: gradeDrafts[submission._id]?.feedback ?? submission.feedback ?? "" }
+                                  }))}
+                                />
+                                <button
+                                  onClick={() => void saveGrade(submission._id)}
+                                  disabled={gradingSubmissionId === submission._id}
+                                  className="rounded-full bg-slate-950 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white transition hover:bg-slate-800 disabled:bg-slate-300"
+                                >
+                                  {gradingSubmissionId === submission._id ? "..." : "Save"}
+                                </button>
+                                {submission.url && (
+                                  <a href={submission.url} target="_blank" rel="noreferrer" className="rounded-full border border-slate-200 p-1.5 text-slate-500 hover:text-slate-950">
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                                    </svg>
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Sidebar: Creation Tool */}
+      <aside className="sticky top-8 self-start">
+        {canCreateAssignments ? (
+          <div className="flex-1 space-y-6 overflow-y-auto rounded-4xl border border-slate-200 bg-white/60 p-8 shadow-[0_15px_40px_rgba(15,23,42,0.04)] backdrop-blur-sm">
+            <header className="mb-6">
+              <h3 className="text-xl font-semibold tracking-tight text-slate-950">New Assignment</h3>
+              <p className="mt-2 text-sm text-slate-500">Publish coursework for your students.</p>
+            </header>
+            <form onSubmit={onCreateAssignment} className="grid gap-5">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-600">Title</label>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Final Project Proposal"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-950"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-600">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Details and guidelines..."
+                  rows={4}
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-950"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-600">Deadline</label>
+                  <input
+                    type="datetime-local"
+                    value={deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none transition focus:border-slate-950"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-600">Max Mark</label>
+                  <input
+                    type="number"
+                    value={maxMark}
+                    onChange={(e) => setMaxMark(e.target.value)}
+                    placeholder="100"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none transition focus:border-slate-950"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={isCreating || !title.trim()}
+                className="h-14 w-full rounded-full bg-slate-950 text-sm font-bold text-white transition hover:bg-slate-800 disabled:bg-slate-300"
+              >
+                {isCreating ? "Publishing..." : "Publish Assignment"}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="rounded-4xl border border-slate-200 bg-slate-50/50 p-8 text-center">
+            <p className="text-sm font-medium text-slate-500">
+              Only teachers can create assignments. Use this panel to track your course work and grades.
+            </p>
+          </div>
+        )}
+      </aside>
+    </div>
+  );
+}

@@ -1,0 +1,48 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Regimen_Models.WorkoutGoal>
+
+@{
+    ViewBag.Title = "All Workout Goals";
+}
+
+<div class="container mt-4">
+    <h2>All Workout Goals</h2>
+
+    @if (ViewBag.Message != null)
+    {
+        <div class="alert alert-info">
+            @ViewBag.Message
+        </div>
+    }
+    else
+    {
+        <div class="list-group">
+            @foreach (var goal in Model)
+            {
+                <div class="list-group-item d-flex justify-content-between align-items-center mb-2 border rounded">
+                    <div class="d-flex flex-column">
+                        <h5 class="mb-1">@goal.GoalName</h5>
+                        <p class="mb-1">@goal.GoalDescription</p>
+                        <p class="mb-1"><strong>Target:</strong> @goal.GoalCount times</p>
+                        <p class="mb-1"><strong>Progress:</strong> @(goal.IsCompleted ? "Completed" : $"{goal.GoalCount - goal.Workout.TimesTrained} remaining")</p>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-secondary rounded-pill me-2">
+                            @if (goal.IsCompleted)
+                            {
+                                <span>Completed</span>
+                            }
+                            else
+                            {
+                                <span>Not Completed</span>
+                            }
+                        </span>
+                        <form method="post" action="@Url.Action("DeleteGoal", "Workouts")" class="d-inline">
+                            <input type="hidden" name="goalId" value="@goal.GoalID" />
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this goal?')">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>

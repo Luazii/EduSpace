@@ -1,0 +1,9 @@
+﻿
+@{
+    ViewBag.Title = "Quiz Not Available";
+}
+
+<h2>Quiz Not Available</h2>
+<p>@ViewBag.QuizAvailabilityMessage</p>
+
+<a href="@Url.Action("Classroom", "Courses", new { courseId = ViewBag.CourseID })" class="btn btn-primary">Go Back to Classroom</a>

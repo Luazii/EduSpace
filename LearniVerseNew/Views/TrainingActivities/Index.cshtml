@@ -1,0 +1,51 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Trainer_Models.TrainingActivity>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>Index</h2>
+
+<p>
+    @Html.ActionLink("Create New", "Create")
+</p>
+<table class="table">
+    <tr>
+        <th>
+            @Html.DisplayNameFor(model => model.Trainer.FirstName)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.ActivityName)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.DefaultStartTime)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.DafaultDuration)
+        </th>
+        <th></th>
+    </tr>
+
+@foreach (var item in Model) {
+    <tr>
+        <td>
+            @Html.DisplayFor(modelItem => item.Trainer.FirstName)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.ActivityName)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.DefaultStartTime)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.DafaultDuration)
+        </td>
+        <td>
+            @Html.ActionLink("Edit", "Edit", new { id=item.ActivityID }) |
+            @Html.ActionLink("Details", "Details", new { id=item.ActivityID }) |
+            @Html.ActionLink("Delete", "Delete", new { id=item.ActivityID })
+        </td>
+    </tr>
+}
+
+</table>

@@ -1,0 +1,76 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Teacher>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<div class="row">
+    <div class="col-md-2 border-start border-end sticky-top">
+        <h1>Filter</h1>
+        <hr />
+
+        @using (Html.BeginForm("Index", "Teachers", FormMethod.Get))
+        {
+            <div class="form-group mb-2">
+                @Html.Label("Search by Name:")
+                @Html.TextBox("searchTeacherName", null, new { @class = "form-control", placeholder = "Enter teacher name" })
+            </div>
+            <div class="form-group mb-2">
+                @Html.Label("Filter by Faculty:")
+                @Html.DropDownList("filterByFaculty", ViewBag.Faculties as SelectList, "All Faculties", new { @class = "form-control" })
+            </div>
+            <button type="submit" class="btn btn-primary">Search</button>
+        }
+    </div>
+    <div class="col-md-10">
+        <h1>Teachers</h1>
+        <p>
+            @Html.ActionLink("Create New", "Create", null, new { @class = "btn btn-info" })
+        </p>
+        <hr />
+        <table class="table">
+            <tr>
+                <th>
+                    @Html.DisplayNameFor(model => model.TeacherFirstName)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.TeacherLastName)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.TeacherEmail)
+                </th>
+
+                <th>
+                    @Html.DisplayNameFor(model => model.Faculty)
+                </th>
+                <th></th>
+            </tr>
+
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.TeacherFirstName)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.TeacherLastName)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.TeacherEmail)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Faculty.FacultyName)
+                    </td>
+                    <td>
+                        @Html.ActionLink("Edit", "Edit", new { id = item.TeacherID }, new { @class = "btn btn-sm btn-primary" })
+
+                        @Html.ActionLink("Details", "Details", new { id = item.TeacherID }, new { @class = "btn btn-sm btn-info" })
+
+                        @Html.ActionLink("Delete", "Delete", new { id = item.TeacherID }, new { @class = "btn btn-sm btn-danger" })
+
+                    </td>
+                </tr>
+            }
+        </table>
+    </div>
+</div>

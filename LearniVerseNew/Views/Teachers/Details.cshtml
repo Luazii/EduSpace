@@ -1,0 +1,82 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Teacher
+
+@{
+    ViewBag.Title = "Details";
+}
+
+<h2>Details</h2>
+
+<div>
+    <h4>Teacher</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.Faculty.FacultyName)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Faculty.FacultyName)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.TeacherFirstName)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.TeacherFirstName)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.TeacherLastName)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.TeacherLastName)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.TeacherEmail)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.TeacherEmail)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.TeacherPhoneNumber)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.TeacherPhoneNumber)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.Gender)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Gender)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.DOB)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.DOB)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.Qualification)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Qualification)
+        </dd>
+
+    </dl>
+</div>
+<p>
+    @Html.ActionLink("Edit", "Edit", new { id = Model.TeacherID }) |
+    @Html.ActionLink("Back to List", "Index")
+</p>

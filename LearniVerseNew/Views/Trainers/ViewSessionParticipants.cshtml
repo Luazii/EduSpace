@@ -1,0 +1,34 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Trainer_Models.TrainingSession
+
+<h2>Participants for @Model.SessionName on @Model.SessionDate.ToString("MMMM dd, yyyy")</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Student Name</th>
+            <th>Email</th>
+            <th>Phone Number</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model.Participants.Any())
+        {
+            foreach (var student in Model.Participants)
+            {
+                <tr>
+                    <td>@student.StudentFirstName @student.StudentLastName</td>
+                    <td>@student.StudentEmail</td>
+                    <td>@student.PhoneNumber</td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="3">No students have joined this session yet.</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a href="@Url.Action("Dashboard", "Trainers")" class="btn btn-secondary">Back to Dashboard</a>

@@ -1,0 +1,5 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Store_Models.Order
+<h2>Order Cancelled</h2>
+<p>Your order with ID <strong>@ViewBag.OrderID</strong> has been successfully cancelled.</p>
+<br />
+@Html.ActionLink("Back to Orders", "OrderHistory", "Orders", new { @class = "btn btn-outline-primary" })

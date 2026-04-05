@@ -1,0 +1,134 @@
+@model IEnumerable<LearniVerseNew.Models.ApplicationModels.QuizAttempt>
+
+@{
+    ViewBag.Title = "Quiz Results";
+    var quiz        = (LearniVerseNew.Models.ApplicationModels.Quiz)ViewBag.Quiz;
+    int maxPossible = (int)ViewBag.MaxPossible;
+
+    // Per-student: keep the best attempt
+    var bestPerStudent = Model
+        .GroupBy(a => a.StudentID)
+        .Select(g => g.OrderByDescending(a => a.MarkObtained).First())
+        .OrderByDescending(a => a.MarkObtained)
+        .ToList();
+
+    double classAvg = bestPerStudent.Any()
+        ? bestPerStudent.Average(a => (double)a.MarkObtained / (maxPossible > 0 ? maxPossible : 1) * 100)
+        : 0;
+    int passing = bestPerStudent.Count(a => maxPossible > 0 && (double)a.MarkObtained / maxPossible * 100 >= 50);
+}
+
+<div class="container mt-4">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index", "Quiz")">My Quizzes</a></li>
+            <li class="breadcrumb-item active">@quiz.QuizDescription — Results</li>
+        </ol>
+    </nav>
+
+    <h2 class="mb-1">@quiz.QuizDescription</h2>
+    <p class="text-muted mb-4">@quiz.Course?.CourseName &bull; Max mark: <strong>@maxPossible</strong></p>
+
+    <!-- Summary cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-3">
+            <div class="card text-bg-primary text-center p-3">
+                <div class="fs-2 fw-bold">@Model.Count()</div>
+                <div>Total Attempts</div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="card text-bg-success text-center p-3">
+                <div class="fs-2 fw-bold">@bestPerStudent.Count</div>
+                <div>Students Attempted</div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="card text-bg-info text-center p-3">
+                <div class="fs-2 fw-bold">@classAvg.ToString("F1")%</div>
+                <div>Class Average</div>
+            </div>
+        </div>
+        <div class="col-sm-3">
+            <div class="card text-bg-warning text-center p-3">
+                <div class="fs-2 fw-bold">@passing / @bestPerStudent.Count</div>
+                <div>Passing (≥50%)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Per-student best results table -->
+    <h4 class="mb-3">Student Results (Best Attempt per Student)</h4>
+    <table class="table table-bordered table-striped align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>Student</th>
+                <th>Best Mark</th>
+                <th>Percentage</th>
+                <th>Attempt Date</th>
+                <th>Total Attempts</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var best in bestPerStudent)
+            {
+                double pct  = maxPossible > 0 ? (double)best.MarkObtained / maxPossible * 100 : 0;
+                int    total = Model.Count(a => a.StudentID == best.StudentID);
+                <tr>
+                    <td>@(best.Student != null ? $"{best.Student.StudentFirstName} {best.Student.StudentLastName}" : best.StudentID)</td>
+                    <td><strong>@best.MarkObtained</strong> / @maxPossible</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height:12px">
+                                <div class="progress-bar @(pct >= 50 ? "bg-success" : "bg-danger")"
+                                     style="width:@pct.ToString("F0")%"></div>
+                            </div>
+                            <span class="text-nowrap">@pct.ToString("F1")%</span>
+                        </div>
+                    </td>
+                    <td>@best.AttemptDate.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td class="text-center">@total</td>
+                    <td>
+                        <a href="@Url.Action("ReviewAttempt", "Quiz", new { attemptId = best.QuizAttemptID })"
+                           class="btn btn-sm btn-outline-secondary">Review</a>
+                    </td>
+                </tr>
+            }
+            @if (!bestPerStudent.Any())
+            {
+                <tr><td colspan="6" class="text-center text-muted">No attempts yet.</td></tr>
+            }
+        </tbody>
+    </table>
+
+    <!-- All attempts log -->
+    <h4 class="mt-5 mb-3">All Attempts Log</h4>
+    <table class="table table-sm table-bordered align-middle">
+        <thead class="table-secondary">
+            <tr>
+                <th>Student</th>
+                <th>Mark</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var a in Model.OrderByDescending(x => x.AttemptDate))
+            {
+                <tr>
+                    <td>@(a.Student != null ? $"{a.Student.StudentFirstName} {a.Student.StudentLastName}" : a.StudentID)</td>
+                    <td>@a.MarkObtained / @maxPossible</td>
+                    <td>@a.AttemptDate.ToString("yyyy-MM-dd HH:mm")</td>
+                    <td>
+                        <a href="@Url.Action("ReviewAttempt", "Quiz", new { attemptId = a.QuizAttemptID })"
+                           class="btn btn-sm btn-outline-primary">Review</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <a href="@Url.Action("Index", "Quiz")" class="btn btn-secondary mt-3">Back to My Quizzes</a>
+</div>

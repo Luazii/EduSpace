@@ -1,0 +1,50 @@
+﻿@model List<LearniVerseNew.Models.ApplicationModels.Store_Models.CartItem>
+@{
+    ViewBag.Title = "Cart";
+}
+
+<h2>Your Shopping Cart</h2>
+<br />
+@if (Model == null || !Model.Any())
+{
+    <p>Your cart is empty.</p>
+}
+else
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.ProductName</td>
+                    <td class="text-center">@item.Quantity</td>
+                    <td class="text-center">@item.Price.ToString("C")</td>
+                    <td class="text-center">R@(item.Price * item.Quantity)</td>
+                    <td class="text-center">
+                        <!-- Button to remove item from cart with Font Awesome icon -->
+                        <form action="@Url.Action("RemoveFromCart", "Products", new { id = item.ProductID })" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash-alt"></i> Remove
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="text-right">
+        <p><strong>Total Price:</strong> @Model.Sum(x => x.Price * x.Quantity).ToString("C")</p>
+        <a href="@Url.Action("ShippingAddress", "Products")" class="btn btn-primary">Proceed to Checkout</a>
+        <a href="@Url.Action("StoreFront", "Products")" class="btn btn-outline-warning">Continue Shopping</a>
+    </div>
+}

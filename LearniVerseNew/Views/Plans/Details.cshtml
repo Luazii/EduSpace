@@ -1,0 +1,42 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Gym_Models.Plans
+
+@{
+    ViewBag.Title = "Details";
+}
+
+<h2>Details</h2>
+
+<div>
+    <h4>Plans</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.PlanName)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.PlanName)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.PlanDuration)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.PlanDuration)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.PlanCost)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.PlanCost)
+        </dd>
+
+    </dl>
+</div>
+<p>
+    @Html.ActionLink("Edit", "Edit", new { id = Model.PlanID }) |
+    @Html.ActionLink("Back to List", "Index")
+</p>

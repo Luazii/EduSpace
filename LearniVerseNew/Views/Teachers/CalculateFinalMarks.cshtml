@@ -1,0 +1,43 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.CalculateFinalMarksViewModel
+
+@{
+    ViewBag.Title = "Calculate Final Marks";
+}
+
+<h2>Calculate Final Marks</h2>
+
+@using (Html.BeginForm("CalculateFinalMarks", "Teachers", FormMethod.Post))
+{
+    <div class="form-group">
+        @Html.LabelFor(m => m.CourseID, "Course")
+        @Html.DropDownListFor(m => m.CourseID, Model.Courses, "Select a course", new { @class = "form-control" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.QuizWeighting, "Quiz Weighting (%)")
+        @Html.TextBoxFor(m => m.QuizWeighting, new { @class = "form-control", type = "number", min = "0", max = "100" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.AssignmentWeighting, "Assignment Weighting (%)")
+        @Html.TextBoxFor(m => m.AssignmentWeighting, new { @class = "form-control", type = "number", min = "0", max = "100" })
+    </div>
+
+    <button type="submit" class="btn btn-primary">Calculate</button>
+}
+
+@section Scripts {
+    <script>
+        // Ensure the total weightings sum to 100%
+        $('form').submit(function () {
+            var quizWeighting = parseFloat($('#QuizWeighting').val()) || 0;
+            var assignmentWeighting = parseFloat($('#AssignmentWeighting').val()) || 0;
+
+            if (quizWeighting + assignmentWeighting !== 100) {
+                alert('The total of quiz and assignment weightings must be 100%');
+                return false;
+            }
+            return true;
+        });
+    </script>
+}

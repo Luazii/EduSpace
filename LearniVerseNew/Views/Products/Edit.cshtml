@@ -1,0 +1,82 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Store_Models.Product
+
+@{
+    ViewBag.Title = "Edit Product";
+}
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Edit Product</h2>
+        </div>
+        <div class="card-body">
+            <!-- Use Bootstrap grid to align image and form side by side -->
+            <div class="row">
+                <!-- Left side: Image preview -->
+                <div class="col-md-4">
+                    @if (!string.IsNullOrEmpty(ViewBag.PhotoData))
+                    {
+                        <img src="data:image/png;base64,@ViewBag.PhotoData" class="img-thumbnail" alt="Product Image" style="width: 100%;">
+                    }
+                    else if (!string.IsNullOrEmpty(ViewBag.DefaultPhotoPath))
+                    {
+                        <img src="@ViewBag.DefaultPhotoPath" class="img-thumbnail" alt="Default Photo" style="width: 100%;">
+                    }
+                    else
+                    {
+                        <img src="/images/default.jpg" class="img-thumbnail" alt="Default Photo" style="width: 100%;">
+                    }
+                </div>
+
+                <!-- Right side: Form fields -->
+                <div class="col-md-8">
+                    @using (Html.BeginForm(null, null, FormMethod.Post, new { enctype = "multipart/form-data" }))
+                    {
+                        @Html.AntiForgeryToken()
+
+                        <h4>Product Details</h4>
+                        <hr />
+                        @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+
+                        <div class="form-group">
+                            @Html.LabelFor(model => model.ProductName, new { @class = "control-label" })
+                            @Html.EditorFor(model => model.ProductName, new { htmlAttributes = new { @class = "form-control" } })
+                            @Html.ValidationMessageFor(model => model.ProductName, "", new { @class = "text-danger" })
+                        </div>
+
+                        <div class="form-group mt-2">
+                            @Html.LabelFor(model => model.Price, new { @class = "control-label" })
+                            @Html.EditorFor(model => model.Price, new { htmlAttributes = new { @class = "form-control" } })
+                            @Html.ValidationMessageFor(model => model.Price, "", new { @class = "text-danger" })
+                        </div>
+
+                        <div class="form-group mt-2">
+                            @Html.LabelFor(model => model.Description, new { @class = "control-label" })
+                            @Html.EditorFor(model => model.Description, new { htmlAttributes = new { @class = "form-control" } })
+                            @Html.ValidationMessageFor(model => model.Description, "", new { @class = "text-danger" })
+                        </div>
+
+                        <div class="form-group mt-2">
+                            @Html.LabelFor(model => model.QuantityInStock, new { @class = "control-label" })
+                            @Html.EditorFor(model => model.QuantityInStock, new { htmlAttributes = new { @class = "form-control" } })
+                            @Html.ValidationMessageFor(model => model.QuantityInStock, "", new { @class = "text-danger" })
+                        </div>
+
+                        <!-- Image upload field -->
+                        <div class="form-group mt-2">
+                            @Html.LabelFor(model => model.ImageName, "Product Image", new { @class = "control-label" })
+                            <input type="file" name="ImageFile" class="form-control" />
+                            @Html.ValidationMessageFor(model => model.ImageName, "", new { @class = "text-danger" })
+                        </div>
+
+                        <!-- Submit button -->
+                        <div class="form-group mt-3">
+                            <input type="submit" value="Save Changes" class="btn btn-primary" />
+                            @Html.ActionLink("Back to List", "Index", null, new { @class = "btn btn-secondary ml-2" })
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

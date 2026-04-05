@@ -1,0 +1,338 @@
+import { v } from "convex/values";
+
+import { mutation, query } from "./_generated/server";
+
+const BOOTSTRAP_ADMIN_EMAILS = new Set<string>(["lgumbi2169@gmail.com"]);
+// ── Replace the +teacher / +parent addresses with your real Gmail aliases ──
+const BOOTSTRAP_TEACHER_EMAILS = new Set<string>([
+  "lgumbi2169@gmail.com",
+  "lgumbi2169+teacher@gmail.com",
+]);
+const BOOTSTRAP_PARENT_EMAILS = new Set<string>([
+  "lgumbi2169+parent@gmail.com",
+]);
+
+export const current = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      return null;
+    }
+
+    return await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) =>
+        q.eq("clerkUserId", identity.subject),
+      )
+      .first();
+  },
+});
+
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("users").collect();
+  },
+});
+
+export const getById = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
+  },
+});
+
+export const upsertFromClerk = mutation({
+  args: {
+    clerkUserId: v.string(),
+    email: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    fullName: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    role: v.optional(
+      v.union(
+        v.literal("admin"),
+        v.literal("teacher"),
+        v.literal("student"),
+        v.literal("parent"),
+        v.literal("warehouse_admin"),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const normalizedEmail = args.email.trim().toLowerCase();
+
+    // Primary lookup by Clerk user ID
+    let existing = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .first();
+
+    // Fallback: find a seed placeholder with the same email and claim it
+    if (!existing) {
+      const byEmail = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
+        .first();
+      if (byEmail?.clerkUserId.startsWith("seed_placeholder_")) {
+        // Claim the placeholder by updating its clerkUserId to the real one
+        await ctx.db.patch(byEmail._id, {
+          clerkUserId: args.clerkUserId,
+          updatedAt: now,
+        });
+        existing = { ...byEmail, clerkUserId: args.clerkUserId };
+      }
+    }
+    const bootstrapRole = BOOTSTRAP_ADMIN_EMAILS.has(normalizedEmail)
+      ? "admin"
+      : BOOTSTRAP_TEACHER_EMAILS.has(normalizedEmail)
+      ? "teacher"
+      : BOOTSTRAP_PARENT_EMAILS.has(normalizedEmail)
+      ? "parent"
+      : args.role;
+    const bootstrapAvailableRoles = BOOTSTRAP_ADMIN_EMAILS.has(normalizedEmail)
+      ? ["admin", "teacher", "student", "parent", "warehouse_admin"]
+      : undefined;
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        email: args.email,
+        firstName: args.firstName,
+        lastName: args.lastName,
+        fullName: args.fullName,
+        phone: args.phone,
+        role: bootstrapRole ?? existing.role,
+        availableRoles: bootstrapAvailableRoles ?? existing.availableRoles,
+        isActive: true,
+        updatedAt: now,
+      });
+
+      return existing._id;
+    }
+
+    return await ctx.db.insert("users", {
+      clerkUserId: args.clerkUserId,
+      email: args.email,
+      firstName: args.firstName,
+      lastName: args.lastName,
+      fullName: args.fullName,
+      phone: args.phone,
+      role: bootstrapRole ?? "student",
+      availableRoles: bootstrapAvailableRoles,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const setRoleByIdentifier = mutation({
+  args: {
+    identifier: v.string(),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("teacher"),
+      v.literal("student"),
+      v.literal("parent"),
+      v.literal("warehouse_admin"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const normalizedIdentifier = args.identifier.trim().toLowerCase();
+    const users = await ctx.db.query("users").collect();
+
+    const match = users.find((user) => {
+      const email = user.email.toLowerCase();
+      const fullName = user.fullName?.toLowerCase() ?? "";
+      const clerkUserId = user.clerkUserId.toLowerCase();
+      const emailLocal = email.split("@")[0] ?? "";
+
+      return (
+        email === normalizedIdentifier ||
+        emailLocal === normalizedIdentifier ||
+        clerkUserId === normalizedIdentifier ||
+        fullName === normalizedIdentifier
+      );
+    });
+
+    if (!match) {
+      throw new Error(`No user found for identifier "${args.identifier}".`);
+    }
+
+    await ctx.db.patch(match._id, {
+      role: args.role,
+      updatedAt: Date.now(),
+    });
+
+    return {
+      ...match,
+      role: args.role,
+    };
+  },
+});
+
+export const updateRole = mutation({
+  args: {
+    userId: v.id("users"),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("teacher"),
+      v.literal("student"),
+      v.literal("warehouse_admin"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const caller = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+
+    if (caller?.role !== "admin") {
+      throw new Error("Only admins can update roles.");
+    }
+
+    await ctx.db.patch(args.userId, {
+      role: args.role,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const applyBootstrapRoles = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const updates: Array<{ email: string; role: string }> = [];
+
+    const ROLES = ["admin", "teacher", "student", "parent", "warehouse_admin"];
+
+    for (const user of users) {
+      const email = user.email.toLowerCase();
+      let changed = false;
+      let newRole = user.role;
+      let availableRoles = user.availableRoles ?? [];
+
+      if (BOOTSTRAP_ADMIN_EMAILS.has(email) || BOOTSTRAP_TEACHER_EMAILS.has(email)) {
+        const targetRole = BOOTSTRAP_ADMIN_EMAILS.has(email) ? "teacher" : "teacher";
+        if (user.role !== targetRole) {
+           newRole = targetRole as any;
+           changed = true;
+        }
+        if (BOOTSTRAP_ADMIN_EMAILS.has(email)) {
+          if (JSON.stringify(availableRoles) !== JSON.stringify(ROLES)) {
+             availableRoles = ROLES as any;
+             changed = true;
+          }
+        } else {
+           if (!availableRoles.includes("teacher")) {
+              availableRoles = [...availableRoles, "teacher"] as any;
+              changed = true;
+           }
+        }
+      }
+
+      if (changed) {
+        await ctx.db.patch(user._id, {
+          role: newRole,
+          availableRoles: availableRoles,
+          updatedAt: Date.now(),
+        });
+
+        updates.push({
+          email: user.email,
+          role: newRole,
+        });
+      }
+    }
+
+    return updates;
+  },
+});
+
+export const switchRole = mutation({
+  args: { role: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    if (!user.availableRoles?.includes(args.role)) {
+      throw new Error("You are not authorized for this role");
+    }
+
+    await ctx.db.patch(user._id, {
+      role: args.role as any,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true, role: args.role };
+  },
+});
+
+export const setSuperUserRoles = mutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    // Basic security: only admins can call this
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const caller = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+
+    if (caller?.role !== "admin") {
+      throw new Error("Unauthorized");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    const roles = ["admin", "teacher", "student", "parent", "warehouse_admin"];
+    await ctx.db.patch(user._id, {
+      availableRoles: roles,
+      role: "admin", // Default to admin
+      updatedAt: Date.now(),
+    });
+
+    return { success: true, roles };
+  },
+});
+
+export const seedSuperUser = mutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    const roles = ["admin", "teacher", "student", "parent", "warehouse_admin"];
+    await ctx.db.patch(user._id, {
+      availableRoles: roles,
+      role: "admin",
+      updatedAt: Date.now(),
+    });
+
+    return { success: true, roles };
+  },
+});

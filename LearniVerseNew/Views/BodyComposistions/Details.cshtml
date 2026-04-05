@@ -1,0 +1,90 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Gym_Models.BodyComposistion
+
+@{
+    ViewBag.Title = "Details";
+}
+
+<h2>Details</h2>
+
+<div>
+    <h4>BodyComposistion</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.Student.StudentFirstName)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Student.StudentFirstName)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.DateRecorded)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.DateRecorded)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.Height)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Height)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.Weight)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Weight)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.BMI)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.BMI)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.Status)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Status)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.BMR)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.BMR)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.BodyFatPercentage)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.BodyFatPercentage)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.LeanMuscleMass)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.LeanMuscleMass)
+        </dd>
+
+    </dl>
+</div>
+<p>
+    @Html.ActionLink("Edit", "Edit", new { id = Model.BodyCompositionID }) |
+    @Html.ActionLink("Back to List", "Index")
+</p>

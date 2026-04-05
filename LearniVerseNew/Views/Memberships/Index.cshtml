@@ -1,0 +1,75 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Gym_Models.Membership>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>Index</h2>
+
+<p>
+    @Html.ActionLink("Create New", "Create")
+</p>
+<table class="table">
+    <tr>
+        <th>
+            @Html.DisplayNameFor(model => model.Student.StudentFirstName)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.MembershipTier)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.MembershipStart)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.MembershipEnd)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.MembershipDuration)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.MembershipPrice)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.HasPaid)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.IsActive)
+        </th>
+        <th></th>
+    </tr>
+
+@foreach (var item in Model) {
+    <tr>
+        <td>
+            @Html.DisplayFor(modelItem => item.Student.StudentFirstName)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.MembershipTier)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.MembershipStart)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.MembershipEnd)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.MembershipDuration)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.MembershipPrice)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.HasPaid)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.IsActive)
+        </td>
+        <td>
+            @Html.ActionLink("Edit", "Edit", new { id=item.MembershipID }) |
+            @Html.ActionLink("Details", "Details", new { id=item.MembershipID }) |
+            @Html.ActionLink("Delete", "Delete", new { id=item.MembershipID })
+        </td>
+    </tr>
+}
+
+</table>

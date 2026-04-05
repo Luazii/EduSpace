@@ -1,0 +1,88 @@
+@model IEnumerable<LearniVerseNew.Models.ApplicationModels.LiveSession>
+
+@{
+    ViewBag.Title  = "Live Sessions";
+    var course     = (LearniVerseNew.Models.ApplicationModels.Course)ViewBag.Course;
+}
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">Live Sessions</h2>
+            <p class="text-muted mb-0">@course.CourseName</p>
+        </div>
+        <a href="@Url.Action("Create", "LiveSessions", new { courseId = course.CourseID })"
+           class="btn btn-primary">
+            + Schedule Session
+        </a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">No live sessions scheduled yet. Click <strong>Schedule Session</strong> to add one.</div>
+    }
+    else
+    {
+        <table class="table table-bordered table-striped align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Title</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th>Status</th>
+                    <th>Meeting URL</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model)
+                {
+                    bool live = s.IsLive;
+                    <tr class="@(live ? "table-success" : "")">
+                        <td>
+                            @s.Title
+                            @if (live) { <span class="badge bg-danger ms-1">&#128308; LIVE</span> }
+                        </td>
+                        <td>@s.StartTime.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@s.EndTime.ToString("HH:mm")</td>
+                        <td>
+                            <span class="badge @(s.Status == "Live" ? "bg-danger" : s.Status == "Completed" ? "bg-success" : "bg-secondary")">
+                                @s.Status
+                            </span>
+                        </td>
+                        <td>
+                            <a href="@s.MeetingUrl" target="_blank" class="text-truncate d-inline-block" style="max-width:180px">
+                                @s.MeetingUrl
+                            </a>
+                        </td>
+                        <td class="text-nowrap">
+                            @if (s.Status == "Scheduled")
+                            {
+                                <form action="@Url.Action("UpdateStatus", "LiveSessions")" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id"     value="@s.LiveSessionID" />
+                                    <input type="hidden" name="status" value="Live" />
+                                    <button type="submit" class="btn btn-sm btn-danger me-1">Go Live</button>
+                                </form>
+                            }
+                            @if (s.Status == "Live")
+                            {
+                                <form action="@Url.Action("UpdateStatus", "LiveSessions")" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id"     value="@s.LiveSessionID" />
+                                    <input type="hidden" name="status" value="Completed" />
+                                    <button type="submit" class="btn btn-sm btn-success me-1">End Session</button>
+                                </form>
+                            }
+                            <a href="@Url.Action("Delete", "LiveSessions", new { id = s.LiveSessionID })"
+                               class="btn btn-sm btn-outline-danger">Delete</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <a href="@Url.Action("Index", "Courses")" class="btn btn-secondary mt-2">Back to Courses</a>
+</div>

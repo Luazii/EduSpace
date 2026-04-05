@@ -1,0 +1,58 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Payment
+
+@{
+    ViewBag.Title = "Details";
+}
+
+<h2>Details</h2>
+
+<div>
+    <h4>Payment</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.Enrollment.StudentID)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Enrollment.StudentID)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.Student.StudentFirstName)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Student.StudentFirstName)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.AmountPaid)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.AmountPaid)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.PaymentReference)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.PaymentReference)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.PaymentDate)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.PaymentDate)
+        </dd>
+
+    </dl>
+</div>
+<p>
+    @Html.ActionLink("Edit", "Edit", new { id = Model.PaymentID }) |
+    @Html.ActionLink("Back to List", "Index")
+</p>

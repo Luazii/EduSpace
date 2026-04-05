@@ -1,0 +1,86 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.TrainerDashboardViewModel
+
+<h2 class="my-4">Trainer Dashboard</h2>
+<a href="@Url.Action("PastSessions", "TrainingSessions")" class="btn btn-info mt-2 mb-2">View Past Sessions</a>
+<!-- Today's Sessions -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-light mb-3">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Today's Sessions</h4>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    @if (Model.TodaySessions.Any())
+                    {
+                        foreach (var session in Model.TodaySessions)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>@session.SessionName</strong><br>
+                                    <small>@session.SessionStart</small>
+                                </div>
+                                <div>
+                                    <span class="badge badge-primary badge-pill">@session.Participants.Count() Participants</span>
+                                    <a href="@Url.Action("ViewSessionParticipants", "Trainers", new { sessionId = session.TrainingSessionID })" class="btn btn-outline-secondary btn-sm ml-2">View Students</a>
+                                </div>
+                            </li>
+                        }
+                    }
+                    else
+                    {
+                        <li class="list-group-item">No sessions scheduled for today.</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Participants -->
+    <div class="col-md-6">
+        <div class="card shadow-sm border-light mb-3">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">Total Participants</h4>
+            </div>
+            <div class="card-body">
+                <p class="display-4">@Model.TotalParticipants</p>
+                <p class="text-muted">Participants across all sessions</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upcoming Sessions -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow-sm border-light">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="mb-0">Upcoming Sessions</h4>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    @if (Model.UpcomingSessions.Any())
+                    {
+                        foreach (var session in Model.UpcomingSessions)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>@session.SessionName</strong><br>
+                                    <small>@session.SessionDate.ToString("MM/dd/yyyy") @session.SessionStart</small>
+                                </div>
+                                <div>
+                                    <span class="badge badge-primary badge-pill">@session.Participants.Count() Participants</span>
+                                    <a href="@Url.Action("ViewSessionParticipants", "Trainers", new { sessionId = session.TrainingSessionID })" class="btn btn-outline-secondary btn-sm ml-2">View Students</a>
+                                </div>
+                            </li>
+                        }
+                    }
+                    else
+                    {
+                        <li class="list-group-item">No upcoming sessions scheduled.</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

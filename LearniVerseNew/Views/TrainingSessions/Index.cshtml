@@ -1,0 +1,63 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Trainer_Models.TrainingSession>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<h2>Index</h2>
+
+<p>
+    @Html.ActionLink("Create New", "Create")
+</p>
+<table class="table">
+    <tr>
+        <th>
+            @Html.DisplayNameFor(model => model.Trainer.FirstName)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.SessionName)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.SessionStart)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.Duration)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.SessionEnd)
+        </th>
+        <th>
+            @Html.DisplayNameFor(model => model.MaxParticipants)
+        </th>
+        <th></th>
+    </tr>
+
+@foreach (var item in Model) {
+    <tr>
+        <td>
+            @Html.DisplayFor(modelItem => item.Trainer.FirstName)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.SessionName)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.SessionStart)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.Duration)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.SessionEnd)
+        </td>
+        <td>
+            @Html.DisplayFor(modelItem => item.MaxParticipants)
+        </td>
+        <td>
+            @Html.ActionLink("Edit", "Edit", new { id=item.TrainingSessionID }) |
+            @Html.ActionLink("Details", "Details", new { id=item.TrainingSessionID }) |
+            @Html.ActionLink("Delete", "Delete", new { id=item.TrainingSessionID })
+        </td>
+    </tr>
+}
+
+</table>

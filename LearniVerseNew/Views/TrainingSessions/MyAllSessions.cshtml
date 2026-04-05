@@ -1,0 +1,52 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Trainer_Models.TrainingSession>
+
+<h2>All Training Sessions</h2>
+
+<!-- Link to today's sessions -->
+<div class="mb-3">
+    <a href="@Url.Action("MySessions", "TrainingSessions")" class="btn btn-success">View Today's Sessions</a>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Session Name</th>
+            <th>Trainer</th>
+            <th>Session Date</th>
+            <th>Start Time</th>
+            <th>Duration</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model.Any())
+        {
+            foreach (var session in Model)
+            {
+                <tr>
+                    <td>@session.SessionName</td>
+                    <td>@session.Trainer.FirstName @session.Trainer.LastName</td>
+                    <td>@session.SessionDate.ToString("MM/dd/yyyy")</td>
+                    <td>@session.SessionStart</td>
+                    <td>@session.Duration minutes</td>
+                    <td>
+                        @if (session.SessionStart < (TimeSpan) DateTime.Now.TimeOfDay)
+                        {
+                            <span class="text-success">Completed</span>
+                        }
+                        else
+                        {
+                            <span class="text-warning">Upcoming</span>
+                        }
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="6">You have not attended any sessions yet.</td>
+            </tr>
+        }
+    </tbody>
+</table>

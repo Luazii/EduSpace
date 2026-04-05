@@ -1,0 +1,160 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Quiz
+
+@{
+    ViewBag.Title = "Add Questions";
+}
+
+<h2>Add Questions to Quiz</h2>
+
+<div id="quizDetails">
+    <!-- Display quiz details -->
+    <h3>Quiz Details</h3>
+    <p>Quiz ID: @Model.QuizID</p>
+    <p>Description: @Model.QuizDescription</p>
+    <h4>Total Marks: <span id="totalMarks">0</span> / @Model.QuizMaxMark</h4>
+    <!-- Add more quiz details as needed -->
+</div>
+
+<div id="questionForm">
+    <!-- Add questions form -->
+    <h3>Add Questions</h3>
+    <div id="questionContainer">
+        <!-- Question input fields will be dynamically added here -->
+    </div>
+    <button id="addQuestionBtn" class="btn btn-primary">Add Question</button>
+    <button id="saveQuestionsBtn" class="btn btn-success">Save Questions</button>
+</div>
+
+
+@section scripts {
+    <script>
+
+        function updateTotalMarks() {
+            var totalMarks = 0;
+            $(".questionWeighting").each(function () {
+                totalMarks += parseInt($(this).val());
+            });
+            $("#totalMarks").text(totalMarks);
+        }
+
+        // Event listener for question weighting change
+        $(document).on("change", ".questionWeighting", function () {
+            updateTotalMarks();
+        });
+
+        // Function to add question input fields dynamically
+        function addQuestion() {
+            var questionHtml = `
+                <!-- Your question card structure -->
+            `;
+            $("#questionContainer").append(questionHtml);
+            updateTotalMarks(); // Update total marks when adding a question
+        }
+
+
+
+        // Function to add question input fields dynamically
+        function addQuestion() {
+
+            var questionHtml = `
+              <div class="card question mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Question</h5>
+                 <div class="form-group">
+                    <label for="questionNumber">Question Number</label>
+                    <input type="number" class="form-control" id="questionNumber" name="questionNumber" placeholder="Enter question number">
+                </div>
+                <div class="form-group">
+                    <label for="questionText">Question Text</label>
+                    <input type="text" class="form-control" id="questionText" name="questionText" placeholder="Enter question text">
+                </div>
+                <!-- Add input fields for answer options -->
+                <div class="form-group">
+                    <label for="answerA">Answer A</label>
+                    <input type="text" class="form-control" id="answerA" name="answerA">
+                </div>
+                <div class="form-group">
+                    <label for="answerB">Answer B</label>
+                    <input type="text" class="form-control" id="answerB" name="answerB">
+                </div>
+                <div class="form-group">
+                    <label for="answerC">Answer C</label>
+                    <input type="text" class="form-control" id="answerC" name="answerC">
+                </div>
+                <div class="form-group">
+                    <label for="answerD">Answer D</label>
+                    <input type="text" class="form-control" id="answerD" name="answerD">
+                </div>
+                <div class="form-group">
+                    <label for="correctAnswer">Correct Answer</label>
+                    <input type="text" class="form-control" id="correctAnswer" name="correctAnswer" placeholder="Enter correct answer">
+                </div>
+                <div class="form-group">
+                    <label for="questionWeighting">Question Weighting</label>
+                    <input type="number" class="form-control" id="questionWeighting" name="questionWeighting" placeholder="Enter question weighting">
+                </div>
+                <button class="btn btn-danger removeQuestionBtn">Remove</button>
+            </div>
+        </div>`;
+            $("#questionContainer").append(questionHtml);
+        }
+
+        
+        $(document).on("click", ".removeQuestionBtn", function () {
+            $(this).closest(".question").remove();
+        });
+
+        
+        $("#saveQuestionsBtn").click(function () {
+            var questions = []; 
+
+            // Loop through each question container
+            $(".question").each(function () {
+                var question = {}; // Initialize an object to store question data
+                // Retrieve question data from input fields
+                question.QuestionNumber = $(this).find("input[name='questionNumber']").val();
+                question.QuestionText = $(this).find("input[name='questionText']").val();
+                question.AnswerA = $(this).find("input[name='answerA']").val();
+                question.AnswerB = $(this).find("input[name='answerB']").val();
+                question.AnswerC = $(this).find("input[name='answerC']").val();
+                question.AnswerD = $(this).find("input[name='answerD']").val();
+                question.CorrectAnswer = $(this).find("input[name='correctAnswer']").val();
+                question.Weighting = parseInt($(this).find("input[name='questionWeighting']").val());
+                questions.push(question);
+            });
+
+            
+            var token = $('input[name="__RequestVerificationToken"]').val();
+
+            // Construct the data object including the AntiForgeryToken and questions array
+            var data = {
+                __RequestVerificationToken: token,
+                QuizID: '@Model.QuizID',
+                questions: questions
+            };
+
+            // AJAX request to send questions to server
+            $.ajax({
+                url: '@Url.Action("AddQuestions", "Quiz")',
+                type: 'POST',
+                data: data,
+                success: function (response) {
+                    // Handle success (e.g., display a message, redirect, etc.)
+                    alert("Questions added successfully!");
+                    // Redirect to quiz details page
+                    window.location.href = '@Url.Action("Index", "Quiz")';
+                },
+                error: function (xhr, status, error) {
+                    
+                    alert("Error adding questions: " + error);
+                }
+            });
+        });
+
+        
+        $("#addQuestionBtn").click(function () {
+            addQuestion();
+        });
+    </script>
+}
+

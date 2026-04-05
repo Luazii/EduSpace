@@ -1,0 +1,35 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Booking>
+
+@{
+    ViewBag.Title = "My Bookings";
+}
+
+<h2>My Bookings</h2>
+
+<p>
+    @Html.ActionLink("Create New", "Create", null, new { @class = "btn btn-primary" })
+</p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Campus</th>
+            <th>Student Name</th>
+            <th>Time Slot</th>
+            <th>Booking Date</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@(item.Room != null ? item.Room.Campus : "N/A")</td>
+                <td>@(item.Student != null ? item.Student.StudentFirstName : "N/A")</td>
+                <td>@(item.TimeSlot != null ? item.TimeSlot.SlotName : "N/A")</td>
+                <td>@Html.DisplayFor(modelItem => item.BookingDate)</td>
+                
+            </tr>
+        }
+    </tbody>
+</table>

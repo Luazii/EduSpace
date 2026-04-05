@@ -1,0 +1,36 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.EnrolViewModel
+@{
+    ViewBag.Title = "Select Courses";
+}
+
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Select Courses</h2>
+
+    @using (Html.BeginForm())
+    {
+        @Html.AntiForgeryToken()
+
+        <div class="form-horizontal">
+            <h4 class="mb-3">Please select courses:</h4>
+            <hr />
+            @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+            <div class="form-group mb-3">
+                <div class="col-md-12">
+                    @Html.ListBoxFor(model => model.SelectedCourseIDs, new SelectList(Model.AvailableCourses, "CourseID", "CourseName"), new { @class = "form-control", size = 10 })
+                    @Html.ValidationMessageFor(model => model.SelectedCourseIDs, "", new { @class = "text-danger" })
+                </div>
+            </div>
+            <div class="form-group text-center">
+                <div class="col-md-12 mt-3">
+                    <input type="submit" value="Continue" class="btn btn-success btn-lg" />
+                    @Html.ActionLink("Cancel", "SelectFaculty", null, new { @class = "btn btn-secondary btn-lg ms-3" })
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+}

@@ -1,0 +1,103 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Store_Models.Transaction
+
+@{
+    ViewBag.Title = "Transaction Details";
+}
+
+<h2 class="my-4">Transaction Details</h2>
+
+<!-- Transaction Information -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h4>Transaction Summary</h4>
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Order.StudentID)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Order.StudentID)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Amount)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.Amount)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Status)</dt>
+            <dd class="col-sm-8">
+                @if (Model.Status == "success")
+                {
+                    <span class="badge bg-success">Success</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger">@Model.Status</span>
+                }
+            </dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.TransactionDate)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.TransactionDate)</dd>
+
+            <dt class="col-sm-4">@Html.DisplayNameFor(model => model.PaystackReference)</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.PaystackReference)</dd>
+        </dl>
+    </div>
+</div>
+
+<!-- Order Information -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h4>Order Details</h4>
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-4">Order ID</dt>
+            <dd class="col-sm-8">@Model.Order.OrderID</dd>
+
+            <dt class="col-sm-4">Shipping Address</dt>
+            <dd class="col-sm-8">@Model.Order.ShippingAddress, @Model.Order.City, @Model.Order.State, @Model.Order.PostalCode</dd>
+
+            <dt class="col-sm-4">Order Date</dt>
+            <dd class="col-sm-8">@Model.Order.DateOrdered.ToString("MM/dd/yyyy")</dd>
+
+            <dt class="col-sm-4">Total Price</dt>
+            <dd class="col-sm-8">@Model.Order.TotalPrice.ToString("C")</dd>
+        </dl>
+
+        <!-- Displaying Order Items -->
+        <h5>Items Purchased</h5>
+        <table class="table table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Order.OrderItems)
+                {
+                    <tr>
+                        <td>@item.Product.ProductName</td>
+                        <td>@item.Quantity</td>
+                        <td>@item.Product.Price.ToString("C")</td>
+                        <td>R @(item.Product.Price * item.Quantity)</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" class="text-end"><strong>Total</strong></td>
+                    <td><strong>@Model.Order.TotalPrice.ToString("C")</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="mt-4">
+    <a href="@Url.Action("Index")" class="btn btn-outline-dark">
+        <i class="bi bi-arrow-left-circle"></i> Back to List
+    </a>
+</div>
+
+<!-- Include Bootstrap Icons if needed -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">

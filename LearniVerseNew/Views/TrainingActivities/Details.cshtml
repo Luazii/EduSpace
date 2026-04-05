@@ -1,0 +1,50 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Trainer_Models.TrainingActivity
+
+@{
+    ViewBag.Title = "Details";
+}
+
+<h2>Details</h2>
+
+<div>
+    <h4>TrainingActivity</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.Trainer.FirstName)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Trainer.FirstName)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.ActivityName)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.ActivityName)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.DefaultStartTime)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.DefaultStartTime)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.DafaultDuration)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.DafaultDuration)
+        </dd>
+
+    </dl>
+</div>
+<p>
+    @Html.ActionLink("Edit", "Edit", new { id = Model.ActivityID }) |
+    @Html.ActionLink("Back to List", "Index")
+</p>

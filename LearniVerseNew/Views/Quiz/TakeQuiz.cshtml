@@ -1,0 +1,60 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Quiz
+
+<h2>Quiz Details</h2>
+<p>Quiz Description: @Model.QuizDescription</p>
+<p>Total Marks: @Model.QuizMaxMark</p>
+<p>Number of Attempts Allowed: @Model.MaxAttempts</p>
+<p>Your Attempts: @ViewBag.UserAttempts</p>
+
+@{ 
+if (ViewBag.UserAttempts >= Model.MaxAttempts)
+{
+    <p>You have reached the maximum number of attempts for this quiz.</p>
+}
+else
+{
+    
+        var currentTime = DateTime.Now.TimeOfDay;
+        var quizStartTime = Model.QuizStart;
+        var quizEndTime = Model.QuizEnd;
+    
+
+    if (currentTime < quizStartTime)
+    {
+        // Quiz has not started yet
+        <p>Quiz has not started yet.</p>
+        <p>Quiz opens at @Model.QuizStart.ToString("hh\\:mm")</p>
+        <p>Quiz closes at @Model.QuizEnd.ToString("hh\\:mm")</p>
+    }
+    else if (currentTime >= quizEndTime)
+    {
+        // Quiz end time has passed
+        <p>Quiz has been closed.</p>
+    }
+    else
+    {
+        // Quiz is ongoing
+        <form action="@Url.Action("Quiz", "Quiz")" method="get">
+            <input type="hidden" name="QuizID" value="@Model.QuizID" />
+            <button id="startQuizBtn" type="submit" class="btn btn-primary">Start Quiz</button>
+        </form>
+    }
+}
+}
+
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            var maxAttempts = @Html.Raw(Json.Encode(Model.MaxAttempts));
+            var userAttempts = @Html.Raw(Json.Encode(ViewBag.UserAttempts));
+            var currentTime = new Date().getTime();
+            var quizStartTime = new Date('@Model.QuizDate').getTime() + new Date('@Model.QuizStart').getTime();
+            var quizEndTime = new Date('@Model.QuizDate').getTime() + new Date('@Model.QuizEnd').getTime();
+
+            if (userAttempts >= maxAttempts || currentTime < quizStartTime || currentTime >= quizEndTime) {
+                $('#startQuizBtn').prop('disabled', true);
+            }
+        });
+    </script>
+}

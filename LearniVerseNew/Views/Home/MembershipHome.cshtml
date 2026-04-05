@@ -1,0 +1,131 @@
+﻿@{
+    ViewBag.Title = "Dashboard";
+}
+
+<h2>@(ViewBag.Student != null ? $"{ViewBag.Student.StudentFirstName}'s Dashboard" : "Dashboard")</h2>
+
+<div class="container">
+    <div class="row mt-4">
+        <!-- Membership Information Card -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3>Membership Information</h3>
+                    <a href="@Url.Action("MyMemberships", "Memberships")" class="btn btn-primary btn-sm">Manage Memberships</a>
+                </div>
+                <div class="card-body">
+                    @if (ViewBag.Membership != null)
+                    {
+                        <p><strong>Tier:</strong> @ViewBag.Membership.MembershipTier</p>
+                        <p><strong>Start Date:</strong> @ViewBag.Membership.MembershipStart.ToShortDateString()</p>
+                        <p><strong>End Date:</strong> @ViewBag.Membership.MembershipEnd.ToShortDateString()</p>
+                        <p><strong>Status:</strong> @(ViewBag.Membership.IsActive ? "Active" : "Inactive")</p>
+                    }
+                    else
+                    {
+                        <p>No membership data available.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Workout Card -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3>Today's Workout</h3>
+                    @if (ViewBag.TodaysWorkout != null)
+                    {
+                        
+                        <a href="@Url.Action("WorkoutDashboard", "Workouts")" class="btn btn-primary btn-sm">View Workouts</a>
+                    }
+                </div>
+                <div class="card-body">
+                    @if (ViewBag.TodaysWorkout != null)
+                    {
+                        <p><strong>Workout Name:</strong> @ViewBag.TodaysWorkout.Name</p>
+                        <p><strong>Exercises:</strong></p>
+                        <ul>
+                            @foreach (var exercise in ViewBag.TodaysWorkout.Excercises)
+                            {
+                                <li>@exercise.Name - @exercise.Reps sets x @exercise.Sets reps</li>
+                            }
+                        </ul>
+                    }
+                    else if (ViewBag.Regimen == null)
+                    {
+                        <p>Looks like you haven't made a Regimen.</p>
+                        <a href="@Url.Action("CreateRegimen", "Workouts")" class="btn btn-primary btn-sm">Get Started</a>
+
+                    }
+                    else if (ViewBag.Regimen != null && ViewBag.Regimen.Workouts.Count == 0)
+                    {
+                        <p>Looks like you have no Workouts in your Regimen....</p>
+                        <a href="@Url.Action("CreateWorkout", "Workouts")" class="btn btn-primary btn-sm">Add Workout</a>
+                    }
+                    else
+                    {
+                        <p><strong>Today is a rest day!</strong></p>
+                        <p>Rest days are important for muscle recovery and growth. Taking time off can help prevent injury and improve overall fitness by allowing your muscles to repair and strengthen.</p>
+                        <a href="@Url.Action("WorkoutDashboard", "Workouts")" class="btn btn-primary btn-sm">View Workouts</a>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <!-- Today's Food Record Card -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3>Today's Food Record</h3>
+                    <a href="@Url.Action("Dashboard", "FoodSearch")" class="btn btn-primary btn-sm">Manage Food Records</a>
+                </div>
+                <div class="card-body">
+                    @if (ViewBag.TodaysFood != null)
+                    {
+                        <p><strong>Date Recorded:</strong> @ViewBag.TodaysFood.DateRecorded.ToShortDateString()</p>
+                        <p><strong>Total Calories:</strong> @ViewBag.TotalCalories kcal</p>
+                    }
+                    else
+                    {
+                        <p>No food records for today.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Latest Body Composition Card -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3>Latest Body Composition</h3>
+                    <a href="@Url.Action("MyBody", "BodyComposistions")" class="btn btn-primary btn-sm">View Body Compositions</a>
+                </div>
+                <div class="card-body">
+                    @if (ViewBag.LatestBody != null)
+                    {
+                        <p><strong>Date Recorded:</strong> @ViewBag.LatestBody.DateRecorded.ToShortDateString()</p>
+                        <p><strong>Height:</strong> @ViewBag.LatestBody.Height m</p>
+                        <p><strong>Weight:</strong> @ViewBag.LatestBody.Weight kg</p>
+                        <p><strong>BMI:</strong> @ViewBag.LatestBody.BMI</p>
+                        <p><strong>Status:</strong> @ViewBag.LatestBody.Status</p>
+                        <p><strong>BMR:</strong> @ViewBag.LatestBody.BMR kcal/day</p>
+                        <p><strong>Body Fat Percentage:</strong> @ViewBag.LatestBody.BodyFatPercentage %</p>
+                        <p><strong>Lean Muscle Mass:</strong> @ViewBag.LatestBody.LeanMuscleMass kg</p>
+                    }
+                    else
+                    {
+                        <p>No body composition data available.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+}

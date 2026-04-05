@@ -1,0 +1,64 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Gym_Models.Membership>
+
+@{
+    ViewBag.Title = "My Memberships";
+}
+
+<div class="container mt-5">
+    <h2 class="mb-4">My Memberships</h2>
+
+    @if (!Model.Any())
+    {
+        <p>You have no active memberships.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Plan Name</th>
+                        <th>Membership Tier</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Duration (Months)</th>
+                        <th>Price</th>
+                        <th>Paid</th>
+                        <th>Active</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var membership in Model)
+                    {
+                        <tr>
+                            <td>@membership.Plan.PlanName</td>
+                            <td>@membership.MembershipTier</td>
+                            <td>@membership.MembershipStart.ToShortDateString()</td>
+                            <td>@membership.MembershipEnd.ToShortDateString()</td>
+                            <td>@membership.MembershipDuration</td>
+                            <td>@membership.MembershipPrice.ToString("C")</td>
+                            <td>@(membership.HasPaid ? "Yes" : "No")</td>
+                            <td>@(membership.IsActive ? "Yes" : "No")</td>
+                            <td>
+                                @if (membership.IsActive)
+                                {
+                                    using (Html.BeginForm("RequestCancel", "Memberships", new { Id = membership.MembershipID }, FormMethod.Post))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <input type="submit" value="Cancel Membership" class="btn btn-danger" />
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Cancelled</span>
+                                }
+                            </td>
+                           
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

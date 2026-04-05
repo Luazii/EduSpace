@@ -1,0 +1,80 @@
+@model LearniVerseNew.Models.ApplicationModels.QuizAttempt
+
+@{
+    ViewBag.Title = "Review Attempt";
+    var quiz     = Model.Quiz;
+    int maxScore = quiz.Questions.Sum(q => q.Weighting);
+    double pct   = maxScore > 0 ? (double)Model.MarkObtained / maxScore * 100 : 0;
+}
+
+<div class="container mt-4">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@Url.Action("Index", "Quiz")">My Quizzes</a></li>
+            <li class="breadcrumb-item">
+                <a href="@Url.Action("QuizResults", "Quiz", new { QuizID = quiz.QuizID })">@quiz.QuizDescription — Results</a>
+            </li>
+            <li class="breadcrumb-item active">Attempt Review</li>
+        </ol>
+    </nav>
+
+    <h2>@quiz.QuizDescription — Attempt Review</h2>
+
+    <div class="card mb-4">
+        <div class="card-body d-flex gap-4 align-items-center flex-wrap">
+            <div>
+                <div class="text-muted small">Student</div>
+                <strong>
+                    @(Model.Student != null
+                        ? $"{Model.Student.StudentFirstName} {Model.Student.StudentLastName}"
+                        : Model.StudentID)
+                </strong>
+            </div>
+            <div>
+                <div class="text-muted small">Score</div>
+                <strong>@Model.MarkObtained / @maxScore (@pct.ToString("F1")%)</strong>
+            </div>
+            <div>
+                <div class="text-muted small">Date</div>
+                <strong>@Model.AttemptDate.ToString("yyyy-MM-dd HH:mm")</strong>
+            </div>
+            <div class="ms-auto">
+                <span class="badge fs-5 @(pct >= 50 ? "bg-success" : "bg-danger")">
+                    @(pct >= 50 ? "Passed" : "Failed")
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <h4 class="mt-4 mb-3">Quiz Questions &amp; Correct Answers</h4>
+
+    @foreach (var q in quiz.Questions.OrderBy(x => x.QuestionNumber))
+    {
+        <div class="card mb-3">
+            <div class="card-header fw-bold">
+                Q@(q.QuestionNumber). @q.QuestionText
+                <span class="float-end text-muted small">(@q.Weighting mark@(q.Weighting == 1 ? "" : "s"))</span>
+            </div>
+            <ul class="list-group list-group-flush">
+                @foreach (var opt in new[] {
+                    new { Label = "A", Text = q.AnswerA },
+                    new { Label = "B", Text = q.AnswerB },
+                    new { Label = "C", Text = q.AnswerC },
+                    new { Label = "D", Text = q.AnswerD }
+                })
+                {
+                    bool isCorrect = opt.Label == q.CorrectAnswer;
+                    <li class="list-group-item @(isCorrect ? "list-group-item-success fw-bold" : "")">
+                        @opt.Label: @opt.Text
+                        @if (isCorrect) { <span class="ms-2 text-success">&#10003; Correct answer</span> }
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+
+    <a href="@Url.Action("QuizResults", "Quiz", new { QuizID = quiz.QuizID })" class="btn btn-secondary mt-2">
+        Back to Results
+    </a>
+</div>

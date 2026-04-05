@@ -1,0 +1,114 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.AdminViewModel
+@{
+    ViewBag.Title = "Dashboard";
+}
+
+<div class="container mt-5">
+    <!-- Notification Button -->
+    <div id="notificationButton" class="position-fixed top-0 end-0 m-3">
+        <a href="@Url.Action("Notifications", "Admin")" class="btn btn-primary position-relative">
+            <i class="bi bi-bell"></i>
+            <span id="notificationCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-light">
+                @Model.UnreadNotificationsCount
+            </span>
+            <span class="visually-hidden">unread notifications</span>
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h2 class="card-title">Welcome to Your Dashboard</h2>
+                    <p>Hi Admin!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title">Total Students</h3>
+                    <div class="card-text">@Model.StudentCount</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title">Total Teachers</h3>
+                    <div class="card-text">@Model.TeacherCount</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title">Total Courses</h3>
+                    <div class="card-text">@Model.CourseCount</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Store Management Features -->
+    <div class="row">
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title">Manage Products</h3>
+                    <p class="card-text">View and manage all store products.</p>
+                    @Html.ActionLink("Manage Products", "Index", "Products", null, new { @class = "btn btn-primary" })
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title">View Orders</h3>
+                    <p class="card-text">Check and manage customer orders.</p>
+                    @Html.ActionLink("View Orders", "Index", "Orders", null, new { @class = "btn btn-warning" })
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title">View Transactions</h3>
+                    <p class="card-text">Manage all transactions and payments.</p>
+                    @Html.ActionLink("View Transactions", "Index", "Transactions", null, new { @class = "btn btn-danger" })
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title">Manage Trainers</h3>
+                    <p class="card-text">View and manage all trainers.</p>
+                    @Html.ActionLink("Manage Trainers", "Index", "Trainers", null, new { @class = "btn btn-danger" })
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Activities Management Card -->
+        <div class="col-md-3 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title">Manage Training Activities</h3>
+                    <p class="card-text">View and manage training activities.</p>
+                    @Html.ActionLink("Manage Activities", "Index", "TrainingActivities", null, new { @class = "btn btn-info" })
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+}

@@ -1,0 +1,88 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Payment>
+@using System.Globalization
+
+@{
+    ViewBag.Title = "Payments";
+}
+
+
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 border-start border-end sticky-top">
+            <h1>Filter</h1>
+
+            @using (Html.BeginForm("Payments", "Payments", FormMethod.Get, new { @class = "form-inline" }))
+            {
+
+                <div class="form-group mb-2">
+                    @Html.Label("Select Year:")
+                    @Html.DropDownList("selectedYear", Enumerable.Range(DateTime.Now.Year - 0, 10).Select(x => new SelectListItem
+                    {
+                        Text = x.ToString(),
+                        Value = x.ToString()
+                    }), "Select Year", new { @class = "form-control" })
+                </div>
+
+
+                <div class="form-group mb-2">
+                    @Html.Label("Select Month:")
+                    @Html.DropDownList("selectedMonth", Enumerable.Range(1, 12).Select(x => new SelectListItem
+                    {
+                        Text = CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(x),
+                        Value = x.ToString()
+                    }), "Select Month", new { @class = "form-control" })
+                </div>
+                <div class="form-group mb-2">
+                    @Html.Label("Search by Student Name:")
+                    @Html.TextBox("searchStudent", null, new { @class = "form-control", placeholder = "Enter student name" })
+                </div>
+                <button type="submit" class="btn btn-primary mb-2">Search</button>
+            }
+        </div>
+        <div class="col-md-10">
+            <h1>Payments</h1>
+            <hr />
+            @if (Model.Any())
+            {
+                <table class="table">
+                    <tr>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Student.StudentFirstName)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.AmountPaid)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.PaymentDate)
+                        </th>
+                        <th></th>
+                    </tr>
+
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.Student.StudentFirstName)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.AmountPaid)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.PaymentDate)
+                            </td>
+
+                        </tr>
+                    }
+                </table>
+            }
+            else
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    No payments found.
+                </div>
+            }
+
+        </div>
+    </div>
+</div>

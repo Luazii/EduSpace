@@ -1,0 +1,104 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.NSCSubmission
+
+@{
+    ViewBag.Title = "Select NSC Subjects";
+}
+
+<h2>@ViewBag.Title</h2>
+<hr />
+
+@using (Html.BeginForm("UploadNSC", "Enrollments", FormMethod.Post, new { id = "nscForm", enctype = "multipart/form-data" }))
+{
+@Html.AntiForgeryToken()
+
+<div id="subjectContainer" class="mb-2">
+    <div class="card-deck col-3" id="subjectCards">
+        <div class="card subject-item mt-2">
+            <div class="card-body">
+                <h5 class="card-title">Subject</h5>
+                <div class="form-group mt-4">
+                    <label for="Subject">Subject</label>
+                    @Html.DropDownListFor(model => model.Subjects, Enum.GetValues(typeof(LearniVerseNew.Models.ApplicationModels.NSCSubmission.NationalSubjects))
+                        .Cast<LearniVerseNew.Models.ApplicationModels.NSCSubmission.NationalSubjects>()
+                        .Select(enumItem => new SelectListItem
+                        {
+                            Text = enumItem.ToString(),
+                            Value = enumItem.ToString() // Set the value to the string representation of the enum
+                        }), "Select Subject", new { @class = "form-control subject-select" })
+                    @Html.ValidationMessageFor(model => model.Subjects, "", new { @class = "text-danger" })
+                </div>
+
+                <div class="form-group mt-2 mb-2">
+                    <label for="Marks">Percentage achieved</label>
+                    @Html.TextBoxFor(model => model.Marks, new { @class = "form-control marks-input" })
+                    @Html.ValidationMessageFor(model => model.Marks, "", new { @class = "text-danger" })
+                </div>
+                <button type="button" class="btn btn-danger remove-subject-btn">Remove Subject</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add file input for NSC document -->
+<div class="form-group mt-4 mb-2">
+    <label for="NSCDocument">NSC Document</label>
+    <input type="file" name="NSCDocument" id="NSCDocument" class="form-control-file btn btn-secondary" accept=".pdf"> <!-- Added file input -->
+
+</div>
+
+<button type="button" id="addSubjectBtn" class="btn btn-success">Add Subject</button>
+<button type="submit" id="submitBtn" class="btn btn-primary">Next</button>
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+
+    <script>
+        $(document).ready(function () {
+            $('#addSubjectBtn').click(function () {
+                var subjectCard = $('#subjectCards .card:first').clone();
+                subjectCard.find('.subject-select').val('');
+                subjectCard.find('.marks-input').val('');
+                $('#subjectCards').append(subjectCard);
+                updateRemoveButtonState();
+            });
+
+            $('#nscForm').on('click', '.remove-subject-btn', function () {
+                $(this).closest('.card').remove();
+                updateRemoveButtonState();
+            });
+
+            $('#nscForm').submit(function (e) {
+                e.preventDefault();
+
+                var subjects = [];
+                $('#subjectCards .card').each(function () {
+                    var subject = {
+                        Subject: $(this).find('.subject-select').val(),
+                        Marks: $(this).find('.marks-input').val()
+                    };
+                    subjects.push(subject);
+                });
+
+
+                var jsonData = JSON.stringify(subjects);
+
+
+                $('<input>').attr({
+                    type: 'hidden',
+                    name: 'subjectsJson',
+                    value: jsonData
+                }).appendTo($(this));
+
+
+                this.submit();
+            });
+
+            function updateRemoveButtonState() {
+                var subjectCardsCount = $('#subjectCards .card').length;
+                $('.remove-subject-btn').prop('disabled', subjectCardsCount <= 1);
+            }
+        });
+
+    </script>
+}

@@ -1,0 +1,61 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.AssignmentsViewModel
+
+@{
+    ViewBag.Title = "My Assignments";
+}
+
+<div class="container">
+    <h2>@ViewBag.Title</h2>
+
+    @using (Html.BeginForm("GetAssignments", "Assignments", FormMethod.Post))
+    {
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    @Html.Label("Select Course", new { @class = "control-label" })
+                    @Html.DropDownListFor(model => model.SelectedCourseId, Model.Courses, "-- Select a Course --", new { @class = "form-control" })
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Get Assignments</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (Model.Assignments != null && Model.Assignments.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Assignment Title</th>
+                        <th>Description</th>
+                        <th>Due Date</th>
+                        <th>Course</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var assignment in Model.Assignments)
+                    {
+                        <tr>
+                            <td>@assignment.Title</td>
+                            <td>@assignment.Description</td>
+                            <td>@assignment.Deadline.ToString("yyyy-MM-dd")</td>
+                            <td>@assignment.Course.CourseName</td>
+                            <td>
+                                <a href="@Url.Action("ViewSubmissions", "Assignments", new { assignmentId = assignment.AssignmentID })" class="btn btn-primary">View Submissions</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <p>No assignments found for the selected course.</p>
+    }
+</div>

@@ -1,0 +1,43 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Gym_Models.Membership
+
+@{
+    ViewBag.Title = "Request Cancel";
+}
+
+<div class="container mt-5">
+    <h2 class="mb-4">Request Membership Cancellation</h2>
+
+    <div class="card">
+        <div class="card-header">
+            Membership Details
+        </div>
+        <div class="card-body">
+            <h5 class="card-title">@Model.Plan.PlanName</h5>
+            <p class="card-text">
+                <strong>Membership Start Date:</strong> @Model.MembershipStart.ToShortDateString()<br />
+                <strong>Membership End Date:</strong> @Model.MembershipEnd.ToShortDateString()<br />
+                <strong>Duration:</strong> @Model.MembershipDuration months<br />
+                <strong>Price:</strong> @Model.MembershipPrice.ToString("C")<br />
+                <strong>Paid:</strong> @(Model.HasPaid ? "Yes" : "No")<br />
+                <strong>Active:</strong> @(Model.IsActive ? "Yes" : "No")<br />
+            </p>
+
+            <div class="mt-4">
+                <p>Are you sure you want to request the cancellation of this membership?</p>
+                <div class="d-flex">
+                    <div class="mr-2">
+                        @using (Html.BeginForm("ConfirmCancel", "Memberships", new { membershipId = Model.MembershipID }, FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+                            @Html.Hidden("Id", Model.MembershipID)
+                            <button type="submit" class="btn btn-danger">Confirm Cancellation</button>
+                        }
+                    </div>
+                    <div>
+                        <a href="@Url.Action("MyMemberships", "Memberships")" class="btn btn-secondary">Go Back</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

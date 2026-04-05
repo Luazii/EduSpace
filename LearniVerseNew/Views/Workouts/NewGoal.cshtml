@@ -1,0 +1,62 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Regimen_Models.WorkoutGoal
+
+@{
+    ViewBag.Title = "New Goal";
+}
+
+<div class="container">
+    <h2>Create New Goal</h2>
+
+    @if (ViewBag.Message != null)
+    {
+        <div class="alert alert-info">
+            @ViewBag.Message
+        </div>
+    }
+
+    @using (Html.BeginForm("NewGoal", "Workouts", FormMethod.Post, new { @class = "form-horizontal" }))
+    {
+        @Html.AntiForgeryToken()
+
+        <div class="form-group">
+            @Html.LabelFor(model => model.GoalName, htmlAttributes: new { @class = "control-label col-md-2" })
+            <div class="col-md-10">
+                @Html.TextBoxFor(model => model.GoalName, new { @class = "form-control" })
+                @Html.ValidationMessageFor(model => model.GoalName, "", new { @class = "text-danger" })
+            </div>
+        </div>
+
+        <div class="form-group">
+            @Html.LabelFor(model => model.GoalDescription, htmlAttributes: new { @class = "control-label col-md-2" })
+            <div class="col-md-10">
+                @Html.TextAreaFor(model => model.GoalDescription, new { @class = "form-control", rows = 4 })
+                @Html.ValidationMessageFor(model => model.GoalDescription, "", new { @class = "text-danger" })
+            </div>
+        </div>
+
+        <div class="form-group">
+            @Html.Label("Workout", htmlAttributes: new { @class = "control-label col-md-2" })
+            <div class="col-md-10">
+                @Html.DropDownList("WorkoutID", (SelectList)ViewBag.Workouts, "Select Workout", new { @class = "form-control" })
+                @Html.ValidationMessageFor(model => model.WorkoutID, "", new { @class = "text-danger" })
+            </div>
+        </div>
+
+        <div class="form-group">
+            @Html.LabelFor(model => model.GoalCount, htmlAttributes: new { @class = "control-label col-md-2" })
+            <div class="col-md-10">
+                @Html.TextBoxFor(model => model.GoalCount, new { @class = "form-control", type = "number", min = "1" })
+                @Html.ValidationMessageFor(model => model.GoalCount, "", new { @class = "text-danger" })
+            </div>
+        </div>
+
+        <input type="hidden" name="StudentID" value="@ViewBag.Student.StudentID" />
+
+        <div class="form-group">
+            <div class="col-md-10 col-md-offset-2">
+                <button type="submit" class="btn btn-primary">Create Goal</button>
+                <a href="@Url.Action("Index", "Home")" class="btn btn-secondary">Cancel</a>
+            </div>
+        </div>
+    }
+</div>

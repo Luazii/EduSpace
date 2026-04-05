@@ -1,0 +1,32 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Gym_Models.Plans
+@{
+    ViewBag.Title = "Choose Your Plan";
+}
+
+<div class="container mt-5">
+    <div class="row">
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title">@ViewBag.BasicPlan.PlanName.ToString()</h3>
+                    <p class="card-text">Access to fitness tracking features without the meal planner.</p>
+                    <h4 class="text-success">@ViewBag.BasicPlan.PlanCost.ToString("C")/month</h4>
+                    <a href="@Url.Action("Create", "Memberships", new { tier = "Basic" })" class="btn btn-lg btn-primary mt-3">Choose Basic</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title">@ViewBag.PremiumPlan.PlanName.ToString()</h3>
+                    <p class="card-text">Full access to all features, including the meal planner and personal trainers.</p>
+                    <h4 class="text-success">@ViewBag.PremiumPlan.PlanCost.ToString("C")/month</h4>
+                    <a href="@Url.Action("Create", "Memberships", new { tier = "Premium" })" class="btn btn-lg btn-primary mt-3">Choose Premium</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

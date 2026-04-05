@@ -1,0 +1,211 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Store_Models.Product>
+
+@{
+
+    // Retrieve the cart from session or initialize an empty one
+    var cart = Session["Cart"] as List<LearniVerseNew.Models.ApplicationModels.Store_Models.CartItem> ?? new List<LearniVerseNew.Models.ApplicationModels.Store_Models.CartItem>();
+
+    // Calculate the total number of items in the cart
+    var cartItemCount = cart.Sum(item => item.Quantity);
+}
+
+<div class="container">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" id="stockAlert" style="display:none;">
+        <strong>Error!</strong> You can't add more than the available stock.
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <!-- Shopping Cart Button -->
+    <div id="cartButton" class="position-fixed top-0 end-0 m-3">
+        <a href="@Url.Action("Cart", "Products")" class="btn btn-primary position-relative">
+            <i class="bi bi-cart"></i> Cart
+            <span id="cartCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-secondary">
+                @ViewBag.CartCount
+            </span>
+            <span class="visually-hidden">items in cart</span>
+        </a>
+    </div>
+
+    <!-- Suggested Product Modal -->
+    <div class="modal fade bg-opacity-50" id="suggestedProductModal" tabindex="-1" aria-labelledby="suggestedProductModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="suggestedProductModalLabel">Check this out!</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body d-flex">
+                    @if (ViewBag.SuggestedProduct != null)
+                    {
+                        var suggestedProduct = ViewBag.SuggestedProduct;
+
+                        <!-- Product Image -->
+                        <div class="col-md-4">
+                            <img src="@suggestedProduct.ImageUrl" alt="@suggestedProduct.ProductName" class="img-fluid rounded" style="max-width: 100%; height: auto;" />
+                        </div>
+
+                        <!-- Product details -->
+                        <div class="col-md-8 d-flex flex-column justify-content-center ms-2">
+                            <h2>@suggestedProduct.ProductName</h2>
+                            <p>@suggestedProduct.Description</p>
+                            <p><strong>Price:</strong> @suggestedProduct.Price.ToString("C")</p>
+
+                            <!-- Button to view product details -->
+                            <a href="@Url.Action("ViewProduct", "Products", new { id = suggestedProduct.ProductID })" class="btn btn-primary mt-3">
+                                View Product
+                            </a>
+
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Search Bar -->
+    <div class="mb-3">
+        @using (Html.BeginForm("Storefront", "Products", FormMethod.Get))
+        {
+            <input type="text" name="searchTerm" placeholder="Search products..." class="form-control" value="@Request.QueryString["searchTerm"]" />
+        }
+    </div>
+
+    <!-- Category Filter -->
+    <div class="mb-3">
+        @using (Html.BeginForm("Storefront", "Products", FormMethod.Get))
+        {
+            <select name="categoryId" class="form-control" onchange="this.form.submit()">
+                <option value="">All Categories</option>
+                @foreach (var category in ViewBag.Categories)
+                {
+                    <option value="@category.Value" @(category.Value == Request.QueryString["categoryId"] ? "selected" : "")>
+                        @category.Text
+                    </option>
+                }
+            </select>
+        }
+    </div>
+
+
+
+
+    <div class="row">
+        @foreach (var product in Model)
+        {
+
+            var averageRating = product.Reviews.Any() ? product.Reviews.Average(r => r.Rating) : 0;
+
+            <div class="col-md-4">
+                <div class="card mb-4 shadow-sm">
+                    <img src="@product.ImageUrl" class="card-img-top" alt="@product.ProductName" style="height: 200px; object-fit: contain;" />
+                    <div class="card-body">
+                        <h5 class="card-title">@product.ProductName</h5>
+                        <p class="card-text">@product.Description</p>
+                        <p><strong>Price:</strong> @product.Price.ToString("C")</p>
+                        <p><strong>In Stock:</strong> <span class="product-stock">@product.QuantityInStock</span></p> <!-- Stock info -->
+                        <p>
+                        <p>
+                            <strong>Rating: </strong>
+                            @if (product.Reviews.Any())
+                            {
+                                for (var i = 1; i <= 5; i++)
+                                {
+                                    <i class="fa fa-star @(i <= averageRating ? "text-warning" : "text-muted")"></i>
+                                }
+                                <span> @averageRating.ToString("0.0")/5</span>
+                            }
+                            else
+                            {
+                                <span>No reviews yet</span>
+                            }
+                        </p>
+
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="btn-group">
+                                <a href="@Url.Action("ViewProduct", "Products", new { id = product.ProductID })" class="btn btn-sm btn-outline-primary">View</a>
+
+                                @if (product.QuantityInStock > 0)
+                                {
+                                    <form class="add-to-cart-form" data-product-id="@product.ProductID">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Add to Cart</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="text-primary">Out of Stock!</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+
+    <script>
+    $(document).ready(function () {
+        // Check if the suggested product modal has been shown in the session
+        if (!sessionStorage.getItem('suggestedProductShown')) {
+            // Show the modal if it hasn't been shown before
+            $('#suggestedProductModal').modal('show');
+            // Set session storage to avoid showing it again
+            sessionStorage.setItem('suggestedProductShown', 'true');
+        }
+
+        // Handle Add to Cart Form submission
+        $('.add-to-cart-form').on('submit', function (event) {
+            event.preventDefault(); // Prevent default form submission
+
+            var productId = $(this).data('product-id'); // Get the product ID
+            var form = $(this); // Reference to the form
+            var availableStock = parseInt($(this).closest('.card').find('.product-stock').text()); // Fetch stock from the view
+            var requestedQuantity = 1; // Default value for now (could be adjusted based on user input)
+
+            // Check if the requested quantity exceeds available stock
+            if (requestedQuantity > availableStock) {
+                $('#stockAlert').show();  // Show Bootstrap alert for insufficient stock
+                return;  // Prevent adding to cart
+            }
+
+            // Proceed with adding to cart via AJAX
+            $.ajax({
+                url: '@Url.Action("AddToCart", "Products")', // Adjust to your actual route
+                method: 'POST',
+                data: { productId: productId, quantity: requestedQuantity },
+                success: function (response) {
+                    if (response.success) {
+                        // Update the cart count dynamically
+                        $('#cartCount').text(response.cartCount);
+
+                        // Show visual feedback for successful add to cart
+                        form.find('button').text('Added!').prop('disabled', true);
+                        setTimeout(function () {
+                            form.find('button').text('Add to Cart').prop('disabled', false);
+                        }, 2000); // Reset the button after 2 seconds
+
+                        // Optionally, show a success alert (Bootstrap)
+                        $('#successMessage').text('Product added to cart!').addClass('alert-success').fadeIn();
+                        setTimeout(function () {
+                            $('#successMessage').fadeOut();
+                        }, 3000); // Auto-hide after 3 seconds
+                    } else {
+                        // Show an error message if adding fails
+                        $('#errorMessage').text(response.message).addClass('alert-danger').fadeIn();
+                        setTimeout(function () {
+                            $('#errorMessage').fadeOut();
+                        }, 3000);
+                    }
+                },
+                error: function () {
+                    alert('An error occurred while adding the item to the cart.'); // Default error handler
+                }
+            });
+        });
+    });
+    </script>
+
+}

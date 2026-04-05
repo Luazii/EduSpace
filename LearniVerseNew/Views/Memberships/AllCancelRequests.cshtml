@@ -1,0 +1,66 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Gym_Models.SubscriptionCancellationRequest>
+
+@{
+    ViewBag.Title = "All Cancel Requests";
+}
+
+<div class="container mt-5">
+    <h2 class="mb-4">Cancel Requests</h2>
+
+    <!-- Search Form -->
+    <form method="get" action="@Url.Action("AllCancelRequests", "Memberships")" class="form-inline mb-4">
+        <input type="text" name="searchEmail" class="form-control mr-2 mb-2" placeholder="Search by Student Email" value="@Request.QueryString["searchEmail"]" />
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info" role="alert">
+            No requests available.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Plan Name</th>
+                        <th>Student Name</th>
+                        <th>Membership Tier</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Duration (Months)</th>
+                        <th>Price</th>
+                        <th>Paid</th>
+                        <th>Active</th>
+                        <th>Request Date</th>
+                        <th>Request Status</th>
+                        <th>Reason</th>
+                       
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Membership.Plan.PlanName</td>
+                            <td>@item.Student.StudentFirstName @item.Student.StudentLastName</td>
+                            <td>@item.Membership.MembershipTier</td>
+                            <td>@item.Membership.MembershipStart.ToShortDateString()</td>
+                            <td>@item.Membership.MembershipEnd.ToShortDateString()</td>
+                            <td>@item.Membership.MembershipDuration</td>
+                            <td>@item.Membership.MembershipPrice.ToString("C")</td>
+                            <td>@(item.Membership.HasPaid ? "Yes" : "No")</td>
+                            <td>@(item.Membership.IsActive ? "Yes" : "No")</td>
+                            <td>@item.RequestDate.ToShortDateString()</td>
+                            <td>@item.RequestStatus</td>
+                            <td>@item.Reason</td>
+                           
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

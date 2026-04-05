@@ -1,0 +1,63 @@
+﻿@model List<LearniVerseNew.Models.ApplicationModels.Enrollment>
+
+@{
+    ViewBag.Title = "My Enrollments";
+}
+
+<div class="container mt-5">
+    <h2 class="mb-4">My Enrollments</h2>
+
+    @if (Model.Count == 0)
+    {
+        <p>You have no enrollments.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Enrollment ID</th>
+                        <th>Enrollment Date</th>
+                        <th>Is Approved</th>
+                        <th>Has Paid</th>
+                        <th>Action</th>
+                        <th>View Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var enrollment in Model)
+                    {
+                        <tr>
+                            <td>@enrollment.EnrollmentID</td>
+                            <td>@enrollment.EnrollmentDate.ToShortDateString()</td>
+                            <td>@(enrollment.IsApproved ? "Yes" : "No")</td>
+                            <td>@(enrollment.HasPaid ? "Yes" : "No")</td>
+                            <td>
+                                @if (enrollment.IsApproved && enrollment.HasPaid == false)
+                                {
+                                    using (Html.BeginForm("Pay", "Enrollments", new { enrollmentId = enrollment.EnrollmentID }, FormMethod.Post))
+                                    {
+                                        @Html.AntiForgeryToken()
+                                        <input type="submit" value="Pay" class="btn btn-success" />
+                                    }
+                                }
+                                else if (enrollment.IsApproved && enrollment.HasPaid)
+                                {
+                                    <span class="text-muted">Payment received in full</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Pending Approval</span>
+                                }
+                            </td>
+                            <td>
+                                <a href="@Url.Action("EnrollmentDetails", "Enrollments", new { enrollmentId = enrollment.EnrollmentID })" class="btn btn-primary">View Details</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

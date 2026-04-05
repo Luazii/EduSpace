@@ -1,0 +1,203 @@
+﻿@using LearniVerseNew.Models.ApplicationModels.Regimen_Models;
+<div class="container">
+    @if (ViewBag.Student != null)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-danger-subtle">
+                <h4>@ViewBag.Student.StudentFirstName's Workouts</h4>
+            </div>
+            <div class="card-body">
+                @if (ViewBag.Regimen != null)
+                {
+                    <div class="row">
+                        <!-- Card for Workout Goals -->
+                        <div class="col-md-12 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-info-subtle d-flex justify-content-between align-items-center">
+                                    <h4>Workout Goals</h4>
+                                    <div>
+                                        <a href="@Url.Action("ViewAllGoals", "Workouts")" class="btn btn-info btn-sm">
+                                            View All Goals
+                                        </a>
+                                        <a href="@Url.Action("NewGoal", "Workouts")" class="btn btn-primary btn-sm">
+                                            Add New Goal
+                                        </a>
+                                    </div>
+                                   
+                                </div>
+                                <div class="card-body">
+                                    @if (ViewBag.WorkoutGoals != null && ((List<WorkoutGoal>)ViewBag.WorkoutGoals).Count > 0)
+                                    {
+                                        <div class="list-group">
+                                            @foreach (var goal in (IEnumerable<WorkoutGoal>)ViewBag.WorkoutGoals)
+                                            {
+                                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h5>@goal.GoalName</h5>
+                                                        <p>@goal.GoalDescription</p>
+                                                        <p><strong>Target:</strong> @goal.GoalCount times</p>
+                                                        <p><strong>Progress:</strong> @(goal.IsCompleted ? "Completed" : $"{goal.GoalCount - goal.Workout.TimesTrained} remaining")</p>
+                                                    </div>
+                                                    <span class="badge bg-secondary rounded-pill">
+                                                        @if (goal.Workout.TimesTrained == goal.GoalCount)
+                                                        {
+                                                            <span>Completed!</span>
+                                                            <button class="btn btn-success btn-sm mark-completed-btn" data-goal-id="@goal.GoalID">Mark as Completed</button>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span>Not Completed</span>
+
+                                                        }
+                                                    </span>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-info">
+                                            No workout goals set.
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card for Regimen -->
+                        <div class="col-md- mb-4">
+                            <div class="card">
+                                <div class="card-header bg-danger-subtle">
+                                    <h4>@ViewBag.Regimen.Name</h4>
+                                    <p><strong>Created on:</strong> @ViewBag.Regimen.DateCreated.ToShortDateString()</p>
+                                    <a href="@Url.Action("CreateRegimen", "Workouts")" class="btn btn-primary btn-sm mb-2">
+                                        New Regimen
+                                    </a>
+                                </div>
+                                <div class="card-body">
+                                    @if (ViewBag.Workouts != null && ViewBag.Workouts.Count > 0)
+                                    {
+                                        <div class="row">
+                                            @foreach (var dayGroup in ((IEnumerable<Workout>)ViewBag.Workouts)
+                                                .GroupBy(w => w.DayOfWeek)
+                                                .OrderBy(g => g.Key))
+                                            {
+                                                <div class="col-md-4 mb-4">
+                                                    <div class="card">
+                                                        <div class="card-header bg-danger-subtle">
+                                                            <h5>@dayGroup.Key</h5>
+                                                        </div>
+                                                        <div class="card-body">
+                                                            @foreach (var workout in dayGroup)
+                                                            {
+                                                                <h6>@workout.Name</h6>
+                                                                <p><strong>Times Trained:</strong> @workout.TimesTrained</p>
+
+                                                                <a href="@Url.Action("ViewWorkout", "Workouts", new { id = workout.WorkoutID })" class="btn btn-primary btn-sm mb-2">
+                                                                    View Workout
+                                                                </a>
+
+                                                                <ul class="list-group">
+                                                                    @foreach (var exercise in workout.Excercises)
+                                                                    {
+                                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                                            @exercise.Name - @exercise.Sets sets x @exercise.Reps reps
+                                                                            <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#instructionsModal-@exercise.ExceciseID">
+                                                                                Info
+                                                                            </button>
+                                                                        </li>
+                                                                    }
+                                                                </ul>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="alert alert-info">
+                                            No workouts found in this regimen.
+                                        </div>
+                                        <div class="col-1">
+                                            <a href="@Url.Action("CreateWorkout", "Workouts")" class="btn btn-primary btn-sm">Add Workout</a>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-info">
+                        No regimen found for this student.
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            Student not found.
+        </div>
+    }
+
+    <!-- Modals for Instructions -->
+    @if (ViewBag.Workouts != null)
+    {
+        foreach (var workout in (IEnumerable<Workout>)ViewBag.Workouts)
+        {
+            foreach (var exercise in workout.Excercises)
+            {
+                <div class="modal fade" id="instructionsModal-@exercise.ExceciseID" tabindex="-1" aria-labelledby="instructionsModalLabel-@exercise.ExceciseID" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="instructionsModalLabel-@exercise.ExceciseID">@exercise.Name - Instructions</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>@exercise.Instructions</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    }
+</div>
+
+@section Scripts {
+    <script>
+        $('.mark-completed-btn').click(function () {
+    var goalId = $(this).data('goal-id');
+    console.log("Goal ID:", goalId); // Debugging line
+
+    $.ajax({
+        url: '@Url.Action("MarkGoalCompleted", "Workouts")',
+        type: 'POST',
+        data: JSON.stringify({ goalId: goalId }), // Ensure data is in JSON format
+        contentType: 'application/json; charset=utf-8', // Set the content type
+        success: function (result) {
+            console.log("Success:", result); // Debugging line
+            if (result.success) {
+                alert('Completed Check Your Email');
+                location.reload(); // Reload the page to show the updated status
+            } else {
+                alert('Failed to mark goal as completed.');
+            }
+        },
+        error: function (xhr, status, error) {
+            console.error('AJAX Error:', status, error); // Debugging line
+            alert('An error occurred while marking the goal as completed.');
+        }
+    });
+});
+    </script>
+}

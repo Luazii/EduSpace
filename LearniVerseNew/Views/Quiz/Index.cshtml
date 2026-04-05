@@ -1,0 +1,58 @@
+@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Quiz>
+
+@{
+    ViewBag.Title = "My Quizzes";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">My Quizzes</h2>
+        <a href="@Url.Action("Create", "Quiz")" class="btn btn-primary">+ Create Quiz</a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">You have not created any quizzes yet.</div>
+    }
+    else
+    {
+        <table class="table table-bordered table-striped align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Description</th>
+                    <th>Course</th>
+                    <th>Date</th>
+                    <th>Window</th>
+                    <th>Max Mark</th>
+                    <th>Attempts</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var quiz in Model)
+                {
+                    <tr>
+                        <td>@quiz.QuizDescription</td>
+                        <td>@quiz.Course?.CourseName</td>
+                        <td>@quiz.QuizDate.ToString("yyyy-MM-dd")</td>
+                        <td>@quiz.QuizStart.ToString(@"hh\:mm") – @quiz.QuizEnd.ToString(@"hh\:mm")</td>
+                        <td>@quiz.QuizMaxMark</td>
+                        <td>@quiz.MaxAttempts</td>
+                        <td>
+                            <span class="badge @(quiz.Status == "Published" ? "bg-success" : "bg-secondary")">
+                                @quiz.Status
+                            </span>
+                        </td>
+                        <td class="text-nowrap">
+                            <a href="@Url.Action("AddQuestions", "Quiz", new { QuizID = quiz.QuizID })" class="btn btn-sm btn-outline-primary me-1">Questions</a>
+                            <a href="@Url.Action("QuizResults",  "Quiz", new { QuizID = quiz.QuizID })" class="btn btn-sm btn-outline-success me-1">Results</a>
+                            <a href="@Url.Action("Edit",         "Quiz", new { id     = quiz.QuizID })" class="btn btn-sm btn-outline-secondary me-1">Edit</a>
+                            <a href="@Url.Action("Delete",       "Quiz", new { id     = quiz.QuizID })" class="btn btn-sm btn-outline-danger">Delete</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

@@ -1,0 +1,86 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Gym_Models.Membership
+
+@{
+    ViewBag.Title = "Review Membership";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header text-center bg-primary text-white">
+                    <h2>Review Your Membership</h2>
+                </div>
+                <div class="card-body">
+                    <h4 class="text-center mb-4">Membership Details</h4>
+                    <hr />
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold">Plan Name:</h5>
+                            <p class="text-muted">@Model.MembershipTier</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold">Plan Cost:</h5>
+                            <p class="text-muted">@Model.MembershipPrice.ToString("C")</p>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold">Plan Duration:</h5>
+                            <p class="text-muted">@Model.MembershipDuration months</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold">Start Date:</h5>
+                            <p class="text-muted">@Model.MembershipStart.ToString("D")</p>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold">End Date:</h5>
+                            <p class="text-muted">@Model.MembershipEnd.ToString("D")</p>
+                        </div>
+                    </div>
+
+                    <h4 class="text-center mt-5 mb-4">Student Details</h4>
+                    <hr />
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold">Student Name:</h5>
+                            <p class="text-muted">@Model.Student.StudentFirstName @Model.Student.StudentLastName</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold">Student Email:</h5>
+                            <p class="text-muted">@Model.Student.StudentEmail</p>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+
+
+                        @using (Html.BeginForm("Subscribe", "Memberships", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+
+                            <!-- Hidden fields to pass email and planName -->
+                            @Html.Hidden("email", Model.Student.StudentEmail)
+                            @Html.Hidden("planName", Model.MembershipTier)
+
+                            <div class="text-center mt-4">
+                                <button type="submit" class="btn btn-success btn-lg">Proceed to Payment</button>
+                            </div>
+                        }
+
+
+                    </div>
+
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                @Html.ActionLink("Back to Plans", "Plans", null, new { @class = "btn btn-secondary" })
+            </div>
+        </div>
+    </div>
+</div>

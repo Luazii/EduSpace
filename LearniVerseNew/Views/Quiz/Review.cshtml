@@ -1,0 +1,64 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Quiz
+
+<h2>@Model.QuizDescription</h2>
+<hr />
+<h1>Review</h1>
+
+@foreach (var question in Model.Questions)
+{
+    <div class="question">
+        <h3>Question @question.QuestionNumber</h3>
+        <p>@question.QuestionText</p>
+
+        <ul>
+            <li>A: @question.AnswerA</li>
+            <li>B: @question.AnswerB</li>
+            <li>C: @question.AnswerC</li>
+            <li>D: @question.AnswerD</li>
+        </ul>
+        @if (ViewBag.Answers.ContainsKey(question.QuestionID))
+        {
+            var chosenAnswer = ViewBag.Answers[question.QuestionID];
+            <p>Your Answer: @chosenAnswer</p>
+        }
+        <hr />
+    </div>
+}
+
+@using (Html.BeginForm("MarkQuiz", "Quiz", FormMethod.Post, new { @class = "form-inline", id = "quizForm" }))
+{
+    <button type="submit" class="btn btn-success">Submit</button>
+}
+
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jquery")
+<script>
+    $(document).ready(function () {
+    var quizSubmitted = @Html.Raw(Json.Encode(Session["quizSubmitted"] != null ? Session["quizSubmitted"].ToString() : "null"));
+
+    
+    window.addEventListener('popstate', function (event) {
+        if (quizSubmitted) {
+            
+            var confirmation = confirm("Leaving this page will submit your quiz attempt. Are you sure you want to leave?");
+            if (confirmation) {
+                
+            } else {
+                
+                history.pushState(true, '');
+            }
+        }
+    });
+    });
+
+    
+    window.history.pushState({}, '');
+
+    
+    document.getElementById("quizForm").addEventListener('submit', function () {
+        quizSubmitted = true;
+        window.history.replaceState(null, null, window.location.href);
+    });
+</script>
+}

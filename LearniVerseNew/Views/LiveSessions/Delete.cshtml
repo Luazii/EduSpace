@@ -1,0 +1,32 @@
+@model LearniVerseNew.Models.ApplicationModels.LiveSession
+
+@{
+    ViewBag.Title = "Delete Session";
+}
+
+<div class="container mt-4" style="max-width:520px">
+    <h2 class="mb-4">Delete Live Session</h2>
+
+    <div class="alert alert-warning">
+        Are you sure you want to delete <strong>@Model.Title</strong>?
+    </div>
+
+    <dl class="row mb-4">
+        <dt class="col-sm-4">Course</dt>
+        <dd class="col-sm-8">@Model.Course?.CourseName</dd>
+        <dt class="col-sm-4">Start</dt>
+        <dd class="col-sm-8">@Model.StartTime.ToString("yyyy-MM-dd HH:mm")</dd>
+        <dt class="col-sm-4">End</dt>
+        <dd class="col-sm-8">@Model.EndTime.ToString("HH:mm")</dd>
+        <dt class="col-sm-4">Status</dt>
+        <dd class="col-sm-8">@Model.Status</dd>
+    </dl>
+
+    @using (Html.BeginForm("Delete", "LiveSessions", new { id = Model.LiveSessionID }, FormMethod.Post))
+    {
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-danger me-2">Yes, Delete</button>
+        <a href="@Url.Action("Index", "LiveSessions", new { courseId = Model.CourseID })"
+           class="btn btn-outline-secondary">Cancel</a>
+    }
+</div>

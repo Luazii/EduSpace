@@ -1,0 +1,56 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Trainer_Models.TrainingSession>
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>@TempData["ErrorMessage"]</strong> 
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<h2>Available Sessions for @DateTime.Today.ToString("MMMM dd, yyyy")</h2>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Session Name</th>
+            <th>Trainer</th>
+            <th>Start Time</th>
+            <th>Duration</th>
+            <th>Participants</th>
+            <th>Max Participants</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var session in Model)
+        {
+            <tr>
+                <td>@session.SessionName</td>
+                <td>@session.Trainer.FirstName @session.Trainer.LastName</td>
+                <td>@session.SessionStart</td>
+                <td>@session.Duration minutes</td>
+                <td>@session.Participants.Count / @session.MaxParticipants</td>
+                <td>@session.MaxParticipants</td>
+                <td>
+                    @if (session.Participants.Count >= session.MaxParticipants)
+                    {
+                        <span class="text-danger">Session Full</span>
+                    }
+                    else
+                    {
+
+                        using (Html.BeginForm("JoinSession", "TrainingSessions", FormMethod.Post))
+                        {
+                            @Html.AntiForgeryToken()
+
+                            @Html.Hidden("sessionId", session.TrainingSessionID)
+                            <button type="submit" class="btn btn-primary">Join</button>
+                        }
+
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -1,0 +1,139 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Regimen_Models.Workout
+
+@{
+    ViewBag.Title = "View Workout";
+}
+
+<style>
+    .modal-body img {
+        max-width: 100%;
+        height: auto;
+        max-height: 400px; /* Adjust height as needed */
+    }
+
+    .modal-content {
+        max-width: 90%;
+    }
+</style>
+
+<h2>@Model.Name's Workout Details</h2>
+
+<div class="container">
+    <div class="row">
+        <!-- Workout Details Card -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>@Model.Name</h4>
+                </div>
+                <div class="card-body">
+                    <p><strong>Day of Week:</strong> @Model.DayOfWeek</p>
+                    <p><strong>Times Trained:</strong> @Model.TimesTrained</p>
+                    <p><strong>Regimen:</strong> @Model.Regimen.Name</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exercises Card -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Exercises</h4>
+                </div>
+                <div class="card-body">
+                    @if (Model.Excercises != null && Model.Excercises.Any())
+                    {
+                        <ul class="list-group">
+                            @foreach (var exercise in Model.Excercises)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h5>@exercise.Name</h5>
+                                        <p><strong>Target Muscle:</strong> @Model.Name</p>
+                                        <p><strong>Sets:</strong> @exercise.Sets, <strong>Reps:</strong> @exercise.Reps</p>
+                                    </div>
+                                    <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#instructionModal" data-exercise-id="@exercise.ExceciseID" data-exercise-name="@exercise.Name" data-exercise-instructions="@exercise.Instructions">
+                                        View Instructions
+                                    </button>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p>No exercises found for this workout.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Button to open QR Code Modal -->
+    <div class="row">
+        <div class="col-md-12">
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#qrCodeModal">
+                Mark Attendance
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- QR Code Modal -->
+<div class="modal fade" id="qrCodeModal" tabindex="-1" aria-labelledby="qrCodeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="qrCodeModalLabel">Scan QR Code to Mark Attendance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="@Url.Action("GenerateAttendanceQRCode", "Workouts", new { studentId = ViewBag.StudentId, workoutId = Model.WorkoutID })" alt="QR Code" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Instructions Modal -->
+<div class="modal fade" id="instructionModal" tabindex="-1" aria-labelledby="instructionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="instructionModalLabel">Exercise Instructions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h5 id="instructionModalExerciseName"></h5>
+                <p id="instructionModalInstructions"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            var instructionModal = new bootstrap.Modal(document.getElementById('instructionModal'));
+
+            document.querySelectorAll('[data-bs-toggle="modal"][data-bs-target="#instructionModal"]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var exerciseName = button.getAttribute('data-exercise-name');
+                    var instructions = button.getAttribute('data-exercise-instructions');
+
+                    document.getElementById('instructionModalExerciseName').textContent = exerciseName;
+                    document.getElementById('instructionModalInstructions').textContent = instructions;
+
+                    instructionModal.show();
+                });
+            });
+        });
+    </script>
+}

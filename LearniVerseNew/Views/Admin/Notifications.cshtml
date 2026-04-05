@@ -1,0 +1,63 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.AdminNotification
+
+@{
+    ViewBag.Title = "Notifications";
+    var notifications = (List<LearniVerseNew.Models.ApplicationModels.AdminNotification>)ViewBag.Notifications;
+}
+
+<h2>Notifications</h2>
+
+<!-- Filter Dropdown -->
+<div class="mb-3">
+    @using (Html.BeginForm("Notifications", "Admin", FormMethod.Get))
+    {
+        <label for="filter">Filter Notifications: </label>
+        <select name="filter" id="filter" class="form-control" onchange="this.form.submit()">
+            <option value="Unread" @(ViewBag.CurrentFilter == "Unread" ? "selected" : "")>Unread</option>
+            <option value="Read" @(ViewBag.CurrentFilter == "Read" ? "selected" : "")>Read</option>
+            <option value="All" @(ViewBag.CurrentFilter == "All" ? "selected" : "")>All</option>
+        </select>
+    }
+</div>
+
+<!-- Notification List -->
+@if (notifications.Any())
+{
+    <ul class="list-group">
+        @foreach (var notification in notifications)
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-center @(notification.IsRead ? "list-group-item-secondary" : "list-group-item-primary")">
+                <div>
+                    <i class="bi bi-info-circle"></i> @notification.Message
+                    <small class="text-muted">@notification.CreatedAt.ToString("MM/dd/yyyy hh:mm tt")</small>
+                </div>
+
+                @if (!notification.IsRead)
+                {
+                    using (Html.BeginForm("MarkAsRead", "Admin", FormMethod.Post))
+                    {
+                        @Html.Hidden("notificationId", notification.NotificationID)
+                        <button type="submit" class="btn btn-sm btn-success">
+                            <i class="fa fa-check"></i> Mark as Read
+                        </button>
+                    }
+                }
+
+                @if (!notification.IsRead)
+                {
+                    @Html.ActionLink("Take Action", "Edit", "Products", new { id = notification.ProductID }, new { @class = "btn btn-sm btn-warning" })
+                }
+
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <div class="alert alert-info">No notifications to display.</div>
+}
+
+<!-- Button to view product details -->
+<a href="@Url.Action("Home", "Admin")" class="btn btn-primary mt-3">
+    Back Home
+</a>

@@ -1,0 +1,61 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Store_Models.Product>
+
+@{
+    ViewBag.Title = "Product List";
+}
+
+<h2>Product List</h2>
+
+<!-- Search form -->
+<div class="row mb-4">
+    @using (Html.BeginForm("Index", "Products", FormMethod.Get))
+    {
+        <div class="col-md-4">
+            @Html.Label("Search by Name")
+            <input type="text" name="productName" class="form-control" placeholder="Enter product name" value="@ViewBag.ProductName" />
+        </div>
+        <div class="col-md-4">
+            @Html.Label("Search by Category")
+            @Html.DropDownList("categoryId", ViewBag.Categories as SelectList, "Select a category", new { @class = "form-control" })
+        </div>
+        <div class="col-md-4 mt-4">
+            <input type="submit" value="Search" class="btn btn-primary" />
+            <a href="@Url.Action("Index", "Products")" class="btn btn-secondary">Clear</a>
+        </div>
+    }
+</div>
+
+<p>
+    @Html.ActionLink("Create New", "AddProduct", null, new { @class = "btn btn-success" })
+</p>
+
+<!-- Product list table -->
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>@Html.DisplayNameFor(model => model.First().ProductName)</th>
+            <th>@Html.DisplayNameFor(model => model.First().Price)</th>
+            <th>@Html.DisplayNameFor(model => model.First().Description)</th>
+            <th>@Html.DisplayNameFor(model => model.First().QuantityInStock)</th>
+            <th>@Html.DisplayNameFor(model => model.First().ImageName)</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@Html.DisplayFor(modelItem => item.ProductName)</td>
+                <td>@Html.DisplayFor(modelItem => item.Price)</td>
+                <td>@Html.DisplayFor(modelItem => item.Description)</td>
+                <td>@Html.DisplayFor(modelItem => item.QuantityInStock)</td>
+                <td>@Html.DisplayFor(modelItem => item.ImageName)</td>
+                <td>
+                    @Html.ActionLink("Edit", "Edit", new { id = item.ProductID }, new { @class = "btn btn-primary btn-sm" }) |
+                    @Html.ActionLink("Details", "Details", new { id = item.ProductID }, new { @class = "btn btn-info btn-sm" }) |
+                    @Html.ActionLink("Delete", "Delete", new { id = item.ProductID }, new { @class = "btn btn-danger btn-sm" })
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

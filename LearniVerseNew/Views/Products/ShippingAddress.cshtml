@@ -1,0 +1,37 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Store_Models.Order
+
+@{
+    ViewBag.Title = "Shipping Information";
+}
+
+<h2>Enter Shipping Information</h2>
+
+@using (Html.BeginForm("ConfirmShipping", "Products", FormMethod.Post))
+{
+    @Html.AntiForgeryToken()
+    <div class="form-group">
+        @Html.LabelFor(m => m.ShippingAddress)
+        @Html.TextBoxFor(m => m.ShippingAddress, new { @class = "form-control", placeholder = "Enter your street address" })
+        @Html.ValidationMessageFor(m => m.ShippingAddress)
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.City)
+        @Html.TextBoxFor(m => m.City, new { @class = "form-control", placeholder = "Enter your city" })
+        @Html.ValidationMessageFor(m => m.City)
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.State)
+        @Html.TextBoxFor(m => m.State, new { @class = "form-control", placeholder = "Enter your state" })
+        @Html.ValidationMessageFor(m => m.State)
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.PostalCode)
+        @Html.TextBoxFor(m => m.PostalCode, new { @class = "form-control", placeholder = "Enter your postal code" })
+        @Html.ValidationMessageFor(m => m.PostalCode)
+    </div>
+
+    <button type="submit" class="btn btn-primary">Proceed to Payment</button>
+}

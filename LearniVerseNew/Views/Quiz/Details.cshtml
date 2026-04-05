@@ -1,0 +1,98 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Quiz
+
+@{
+    ViewBag.Title = "Details";
+}
+
+<h2>Details</h2>
+
+<div>
+    <h4>Quiz</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.QuizDescription)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.QuizDescription)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.QuizMaxMark)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.QuizMaxMark)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.QuizDate)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.QuizDate)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.QuizStart)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.QuizStart)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.QuizEnd)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.QuizEnd)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.DateCreated)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.DateCreated)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.MaxAttempts)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.MaxAttempts)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.Status)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.Status)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.TeacherID)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.TeacherID)
+        </dd>
+
+        <dt>
+            @Html.DisplayNameFor(model => model.CourseID)
+        </dt>
+
+        <dd>
+            @Html.DisplayFor(model => model.CourseID)
+        </dd>
+
+    </dl>
+</div>
+<p>
+    @Html.ActionLink("Edit", "Edit", new { id = Model.QuizID }) |
+    @Html.ActionLink("Back to List", "Index")
+</p>

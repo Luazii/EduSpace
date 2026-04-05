@@ -1,0 +1,51 @@
+﻿@{
+    ViewBag.Title = "Learniverse";
+}
+
+<main>
+    <section class="row mb-5" aria-labelledby="learniverseTitle">
+        <h1 id="learniverseTitle">Welcome to Learniverse</h1>
+        <p class="lead">Learniverse is your gateway to a world of learning opportunities. Explore courses, connect with teachers, and enhance your skills.</p>
+        <p>@Html.ActionLink("Get Started", "Register", "Account", null, new { @class = "btn btn-primary btn-md" })</p>
+
+    </section>
+
+    <div id="carouselExampleControls" class="carousel slide mb-4" data-bs-ride="carousel">
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <img src="https://unsplash.com/photos/5QgIuuBxKwM/download?ixid=M3wxMjA3fDB8MXxzZWFyY2h8MTF8fHZpcnR1YWwlMjBsZWFybmluZ3xlbnwwfHx8fDE3MTYxODI2MjZ8MA&force=true&w=1920" class="d-block w-100" alt="First slide">
+            </div>
+            <div class="carousel-item">
+                <img src="https://unsplash.com/photos/-2vD8lIhdnw/download?ixid=M3wxMjA3fDB8MXxzZWFyY2h8Mnx8dmlydHVhbCUyMGxlYXJuaW5nJTIwdW5pdmVyc2l0eXxlbnwwfHx8fDE3MTYxODgwNzZ8MA&force=true&w=1920" class="d-block w-100" alt="Second slide">
+            </div>
+            <div class="carousel-item">
+                <img src="https://unsplash.com/photos/SYTO3xs06fU/download?ixid=M3wxMjA3fDB8MXxzZWFyY2h8MTV8fHZpcnR1YWwlMjBsZWFybmluZyUyMHVuaXZlcnNpdHl8ZW58MHx8fHwxNzE2MTg4MDc2fDA&force=true&w=1920" class="d-block w-100" alt="Third slide">
+            </div>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleControls" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleControls" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+        </button>
+    </div>
+
+
+    <div class="row">
+        <section class="col-md-4" aria-labelledby="coursesTitle">
+            <h2 id="coursesTitle">Discover Courses</h2>
+            <p>Explore our wide range of courses covering various topics and interests. From programming to photography, there's something for everyone.</p>
+            
+        </section>
+        <section class="col-md-4" aria-labelledby="teachersTitle">
+            <h2 id="teachersTitle">Connect with Teachers</h2>
+            <p>Engage with experienced teachers who are passionate about sharing their knowledge and helping you succeed.</p>
+        </section>
+        <section class="col-md-4" aria-labelledby="skillsTitle">
+            <h2 id="skillsTitle">Enhance Your Skills</h2>
+            <p>Take your skills to the next level with our interactive learning platform. Practice, learn, and grow at your own pace.</p>
+        </section>
+    </div>
+</main>

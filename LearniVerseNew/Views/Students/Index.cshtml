@@ -1,0 +1,86 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Student>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 border-start border-end">
+            <h1>Filter</h1>
+            <hr />
+            @using (Html.BeginForm("Index", "Students", FormMethod.Get))
+            {
+                <div class="form-group">
+                    @Html.Label("Search by Name:")
+                    @Html.TextBox("searchName", null, new { @class = "form-control" })
+                </div>
+                <button type="submit" class="btn btn-info mt-2">Search</button>
+            }
+        </div>
+        <div class="col-md-10">
+            <h1>Students</h1>
+            <hr />
+            @if (Model.Any())
+            {
+                <table class="table">
+                    <tr>
+                        <th>
+                            @Html.DisplayNameFor(model => model.StudentFirstName)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.StudentLastName)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.StudentEmail)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.PhoneNumber)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Gender)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.DOB)
+                        </th>
+                        <th></th>
+                    </tr>
+
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.StudentFirstName)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.StudentLastName)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.StudentEmail)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.PhoneNumber)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.Gender)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.DOB)
+                            </td>
+                            <td>
+                                @Html.ActionLink("Details", "Details", new { id = item.StudentID }) |
+                                @Html.ActionLink("Delete", "Delete", new { id = item.StudentID })
+                            </td>
+                        </tr>
+                    }
+                </table>
+            }
+            else
+            {
+                <div class="alert alert-danger" role="alert">
+                    No students found.
+                </div>
+            }
+        </div>
+    </div>
+</div>

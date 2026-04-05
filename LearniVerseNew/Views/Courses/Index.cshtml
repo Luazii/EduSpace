@@ -1,0 +1,100 @@
+﻿@model IEnumerable<LearniVerseNew.Models.ApplicationModels.Course>
+
+@{
+    ViewBag.Title = "Index";
+}
+
+<div class="container-fluid">
+    <div class="row">
+
+        <div class="col-md-2 border-start border-end sticky-top">
+            <h1>Filter</h1>
+
+            @using (Html.BeginForm("Index", "Courses", FormMethod.Get))
+            {
+                <div class="form-group mb-2">
+                    @Html.Label("Search by Department:")
+                    @Html.DropDownList("searchDepartment", new SelectList(ViewBag.Departments, "Value", "Text"), "Select Department", new { @class = "form-control" })
+                </div>
+                <div class="form-group mb-2">
+                    @Html.Label("Search by Course Name:")
+                    @Html.TextBox("searchCourseName", null, new { @class = "form-control", placeholder = "Enter course name" })
+                </div>
+                <div class="form-group mb-2">
+                    @Html.Label("Search by Course ID:")
+                    @Html.TextBox("searchCourseCode", null, new { @class = "form-control", placeholder = "Enter course code" })
+                </div>
+                <button type="submit" class="btn btn-primary">Search</button>
+            }
+        </div>
+
+
+        <div class="col-md-10">
+            <h1>Courses</h1>
+
+            <div>
+                <a class="btn btn-info" href="@Url.Action("Create")">Create New</a>
+            </div>
+            <hr />
+            @if (Model.Any())
+            {
+
+                <hr />
+                <table class="table">
+                    <tr>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Teacher.TeacherFirstName)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.CourseName)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Description)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Semester)
+                        </th>
+                        <th>
+                            @Html.DisplayNameFor(model => model.Department)
+                        </th>
+                        <th></th>
+                    </tr>
+
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.Teacher.TeacherFirstName)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.CourseName)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.Description)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.Semester)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.Department)
+                            </td>
+                            <td>
+                                @Html.ActionLink("Edit", "Edit", new { id = item.CourseID }) |
+                                @Html.ActionLink("Details", "Details", new { id = item.CourseID }) |
+                                @Html.ActionLink("Delete", "Delete", new { id = item.CourseID })
+                            </td>
+                        </tr>
+                    }
+                </table>
+            }
+            else
+            {
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    No courses found for this department
+                </div>
+            }
+
+
+        </div>
+    </div>
+</div>

@@ -1,0 +1,163 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.MealPlannerViewModel
+@{
+    ViewBag.Title = "Dashboard";
+}
+
+
+@if (!Model.FoodRecords.Any())
+{
+    <div class="text-center mt-5">
+        <h1 class="text-lg">No Records Found</h1>
+        <p>@ViewBag.NoRecords</p>
+        <a href="@Url.Action("RecordMeal", "FoodSearch")" class="btn btn-danger">Create New Meal Record</a>
+    </div>
+}
+
+<h2>@Model.Student.StudentFirstName's Meal Dashboard</h2>
+
+<div class="container">
+
+
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Today's Summary</h3>
+                    <h3>Goal: @Model.BMR kcal</h3>
+                    <p>Date: @Model.TodaysRecord.DateRecorded.ToShortDateString()</p>
+                </div>
+                <div class="card-body">
+                    <div class="row"></div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <img src="https://img.freepik.com/free-psd/flat-design-flames-isolated_23-2150424096.jpg?t=st=1723821774~exp=1723825374~hmac=2c137fea98d7b4f208dd5a049600b0a357acd975440d6346a3e53b12c9a2e2e4&w=740" class="card-img-top" alt="Calories">
+                                <div class="card-body">
+                                    <h4 class="card-title">Total Calories</h4>
+                                    <p class="card-text">@Model.TodaysRecord.Meals.Sum(m => m.FoodItems.Sum(f => f.CaloriesPerServing)) kcal</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <img src="https://img.freepik.com/free-vector/vector-pastel-sliced-bread-food-sticker-clipart_53876-174971.jpg?t=st=1723822340~exp=1723825940~hmac=47a1f36fa5ae4486608047d166181dea1bc471fea557506beb9268d737285559&w=740" class="card-img-top" alt="Carbs">
+                                <div class="card-body">
+                                    <h4 class="card-title">Total Carbs</h4>
+                                    <p class="card-text">@Model.TodaysRecord.Meals.Sum(m => m.FoodItems.Sum(f => f.Carbohydrates)) g</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <img src="https://img.freepik.com/free-vector/protein-shake-illustration_23-2150010874.jpg?t=st=1723821891~exp=1723825491~hmac=53ed012e5126379ef09f1c00df35449fc9df28a5aae9797ce0401c2af135b5e9&w=740" class="card-img-top" alt="Protein">
+                                <div class="card-body">
+                                    <h4 class="card-title">Total Protein</h4>
+                                    <p class="card-text">@Model.TodaysRecord.Meals.Sum(m => m.FoodItems.Sum(f => f.Protein)) g</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card text-center">
+                                <img src="https://img.freepik.com/free-vector/yellow-drop-olive-oil-icon-isolated_24640-134671.jpg?t=st=1723821922~exp=1723825522~hmac=bea6685b986dbe1553747a88a4b140701b955d9ac0e7cc02116c144da517a62c&w=740" class="card-img-top" alt="Fat">
+                                <div class="card-body">
+                                    <h4 class="card-title">Total Fat</h4>
+                                    <p class="card-text">@Model.TodaysRecord.Meals.Sum(m => m.FoodItems.Sum(f => f.Fats)) g</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="row mt-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3>Today's Meals</h3>
+                    <a href="@Url.Action("RecordMeal", "FoodSearch")" class="btn btn-primary">Add New Meal</a>
+                </div>
+                <div class="card-body">
+                    @foreach (var meal in Model.TodaysRecord.Meals.OrderBy(s => s.Name))
+                    {
+                        <div class="card mb-3">
+                            <div class="card-header bg-danger-subtle">
+                                <h4>@meal.Name</h4>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group">
+                                    @foreach (var foodItem in meal.FoodItems)
+                                    {
+                                        <li class="list-group-item">
+                                            @foodItem.FoodName - @foodItem.CaloriesPerServing kcal
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Macronutrient Breakdown</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="macronutrientChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+</div>
+
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript">
+    $(document).ready(function () {
+        var ctx = document.getElementById('macronutrientChart').getContext('2d');
+        var macronutrientChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Carbs', 'Protein', 'Fat'],
+                datasets: [{
+                    data: [
+                        @Html.Raw(Json.Encode(@Model.TodaysRecord.Meals.Sum(m => m.FoodItems.Sum(f => f.Carbohydrates)))),
+                        @Html.Raw(Json.Encode(@Model.TodaysRecord.Meals.Sum(m => m.FoodItems.Sum(f => f.Protein)))),
+                        @Html.Raw(Json.Encode(@Model.TodaysRecord.Meals.Sum(m => m.FoodItems.Sum(f => f.Fats))))
+                    ],
+                    backgroundColor: ['#ffcd56', '#36a2eb', '#ff6384'],
+                    label: 'Macronutrients'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(tooltipItem) {
+                                return tooltipItem.label + ': ' + tooltipItem.raw.toFixed(2) + ' g';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+    </script>
+
+}

@@ -1,0 +1,128 @@
+﻿@{
+    ViewBag.Title = "Food Search";
+}
+
+<!-- Search Form -->
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4">
+            <form id="searchForm" class="card p-3">
+                <h4>Search for Food</h4>
+                <input type="text" id="query" class="form-control mb-2" placeholder="Search for food...">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </form>
+        </div>
+
+        <!-- Search Results -->
+        <div class="col-md-8">
+            <div id="results" class="card p-3">
+                <h4>Search Results</h4>
+                <!-- Results will be appended here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <!-- Selected Foods -->
+        <div class="col-md-8">
+            <div id="selectedFoods" class="card p-3">
+                <h4>Selected Foods for Meal</h4>
+                <ul class="list-group">
+                    <!-- Selected foods will be appended here -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal HTML -->
+    <div id="foodModal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Food Details</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p id="foodDescription"></p>
+                    <label for="servingWeight">Serving Weight (g):</label>
+                    <input type="number" id="servingWeight" class="form-control" placeholder="Enter weight in grams">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="addFoodButton">Add Food</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('#searchForm').on('submit', function (e) {
+                e.preventDefault();
+                var query = $('#query').val();
+
+                $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("Search", "FoodSearch")',
+                    data: { query: query },
+                    success: function (response) {
+                        if (response.success) {
+                            var resultsHtml = '<ul class="list-group">';
+                            $.each(response.data.Foods.Food, function (index, Food) {
+                                resultsHtml += `<li class="list-group-item">${Food.FoodName} - ${Food.FoodDescription} <button class="btn btn-info btn-sm view-food" data-id="${Food.FoodId}" data-name="${Food.FoodName}" data-description="${Food.FoodDescription}">Select</button></li>`;
+                            });
+                            resultsHtml += '</ul>';
+                            $('#results').html(resultsHtml);
+                        } else {
+                            $('#results').html(`<p>${response.message}</p>`);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        $('#results').html(`<p>Error: ${error}</p>`);
+                    }
+                });
+            });
+
+            // Event delegation for dynamically added elements
+            $('#results').on('click', '.view-food', function () {
+                var foodId = $(this).data('id');
+                var foodName = $(this).data('name');
+                var foodDescription = $(this).data('description');
+
+                // Set the modal content
+                $('#foodDescription').text(foodDescription);
+                $('#foodModal').data('foodId', foodId).data('foodName', foodName);
+
+                // Show the modal
+                $('#foodModal').modal('show');
+            });
+
+            // Add food to selected foods list
+            $('#addFoodButton').on('click', function () {
+                var foodId = $('#foodModal').data('foodId');
+                var foodName = $('#foodModal').data('foodName');
+                var servingWeight = $('#servingWeight').val();
+
+                if (servingWeight) {
+                    $('#selectedFoods ul').append(`<li class="list-group-item">${foodName} - ${servingWeight}g <button class="btn btn-danger btn-sm remove-food" data-id="${foodId}">Remove</button></li>`);
+                    $('#foodModal').modal('hide');
+                    $('#servingWeight').val(''); // Clear input field
+                } else {
+                    alert('Please enter a serving weight.');
+                }
+
+            });
+
+            // Event delegation for dynamically added elements
+            $('#selectedFoods').on('click', '.remove-food', function () {
+                $(this).parent().remove();
+            });
+        });
+    </script>
+}

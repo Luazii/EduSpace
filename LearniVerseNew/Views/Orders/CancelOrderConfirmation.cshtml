@@ -1,0 +1,37 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Store_Models.Order
+
+@{
+    ViewBag.Title = "Cancel Order";
+}
+
+<h2>Cancel Order</h2>
+
+<p>Are you sure you want to cancel this order?</p>
+
+<table class="table table-bordered">
+    <tr>
+        <th>Order ID</th>
+        <td>@Model.OrderID</td>
+    </tr>
+    <tr>
+        <th>Date Ordered</th>
+        <td>@Model.DateOrdered.ToString("MM/dd/yyyy")</td>
+    </tr>
+    <tr>
+        <th>Total Price</th>
+        <td>@Model.TotalPrice.ToString("C")</td>
+    </tr>
+    <tr>
+        <th>Status</th>
+        <td>@(Model.IsDelivered ? "Delivered" : "Pending")</td>
+    </tr>
+</table>
+
+<!-- Confirm and Cancel Buttons -->
+@using (Html.BeginForm("ConfirmCancelOrder", "Orders", FormMethod.Post))
+{
+    @Html.Hidden("orderId", Model.OrderID)
+
+    <button type="submit" class="btn btn-danger">Confirm Cancel Order</button>
+    <a href="@Url.Action("OrderHistory")" class="btn btn-secondary">Back to Order History</a>
+}

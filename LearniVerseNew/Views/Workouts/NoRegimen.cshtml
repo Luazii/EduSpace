@@ -1,0 +1,12 @@
+﻿
+@{
+    ViewBag.Title = "No Regimen Found";
+}
+
+<div class="text-center mt-5">
+    <h1 class="text-lg">No Regimens Found</h1>
+    <p>@ViewBag.Message</p>
+    <a href="@Url.Action("CreateRegimen", "Workouts")" class="btn btn-danger">Let's Go!</a>
+    <a href="@Url.Action("MembershipHome", "Home")" class="btn btn-outline-info">Go Back</a>
+</div>
+

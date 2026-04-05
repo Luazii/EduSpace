@@ -1,0 +1,267 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Store_Models.Product
+
+@{
+
+    // Retrieve the cart from session or initialize an empty one
+    var cart = Session["Cart"] as List<LearniVerseNew.Models.ApplicationModels.Store_Models.CartItem> ?? new List<LearniVerseNew.Models.ApplicationModels.Store_Models.CartItem>();
+
+    // Calculate the total number of items in the cart
+    var cartItemCount = cart.Sum(item => item.Quantity);
+}
+
+<style>
+    .fa-star {
+        font-size: 24px;
+        color: gray;
+    }
+
+        .fa-star.checked {
+            color: gold;
+        }
+</style>
+
+<div class="container mt-5">
+    <!-- Success Message -->
+    <div id="successMessage" class="alert alert-success mt-4" style="display: none;">
+        Product added to cart!
+    </div>
+    <!-- Shopping Cart Button -->
+    <div id="cartButton" class="position-fixed top-0 end-0 m-3">
+        <a href="@Url.Action("Cart", "Products")" class="btn btn-primary position-relative">
+            <i class="bi bi-cart"></i> Cart
+            <span id="cartCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-secondary">
+                @ViewBag.CartCount
+            </span>
+            <span class="visually-hidden">items in cart</span>
+        </a>
+    </div>
+    <div class="row">
+        <!-- Product Image -->
+        <div class="col-md-6">
+            <img src="@Model.ImageUrl" alt="@Model.ProductName" class="img-fluid rounded shadow-sm" style="max-width: 100%; height: auto;">
+        </div>
+
+        <!-- Product Details -->
+        <div class="col-md-6">
+            <h1 class="display-4">@Model.ProductName</h1>
+            <p class="lead">@Model.Description</p>
+            <p><strong>Price: </strong> @Model.Price.ToString("C")</p>
+
+            <!-- Quantity Input -->
+            <form id="addToCartForm" class="mt-4">
+                <input type="hidden" name="productId" value="@Model.ProductID" />
+
+                <div class="form-group">
+                    <label for="quantity">Quantity:</label>
+                    <input type="number" name="quantity" id="quantity" class="form-control" value="1" min="1" max="99" />
+                </div>
+
+                <!-- Add to Cart Button -->
+                @if (Model.QuantityInStock > 0)
+                {
+
+
+                <button type="submit" class="btn btn-primary mt-3">Add to Cart</button>
+                }
+                else
+                {
+                    <span class="text-primary mt-1">Out of Stock!</span>
+                }
+                </form>
+
+            <!-- Back to Storefront Button -->
+            <a href="@Url.Action("Storefront", "Products")" class="btn btn-secondary mt-3">Back to Store</a>
+        </div>
+    </div>
+
+
+
+    <div class="mt-5">
+        <h3 class="mb-4">Product Reviews</h3>
+
+        <!-- Review Form -->
+        <form id="addReviewForm" class="card mb-4 p-4 shadow-sm">
+            <h5 class="card-title">Write a Review</h5>
+            <input type="hidden" name="productId" value="@Model.ProductID" />
+
+            <div class="form-group mb-3">
+                <label for="reviewText">Your Review:</label>
+                <textarea name="reviewText" id="reviewText" class="form-control" rows="3" required></textarea>
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="rating">Rating:</label>
+                <div class="rating">
+                    @for (int i = 1; i <= 5; i++)
+                    {
+                        <i class="fa fa-star star" data-value="@i" style="cursor:pointer;"></i>
+                    }
+                    <input type="hidden" name="rating" id="rating" value="1" />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit Review</button>
+        </form>
+
+        <!-- Scrollable Review Table -->
+        <div class="card p-3 shadow-sm mb-4" style="max-height: 400px; overflow-y: scroll;">
+            <h5 class="card-title">Customer Reviews</h5>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Reviewer</th>
+                        <th>Rating</th>
+                        <th>Review</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="reviewTableBody">
+                    @foreach (var review in Model.Reviews.OrderByDescending(r => r.ReviewDate))
+                    {
+                        <tr id="review-@review.ReviewID">
+                            <td>@review.ReviewerName</td>
+                            <td>
+                                @for (int i = 0; i < review.Rating; i++)
+                                {
+                                    <i class="bi bi-star-fill text-warning"></i>
+                                }
+                            </td>
+                            <td>@review.ReviewText</td>
+                            <td>@review.ReviewDate.ToString("MM/dd/yyyy")</td>
+                            <td>
+                                @if (ViewBag.CurrentUserId == review.UserID)  // Check if the logged-in user is the owner
+                                {
+                                    <button class="btn btn-outline-primary btn-sm delete-review" data-review-id="@review.ReviewID">
+                                        <i class="fa fa-trash"></i> 
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+
+<script>
+        $(document).ready(function () {
+            // Handle Add to Cart Form submission
+            $('#addToCartForm').on('submit', function (event) {
+                event.preventDefault(); // Prevent default form submission
+
+                var productId = $('input[name="productId"]').val();
+                var quantity = $('#quantity').val();
+
+                $.ajax({
+                    url: '@Url.Action("AddToCart", "Products")',
+                    method: 'POST',
+                    data: { productId: productId, quantity: quantity },
+                    success: function (response) {
+                        if (response.success) {
+                            // Show success message
+                            $('#successMessage').show().delay(3000).fadeOut();
+
+                            // Update the cart count
+                            $('#cartCount').text(response.cartCount);
+                        } else {
+                            alert(response.message);
+                        }
+                    },
+                    error: function () {
+                        alert('An error occurred while adding the product to the cart.');
+                    }
+                });
+            });
+
+            // Handle Add Review Form submission
+    $('#addReviewForm').on('submit', function (event) {
+        event.preventDefault();
+
+        var productId = $('input[name="productId"]').val();
+        var reviewText = $('#reviewText').val();
+        var rating = $('#rating').val();
+
+        $.ajax({
+            url: '@Url.Action("AddReview", "ProductReviews")',
+            method: 'POST',
+            data: { productId: productId, reviewText: reviewText, rating: rating },
+            success: function (response) {
+                if (response.success) {
+                    // Dynamically generate and prepend review row
+                    var reviewRow = `
+                        <tr id='review-${response.reviewID}'>
+                            <td>${response.reviewerName}</td>
+                            <td>${generateStars(response.rating)}</td>
+                            <td>${response.reviewText}</td>
+                            <td>${response.reviewDate}</td>
+                            <td><button class='btn btn-danger btn-sm delete-review' data-review-id='${response.reviewID}'>Delete</button></td>
+                        </tr>
+                    `;
+                    $('#reviewTableBody').prepend(reviewRow);
+                    $('#reviewSuccessMessage').show().delay(3000).fadeOut();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function () {
+                alert('An error occurred while submitting your review.');
+            }
+        });
+    });
+
+            $('.star').on('click', function () {
+                var ratingValue = $(this).data('value');
+                $('#rating').val(ratingValue);
+
+                // Highlight stars up to the clicked star
+                $('.star').each(function () {
+                    if ($(this).data('value') <= ratingValue) {
+                        $(this).addClass('checked');
+                    } else {
+                        $(this).removeClass('checked');
+                    }
+                });
+            });
+
+    // Handle Review Deletion
+    $(document).on('click', '.delete-review', function () {
+        var reviewId = $(this).data('review-id');
+
+        $.ajax({
+            url: '@Url.Action("DeleteReview", "ProductReviews")',
+            method: 'POST',
+            data: { reviewId: reviewId },
+            success: function (response) {
+                if (response.success) {
+                    $('#review-' + reviewId).remove();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function () {
+                alert('An error occurred while deleting the review.');
+            }
+        });
+    });
+
+            // Function to generate star icons for rating
+            function generateStars(rating) {
+                var stars = '';
+                for (var i = 0; i < rating; i++) {
+                    stars += `<i class="bi bi-star-fill text-warning"></i>`;
+                }
+                return stars;
+            }
+
+   
+
+    });
+</script>
+}

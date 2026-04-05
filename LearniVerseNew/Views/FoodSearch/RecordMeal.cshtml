@@ -1,0 +1,265 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.Meal_Planner_Models.FoodRecord
+@{
+    ViewBag.Title = "Record Meal";
+}
+
+<div class="container mt-5">
+    <h2>Meal Planner for @Model.DateRecorded.ToShortDateString()</h2>
+
+    <div class="row mt-4">
+        <!-- Search and Results Column -->
+        <div class="col-md-6">
+            <!-- Meal Selection -->
+            <div class="form-group">
+                <label for="mealSelect">Select a Meal:</label>
+                <select id="mealSelect" class="form-control">
+                    <option value="Breakfast">Breakfast</option>
+                    <option value="Lunch">Lunch</option>
+                    <option value="Dinner">Dinner</option>
+                    <option value="Snack">Snack</option>
+                </select>
+            </div>
+
+            <!-- Search Form -->
+            <div class="card p-3 mb-4">
+                <h4>Search for Food</h4>
+                <form id="searchForm">
+                    <input type="text" id="query" class="form-control mb-2" placeholder="Search for food...">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </form>
+            </div>
+
+            <!-- Search Results -->
+            <div id="results" class="card p-3" style="max-height: 300px; overflow-y: auto;">
+                <h4>Search Results</h4>
+                <!-- Results will be appended here -->
+            </div>
+        </div>
+
+        <!-- Selected Foods and Meal Details Column -->
+        <div class="col-md-6">
+            <div class="card p-3 mb-4">
+                <h4>Selected Foods for Meal</h4>
+                <div id="selectedFoods" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Selected foods for each meal will be appended here -->
+                </div>
+            </div>
+
+            <!-- Meal Summary and Save Meal Button -->
+            <div class="card p-3">
+                <h4>Current Meal Summary</h4>
+                <p>Total Calories: <span id="totalCalories">0</span> kcal</p>
+                <p>Carbohydrates: <span id="totalCarbs">0</span> g</p>
+                <p>Protein: <span id="totalProtein">0</span> g</p>
+                <p>Fat: <span id="totalFat">0</span> g</p>
+                <button id="saveMealButton" class="btn btn-success btn-block">Save Meal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="foodModal" class="modal fade" tabindex="-1" aria-labelledby="foodModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="foodModalLabel">Food Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="foodDescription"></p>
+                <label for="servingWeight" class="form-label">Serving Weight (g):</label>
+                <input type="number" id="servingWeight" class="form-control" placeholder="Enter weight in grams">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="addFoodButton">Add Food</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+<script type="text/javascript">
+        $(document).ready(function () {
+            function updateMealSummary() {
+                var totalCalories = 0, totalCarbs = 0, totalProtein = 0, totalFat = 0;
+
+                $('#selectedFoods ul li').each(function () {
+                    var itemCalories = parseFloat($(this).data('calories')) || 0;
+                    var itemCarbs = parseFloat($(this).data('carbs')) || 0;
+                    var itemProtein = parseFloat($(this).data('protein')) || 0;
+                    var itemFat = parseFloat($(this).data('fat')) || 0;
+
+                    totalCalories += itemCalories;
+                    totalCarbs += itemCarbs;
+                    totalProtein += itemProtein;
+                    totalFat += itemFat;
+                });
+
+                $('#totalCalories').text(totalCalories.toFixed(2));
+                $('#totalCarbs').text(totalCarbs.toFixed(2));
+                $('#totalProtein').text(totalProtein.toFixed(2));
+                $('#totalFat').text(totalFat.toFixed(2));
+            }
+
+            function parseFoodDescription(description) {
+                var caloriesMatch = description.match(/Calories:\s*([\d.]+)kcal/);
+                var fatMatch = description.match(/Fat:\s*([\d.]+)g/);
+                var carbsMatch = description.match(/Carbs:\s*([\d.]+)g/);
+                var proteinMatch = description.match(/Protein:\s*([\d.]+)g/);
+
+                return {
+                    calories: caloriesMatch ? parseFloat(caloriesMatch[1]) : 0,
+                    fat: fatMatch ? parseFloat(fatMatch[1]) : 0,
+                    carbs: carbsMatch ? parseFloat(carbsMatch[1]) : 0,
+                    protein: proteinMatch ? parseFloat(proteinMatch[1]) : 0
+                };
+            }
+
+            $('#searchForm').on('submit', function (e) {
+                e.preventDefault();
+                var query = $('#query').val().trim();
+
+                if (!query) {
+                    alert('Please enter a search query.');
+                    return;
+                }
+
+                $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("Search", "FoodSearch")',
+                    data: { query: query },
+                    success: function (response) {
+                        if (response.success) {
+                            var resultsHtml = '<ul class="list-group">';
+                            $.each(response.data.Foods.Food, function (index, Food) {
+                                resultsHtml += `<li class="list-group-item">${Food.FoodName} <button class="btn btn-info btn-sm ms-2 view-food" data-id="${Food.FoodId}" data-name="${Food.FoodName}" data-description="${Food.FoodDescription}">Select</button></li>`;
+                            });
+                            resultsHtml += '</ul>';
+                            $('#results').html(resultsHtml);
+                        } else {
+                            $('#results').html(`<p>${response.message}</p>`);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        $('#results').html(`<p>Error: ${error}</p>`);
+                    }
+                });
+            });
+
+            $('#results').on('click', '.view-food', function () {
+                var foodId = $(this).data('id');
+                var foodName = $(this).data('name');
+                var foodDescription = $(this).data('description');
+
+                var nutrition = parseFoodDescription(foodDescription);
+
+                $('#foodModal').data('foodId', foodId)
+                                .data('foodName', foodName)
+                                .data('calories', nutrition.calories)
+                                .data('carbs', nutrition.carbs)
+                                .data('protein', nutrition.protein)
+                                .data('fat', nutrition.fat);
+
+                $('#foodDescription').text(foodDescription);
+                $('#foodModal').modal('show');
+            });
+
+            $('#addFoodButton').on('click', function () {
+                var foodId = $('#foodModal').data('foodId');
+                var foodName = $('#foodModal').data('foodName');
+                var servingWeight = $('#servingWeight').val();
+                var selectedMeal = $('#mealSelect').val();
+
+                var foodCalories = parseFloat($('#foodModal').data('calories')) || 0;
+                var foodCarbs = parseFloat($('#foodModal').data('carbs')) || 0;
+                var foodProtein = parseFloat($('#foodModal').data('protein')) || 0;
+                var foodFat = parseFloat($('#foodModal').data('fat')) || 0;
+
+                if (servingWeight) {
+                    var totalCalories = (foodCalories * servingWeight / 100).toFixed(2);
+                    var totalCarbs = (foodCarbs * servingWeight / 100).toFixed(2);
+                    var totalProtein = (foodProtein * servingWeight / 100).toFixed(2);
+                    var totalFat = (foodFat * servingWeight / 100).toFixed(2);
+
+                    var mealContainer = $('#selectedFoods ul[data-meal="' + selectedMeal + '"]');
+                    if (mealContainer.length === 0) {
+                        mealContainer = $('<ul class="list-group" data-meal="' + selectedMeal + '"><h5>' + selectedMeal.charAt(0).toUpperCase() + selectedMeal.slice(1) + '</h5></ul>');
+                        $('#selectedFoods').append(mealContainer);
+                    }
+                    mealContainer.append(`<li class="list-group-item" data-id="${foodId}" data-calories="${totalCalories}" data-carbs="${totalCarbs}" data-protein="${totalProtein}" data-fat="${totalFat}">${foodName} - ${servingWeight}g <button class="btn btn-danger btn-sm ms-4 remove-food" data-id="${foodId}">Remove</button></li>`);
+                    $('#foodModal').modal('hide');
+                    $('#servingWeight').val('');
+                    updateMealSummary();
+                } else {
+                    alert('Please enter a serving weight.');
+                }
+            });
+
+            $('#selectedFoods').on('click', '.remove-food', function () {
+                $(this).parent().remove();
+                updateMealSummary();
+            });
+
+$('#saveMealButton').on('click', function () {
+    var mealData = [];
+
+    $('#selectedFoods ul').each(function () {
+        var studentId = @Html.Raw(Json.Encode(Model.StudentID));
+        var mealName = $(this).data('meal');
+        var foods = [];
+
+        $(this).find('li').each(function () {
+            var text = $(this).text();
+            var parts = text.split(' - ');
+            var foodName = parts[0];
+            var servingWeight = parts[1] ? parts[1].replace('g', '').trim() : '';
+
+            foods.push({
+                FoodItemID: $(this).data('id'),
+                FoodName: foodName,
+                ServingSize: parseFloat(servingWeight) || 0, 
+                Calories: parseFloat($(this).data('calories')) || 0, 
+                Carbs: parseFloat($(this).data('carbs')) || 0,
+                Protein: parseFloat($(this).data('protein')) || 0, 
+                Fat: parseFloat($(this).data('fat')) || 0 
+            });
+        });
+
+        mealData.push({
+            StudentID: studentId,
+            MealName: mealName,
+            Foods: foods
+        });
+    });
+
+    console.log(JSON.stringify(mealData)); // Debugging
+
+    $.ajax({
+        type: 'POST',
+        url: '@Url.Action("SaveMeal", "FoodSearch")',
+        contentType: 'application/json',
+        data: JSON.stringify({ meals: mealData }),
+        success: function (response) {
+            if (response.success) {
+                alert('Meal saved successfully!');
+                location.reload();
+            } else {
+                alert('Error: ' + response.message);
+            }
+        },
+        error: function (xhr, status, error) {
+            alert('Error: ' + error);
+        }
+    });
+});
+
+        });
+</script>
+}
+
+

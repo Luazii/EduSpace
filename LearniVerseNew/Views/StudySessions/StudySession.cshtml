@@ -1,0 +1,211 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.StudySessionViewModel
+
+@{
+    ViewBag.Title = "Pomodoro Timer and Task Manager";
+}
+
+<h2 class="text-center mb-5">Study Center</h2>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow mb-4 text-center">
+                <div class="card-body">
+                    <h2 class="card-title">Pomodoro Timer</h2>
+                    <div id="pomodoro-timer">
+                        <h3 id="timer">25:00</h3>
+                        <button onclick="startTimer()" class="btn btn-success">Start</button>
+                        <button onclick="pauseTimer()" class="btn btn-warning">Pause</button>
+                        <button onclick="resetTimer()" class="btn btn-danger">Reset</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card shadow mb-4 text-center">
+                <div class="card-body">
+                    <h3 class="card-title">Task Manager</h3>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Description</th>
+                                <th>Complete</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="taskList">
+                            @foreach (var task in Model.TaskItems)
+                            {
+                                <tr data-temp-id="@Guid.NewGuid()">
+                                    <td>@Html.TextBoxFor(m => task.Title, new { @class = "form-control" })</td>
+                                    <td>@Html.TextBoxFor(m => task.Description, new { @class = "form-control" })</td>
+                                    <td>@Html.CheckBoxFor(m => task.IsComplete)</td>
+                                    <td>
+                                        <button class="btn btn-danger" onclick="removeTask(this)">Remove</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <button class="btn btn-primary" onclick="addTask()">Add Task</button>
+                    <button class="btn btn-success" onclick="completeSession()">Complete Session</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8 text-center p-5">
+            <!-- Added text-center class here -->
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <h3 class="card-title">Music Player</h3>
+                    <!-- Embedded YouTube video -->
+                    <iframe width="560" height="315" src="https://www.youtube.com/embed/jfKfPfyJRdk?si=FfpBFK-OXuSqdtLI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                </div>
+            </div>
+        </div>
+       
+    </div>
+</div>
+
+<div id="congratulationsModal" class="modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Congratulations!</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>You have successfully completed the study session. Well done!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    var timer;
+    var minutes = 25;
+    var seconds = 0;
+    var running = false;
+
+    function updateTimer() {
+        document.getElementById('timer').innerText = minutes.toString().padStart(2, '0') + ":" + seconds.toString().padStart(2, '0');
+    }
+
+    function startTimer() {
+        if (!running) {
+            running = true;
+            timer = setInterval(() => {
+                if (seconds == 0) {
+                    if (minutes == 0) {
+                        clearInterval(timer);
+                        running = false;
+                        alert("Time's up!");
+                    } else {
+                        minutes--;
+                        seconds = 59;
+                    }
+                } else {
+                    seconds--;
+                }
+                updateTimer();
+            }, 1000);
+        }
+    }
+
+    function pauseTimer() {
+        clearInterval(timer);
+        running = false;
+    }
+
+    function resetTimer() {
+        clearInterval(timer);
+        running = false;
+        minutes = 25;
+        seconds = 0;
+        updateTimer();
+    }
+
+    updateTimer();
+
+    function addTask() {
+        var taskList = document.getElementById('taskList');
+        var uniqueId = 'task_' + Date.now();
+        var newRow = document.createElement('tr');
+        newRow.setAttribute('data-temp-id', uniqueId);
+
+        newRow.innerHTML = `
+            <td><input class="form-control" name="TaskItems[${uniqueId}].Title" type="text" value="" /></td>
+            <td><input class="form-control" name="TaskItems[${uniqueId}].Description" type="text" value="" /></td>
+            <td><input name="TaskItems[${uniqueId}].IsComplete" type="checkbox" value="true" /></td>
+            <td><button class="btn btn-danger" onclick="removeTask(this)">Remove</button></td>
+        `;
+
+        taskList.appendChild(newRow);
+    }
+
+    function removeTask(button) {
+        // Get the closest table row from the button that was clicked
+        var row = button.closest('tr');
+
+        // Check if the row exists before attempting to remove it
+        if (row) {
+            row.parentNode.removeChild(row);
+            console.log('Task row removed.');
+        } else {
+            console.error('Task row not found.');
+        }
+    }
+
+   function showCongratulationsModal() {
+        var congratulationsModal = new bootstrap.Modal(document.getElementById('congratulationsModal'));
+        congratulationsModal.show();
+    }
+
+    function completeSession() {
+        var formData = new FormData();
+        var taskRows = document.querySelectorAll('#taskList tr');
+        taskRows.forEach((row, index) => {
+            var title = row.querySelector("input[name*='Title']").value;
+            var description = row.querySelector("input[name*='Description']").value;
+            var isComplete = row.querySelector("input[name*='IsComplete']").checked;
+
+            formData.append(`TaskItems[${index}].Title`, title);
+            formData.append(`TaskItems[${index}].Description`, description);
+            formData.append(`TaskItems[${index}].IsComplete`, isComplete);
+        });
+
+        fetch('@Url.Action("CompleteSession", "StudySessions")', {
+            method: 'POST',
+            body: formData
+        }).then(response => {
+            if (response.ok) {
+                // Show congratulations modal when session is completed
+                showCongratulationsModal();
+                // window.location.href = '@Url.Action("Home", "Students")';
+            } else {
+                alert("Failed to complete the session.");
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+            alert("An error occurred.");
+        });
+    }
+
+    // Add event listener to redirect to home page when modal is closed
+    var congratulationsModal = document.getElementById('congratulationsModal');
+    congratulationsModal.addEventListener('hidden.bs.modal', function (event) {
+        window.location.href = '@Url.Action("Home", "Students")';
+    });
+
+</script>
+
+
+
+
+
+

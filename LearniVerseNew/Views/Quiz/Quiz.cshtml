@@ -1,0 +1,221 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.QuizViewModel
+
+@{
+    ViewBag.Title = "Quiz";
+}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            <h2>@Model.Quiz.QuizDescription</h2>
+            <hr />
+            @foreach (var question in Model.Questions)
+            {
+                <div class="question-container" id="question-@question.QuestionNumber" style="display: none; margin-bottom: 20px;">
+                    <h1 class="card-header mb-2">Question @question.QuestionNumber</h1>
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">@question.QuestionText</h5>
+                            <input type="hidden" id="QuestionID" value="@question.QuestionID" />
+                            <input type="radio" name="answer" value="A" /> A: @question.AnswerA <br />
+                            <input type="radio" name="answer" value="B" /> B: @question.AnswerB <br />
+                            <input type="radio" name="answer" value="C" /> C: @question.AnswerC <br />
+                            <input type="radio" name="answer" value="D" /> D: @question.AnswerD <br />
+                        </div>
+                    </div>
+                </div>
+            }
+            <div style="margin-top: 20px;">
+                <button class="btn btn-primary" id="prevButton">Previous</button>
+                <button class="btn btn-primary" id="nextButton">Next</button>
+                <button class="btn btn-primary" id="completeAttemptButton" style="display: none;">Complete Attempt</button>
+
+
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <h3>Quiz Progress</h3>
+            <p>Total Questions: @Model.Questions.Count</p>
+            <p>Current Question: <span id="currentQuestionIndicator">1</span> / @Model.Questions.Count</p>
+
+            <!-- Countdown timer -->
+            <div id="countdownTimer"></div>
+        </div>
+    </div>
+</div>
+<br />
+@using (Html.BeginForm("SubmitQuiz", "Quiz", FormMethod.Post, new { id = "quizForm" }))
+{
+
+    <input type="hidden" id="SubmittedAnswers" name="SubmittedAnswersJson" />
+
+    <button type="submit" class="btn btn-primary" id="submitButton">Submit</button>
+}
+<div id="quizSubmitUrl" data-url="@Url.Action("SubmitQuiz", "Quiz")"></div>
+
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+
+    <script>
+$(document).ready(function () {
+    $(window).on('beforeunload', function () {
+        return "Leaving this page will submit your quiz attempt. Are you sure you want to leave?";
+    });
+
+    var currentQuestionNumber = 1;
+    var questions = $('.question-container');
+    var prevButton = $('#prevButton');
+    var nextButton = $('#nextButton');
+    var submitButton = $('#submitButton');
+    var currentQuestionIndicator = $('#currentQuestionIndicator');
+    var submittedAnswers = {};
+    var duration = @Model.Quiz.Duration; // Duration in minutes
+    var endTime = new Date().getTime() + (duration * 60000); // Calculate end time
+
+    // Update timer every second
+    var timer = setInterval(updateTimer, 1000);
+
+    function removeBeforeUnloadListener() {
+        $(window).off('beforeunload');
+    }
+
+    $('#quizForm').submit(function () {
+        // Remove the beforeunload event listener when the form is submitted
+        removeBeforeUnloadListener();
+    });
+
+    function updateTimer() {
+        var now = new Date().getTime();
+        var distance = endTime - now;
+        var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        $('#countdownTimer').text("Time Remaining: " + minutes + "m " + seconds + "s ");
+
+        if (distance < 0) {
+            clearInterval(timer);
+            $('#countdownTimer').text("Time's up!");
+            questions.each(function () {
+                var questionID = $(this).find('#QuestionID').val();
+                var selectedAnswer = $(this).find('input[name="answer"]:checked').val();
+                // Check if an answer is selected for the current question
+                if (selectedAnswer !== undefined) {
+                    submittedAnswers[questionID] = selectedAnswer;
+                } else {
+                    // If no answer is selected, assign null to the question ID
+                    submittedAnswers[questionID] = null;
+                }
+            });
+            var serializedAnswers = JSON.stringify(submittedAnswers);
+            $('#SubmittedAnswers').val(serializedAnswers);
+            $('#quizForm').submit();
+        }
+    }
+
+    showQuestion(currentQuestionNumber);
+    updateButtonVisibility(currentQuestionNumber);
+
+    prevButton.click(function () {
+        if (currentQuestionNumber > 1) {
+            currentQuestionNumber--;
+            showQuestion(currentQuestionNumber);
+            updateButtonVisibility(currentQuestionNumber);
+            updateCurrentQuestionIndicator(currentQuestionNumber);
+        }
+    });
+
+    nextButton.click(function () {
+        if (currentQuestionNumber < questions.length) {
+            var selectedAnswer = $('input[name="answer"]:checked').val();
+            if (selectedAnswer) {
+                var questionID = $('#question-' + currentQuestionNumber + ' #QuestionID').val();
+                submittedAnswers[questionID] = selectedAnswer;
+            }
+            currentQuestionNumber++;
+            showQuestion(currentQuestionNumber);
+            updateButtonVisibility(currentQuestionNumber);
+            updateCurrentQuestionIndicator(currentQuestionNumber);
+            if (currentQuestionNumber === questions.length) {
+                // If it's the last question, show the "Complete Attempt" button
+                nextButton.hide();
+                $('#completeAttemptButton').show();
+            }
+        }
+    });
+
+    $('#completeAttemptButton').on('click', function () {
+        var selectedAnswer = $('input[name="answer"]:checked').val();
+        if (selectedAnswer) {
+            var questionID = $('#question-' + currentQuestionNumber + ' #QuestionID').val();
+            submittedAnswers[questionID] = selectedAnswer;
+            // Show the submit button after completing attempt
+            submitButton.show();
+        }
+    });
+
+    $('#submitButton').click(function () {
+        // Loop through all questions
+        questions.each(function () {
+            var questionID = $(this).find('#QuestionID').val();
+            var selectedAnswer = $(this).find('input[name="answer"]:checked').val();
+            // Check if an answer is selected for the current question
+            if (selectedAnswer !== undefined) {
+                // If answer is selected, add it to submittedAnswers
+                submittedAnswers[questionID] = selectedAnswer;
+            } else {
+                // If no answer is selected, check if the question is already in submittedAnswers
+                // If it's not, assign null to the question ID
+                if (!(questionID in submittedAnswers)) {
+                    submittedAnswers[questionID] = null;
+                }
+            }
+        });
+        // Serialize the submittedAnswers object and assign it to the hidden input
+        var serializedAnswers = JSON.stringify(submittedAnswers);
+        $('#SubmittedAnswers').val(serializedAnswers);
+    });
+
+    function showQuestion(number) {
+        questions.hide();
+        $('#question-' + number).show();
+    }
+
+    function updateButtonVisibility(number) {
+        if (number === 1) {
+            prevButton.hide();
+        } else {
+            prevButton.show();
+        }
+
+        if (number === questions.length) {
+            nextButton.hide(); // Hide the "Next" button on the last question
+        } else {
+            nextButton.show();
+            submitButton.hide(); // Hide the "Submit" button until "Complete Attempt" is clicked
+        }
+    }
+
+    function updateCurrentQuestionIndicator(number) {
+        currentQuestionIndicator.text(number);
+    }
+
+    // Event listener for the popstate event (triggered when user navigates back)
+    $(window).on('popstate', function (event) {
+        // Show the warning message
+        if (!event.originalEvent.state) {
+            var confirmation = confirm("Leaving this page will submit your quiz attempt. Are you sure you want to leave?");
+            if (confirmation) {
+                // User confirmed to leave, remove the beforeunload event listener
+                removeBeforeUnloadListener();
+            } else {
+                // User canceled, push state to prevent navigating back
+                history.pushState(true, '');
+            }
+        }
+    });
+});
+    </script>
+
+
+}

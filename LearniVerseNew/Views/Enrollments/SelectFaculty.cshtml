@@ -1,0 +1,46 @@
+﻿@model LearniVerseNew.Models.ApplicationModels.ViewModels.EnrolViewModel
+@{
+    ViewBag.Title = "Select Faculty";
+}
+
+<div class="container mt-5">
+    @using (Html.BeginForm("SelectFaculty", "Enrollments"))
+    {
+        @Html.AntiForgeryToken()
+
+        <div class="form-horizontal">
+            <h1 class="text-center mb-4">Select Faculty</h1>
+            <hr />
+            @Html.ValidationSummary(true, "", new { @class = "alert alert-danger" })
+
+            <div class="row mb-4">
+                <div class="col-md-12 text-center">
+                    <h2>Welcome, @Model.StudentFirstName @Model.StudentLastName!</h2>
+                    <p>Please select a faculty to continue.</p>
+                </div>
+            </div>
+
+            <div class="form-group row mb-3">
+                @Html.LabelFor(model => model.SelectedFaculty, "Select Faculty:", htmlAttributes: new { @class = "col-md-2 col-form-label" })
+                <div class="col-md-10">
+                    @Html.DropDownListFor(model => model.SelectedFaculty, new SelectList(Model.AvailableFaculties, "FacultyID", "FacultyName"), "Please select", new { @class = "form-control" })
+                    @Html.ValidationMessageFor(model => model.SelectedFaculty, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+            <div class="form-group text-center">
+                <div class="col-md-12">
+                    <input type="submit" value="Continue" class="btn btn-success btn-lg" />
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="text-center mt-4">
+        <a href="@Url.Action("Home", "Students")" class="btn btn-secondary btn-lg">Back Home</a>
+    </div>
+</div>
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
