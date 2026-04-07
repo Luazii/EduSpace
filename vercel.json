@@ -1,6 +1,5 @@
 {
   "framework": "nextjs",
-  "rootDirectory": "LearniVerseNew/apps/web",
   "buildCommand": "npm run build",
   "installCommand": "npm install"
 }
