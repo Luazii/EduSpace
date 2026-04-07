@@ -336,3 +336,36 @@ export const seedSuperUser = mutation({
     return { success: true, roles };
   },
 });
+
+export const updateProfile = mutation({
+  args: {
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    username: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    const firstName = args.firstName?.trim() || user.firstName;
+    const lastName = args.lastName?.trim() || user.lastName;
+    const fullName = [firstName, lastName].filter(Boolean).join(" ");
+
+    await ctx.db.patch(user._id, {
+      firstName,
+      lastName,
+      fullName,
+      username: args.username?.trim() || user.username,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});

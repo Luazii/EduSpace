@@ -49,6 +49,8 @@ export function Navbar() {
       label: "Dashboard",
       show: isAdmin || isTeacher || isParent || showStudentDashboard,
     },
+    // Profile — everyone sees this if authenticated
+    { href: "/profile", label: "Profile", show: true },
     // Book a Meeting — students and parents
     {
       href: "/bookings/teachers",

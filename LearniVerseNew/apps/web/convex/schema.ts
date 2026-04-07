@@ -8,6 +8,7 @@ export default defineSchema({
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     fullName: v.optional(v.string()),
+    username: v.optional(v.string()),
     phone: v.optional(v.string()),
     role: v.union(
       v.literal("admin"),
@@ -23,6 +24,7 @@ export default defineSchema({
   })
     .index("by_clerk_user_id", ["clerkUserId"])
     .index("by_email", ["email"])
+    .index("by_username", ["username"])
     .index("by_role", ["role"]),
   
   parentStudentLinks: defineTable({
