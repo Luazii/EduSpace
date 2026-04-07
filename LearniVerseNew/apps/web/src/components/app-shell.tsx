@@ -24,7 +24,7 @@ export function AppShell() {
             Welcome to the Unified Academic Management System.
           </h2>
           <p className="max-w-2xl text-base leading-7 text-slate-600">
-            LearniVerse provides a streamlined interface for students, faculty, and administrators 
+            EduSpace provides a streamlined interface for students, faculty, and administrators 
             to engage with the curriculum, manage admissions, and track academic excellence 
             from one centralized platform.
           </p>

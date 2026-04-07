@@ -64,7 +64,7 @@ export default function BookingRequestsPage() {
   );
   const all = bookings ?? [];
 
-  async function act(id: Id<"teacherBookings">, fn: () => Promise<void>) {
+  async function act(id: Id<"teacherBookings">, fn: () => Promise<unknown>) {
     setLoadingId(id);
     setError(null);
     try {

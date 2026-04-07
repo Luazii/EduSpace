@@ -16,8 +16,8 @@ import { Navbar } from "@/components/navbar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LearniVerse",
-  description: "Next.js, Convex, and Clerk migration workspace for LearniVerse.",
+  title: "EduSpace",
+  description: "Next.js, Convex, and Clerk academic platform for EduSpace.",
 };
 
 export default function RootLayout({
@@ -37,10 +37,10 @@ export default function RootLayout({
                 <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 sm:px-10">
                   <Link href="/" className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-sm font-semibold text-white">
-                      LV
+                      ES
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-base font-black tracking-tighter text-slate-950">LEARNIVERSE</span>
+                      <span className="text-base font-black tracking-tighter text-slate-950">EDUSPACE</span>
                       <span className="text-[10px] font-bold tracking-widest text-[#7c4dff]">VIRTUAL CAMPUS</span>
                     </div>
                   </Link>
@@ -62,7 +62,7 @@ export default function RootLayout({
               <footer className="border-t border-black/5 bg-white py-12">
                 <div className="mx-auto max-w-6xl px-6 text-center sm:px-10">
                   <p className="text-sm font-medium text-slate-400">
-                    &copy; {new Date().getFullYear()} LearniVerse. Empowering future leaders through hybrid excellence.
+                    &copy; {new Date().getFullYear()} EduSpace. Empowering future leaders through hybrid excellence.
                   </p>
                 </div>
               </footer>

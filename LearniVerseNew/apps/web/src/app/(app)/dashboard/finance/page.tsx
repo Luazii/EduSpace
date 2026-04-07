@@ -138,7 +138,7 @@ export default function FinancePage() {
             <ShieldCheck className="h-10 w-10 text-sky-400 mb-6" />
             <h4 className="text-lg font-bold mb-2">Secure Transactions</h4>
             <p className="text-sm text-slate-400 leading-relaxed">
-              All LearniVerse payments are processed through encrypted channels. Official receipts are tax-compliant for educational deductions.
+              All EduSpace payments are processed through encrypted channels. Official receipts are tax-compliant for educational deductions.
             </p>
             <button className="mt-8 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-sky-400 hover:text-sky-300">
               Billing Support <ArrowRight className="h-4 w-4" />

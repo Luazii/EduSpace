@@ -83,7 +83,7 @@ export default function AdminPage() {
             Academic Administration
           </h1>
           <p className="mt-4 text-slate-500 max-w-2xl text-sm font-medium leading-relaxed">
-            Central oversight of LearniVerse academic operations. Manage Faculty structure, 
+            Central oversight of EduSpace academic operations. Manage Faculty structure, 
             monitor student enrollment finance, and process undergraduate applications.
           </p>
         </div>
@@ -235,4 +235,3 @@ function ShieldCheck(props: any) {
     <CheckCircle2 {...props} />
   );
 }
-

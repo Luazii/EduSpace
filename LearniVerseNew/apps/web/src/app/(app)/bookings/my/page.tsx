@@ -76,7 +76,7 @@ export default function MyBookingsPage() {
     (b) => b.status === "pending" || b.status === "reschedule_proposed",
   );
 
-  async function act(id: Id<"teacherBookings">, fn: () => Promise<void>) {
+  async function act(id: Id<"teacherBookings">, fn: () => Promise<unknown>) {
     setLoadingId(id);
     setError(null);
     try {

@@ -166,7 +166,7 @@ export const initializeCheckout = action({
       throw new ConvexError("PAYSTACK_SECRET_KEY is not configured yet.");
     }
 
-    const reference = `learniverse-${application._id}-${Date.now()}`;
+    const reference = `eduspace-${application._id}-${Date.now()}`;
     const amount = application.totalAmount ?? 0;
 
     if (amount <= 0) {

@@ -9,7 +9,10 @@
       "Bash(npx convex:*)",
       "Bash(gh auth:*)",
       "Bash(git -C \"c:/Users/lwazi/LearnerManagement\" config user.name)",
-      "Bash(git -C \"c:/Users/lwazi/LearnerManagement\" config user.email)"
+      "Bash(git -C \"c:/Users/lwazi/LearnerManagement\" config user.email)",
+      "Bash(npm run:*)",
+      "Bash(kill %1)",
+      "Bash(wait)"
     ]
   }
 }

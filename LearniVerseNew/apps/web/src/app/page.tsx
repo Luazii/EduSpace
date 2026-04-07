@@ -10,7 +10,7 @@ export default function Home() {
               Next.js + Convex + Clerk
             </p>
             <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-6xl">
-              LearniVerse is being rebuilt as a modern academic platform.
+              EduSpace is being rebuilt as a modern academic platform.
             </h1>
             <p className="max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
               The new stack is live in this monorepo and ready for the first real
