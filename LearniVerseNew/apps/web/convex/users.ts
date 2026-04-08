@@ -123,7 +123,7 @@ export const upsertFromClerk = mutation({
         lastName: args.lastName,
         fullName: args.fullName,
         phone: args.phone,
-        role: bootstrapRole ?? "student",
+        role: bootstrapRole ?? args.role ?? "parent",
         availableRoles: bootstrapAvailableRoles,
         isActive: true,
         createdAt: now,
