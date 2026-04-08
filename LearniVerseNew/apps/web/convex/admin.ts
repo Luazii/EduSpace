@@ -74,7 +74,8 @@ export const getRecentActivity = query({
     const enrichedApplications = await Promise.all(
       applications.map(async (app) => {
         const student = await ctx.db.get(app.studentUserId);
-        const faculty = await ctx.db.get(app.facultyId);
+        const { facultyId } = app;
+        const faculty = facultyId ? await ctx.db.get(facultyId) : null;
         return {
           ...app,
           studentName: student?.fullName || student?.email,
