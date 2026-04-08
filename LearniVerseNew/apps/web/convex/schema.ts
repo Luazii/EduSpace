@@ -196,7 +196,12 @@ export default defineSchema({
   }).index("by_student", ["studentUserId"]),
 
   enrollmentApplications: defineTable({
+    // parentUserId — the Convex user who submitted (always the parent)
     studentUserId: v.id("users"),
+    // The actual learner being enrolled
+    studentEmail: v.optional(v.string()),
+    studentFirstName: v.optional(v.string()),
+    studentLastName: v.optional(v.string()),
     facultyId: v.optional(v.id("faculties")),
     qualificationId: v.optional(v.id("qualifications")),
     gradeLabel: v.optional(v.string()),           // e.g. "Grade 8" — static high school grade
@@ -237,7 +242,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_student", ["studentUserId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_student_email", ["studentEmail"]),
 
   enrollments: defineTable({
     studentUserId: v.id("users"),

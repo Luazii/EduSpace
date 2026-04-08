@@ -117,7 +117,7 @@ const DOCS: { key: DocKey; label: string; hint: string; required: boolean }[] = 
   { key: "transferLetter",    label: "Transfer Letter / Card",          hint: "Required if transferring from another school (obtainable from previous school)",   required: false },
 ];
 
-const STEPS = ["Grade", "Personal", "Subjects", "Documents", "Review"];
+const STEPS = ["Grade", "Learner", "Subjects", "Documents", "Review"];
 
 export function ApplyWizard() {
   const router            = useRouter();
@@ -127,10 +127,15 @@ export function ApplyWizard() {
   const submitApplication = useMutation(api.enrollments.submitApplication);
 
   const [step, setStep] = useState(1);
-  const [gradeLabel, setGradeLabel] = useState("");   // "Grade 8" … "Grade 12"
-  const [phone, setPhone] = useState("");
+  const [gradeLabel, setGradeLabel] = useState("");
+
+  // Learner details (entered by parent)
+  const [studentEmail, setStudentEmail] = useState("");
+  const [studentFirstName, setStudentFirstName] = useState("");
+  const [studentLastName, setStudentLastName] = useState("");
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
+  const [phone, setPhone] = useState(""); // parent contact
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [currentMarks, setCurrentMarks] = useState<Record<string, string>>({});
   const [docs, setDocs] = useState<DocState>({ birthCert: null, parentId: null, proofOfResidence: null, schoolReport: null, transferLetter: null });
@@ -179,6 +184,9 @@ export function ApplyWizard() {
 
       const appId = await submitApplication({
         gradeLabel,
+        studentEmail: studentEmail.trim().toLowerCase(),
+        studentFirstName: studentFirstName.trim() || undefined,
+        studentLastName: studentLastName.trim() || undefined,
         selectedCourseIds: [],
         selectedSubjectNames: selectedSubjects,
         currentMarks: marksArray,
@@ -200,9 +208,9 @@ export function ApplyWizard() {
         {/* Header */}
         <div className="mb-8">
           <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-700 mb-2">Admissions Portal</p>
-          <h1 className="text-3xl font-black tracking-tight text-slate-950">High School Enrolment</h1>
+          <h1 className="text-3xl font-black tracking-tight text-slate-950">Register Your Child</h1>
           <p className="mt-3 text-sm text-slate-500 leading-relaxed max-w-2xl">
-            Apply for admission to high school. Complete all five steps and upload your supporting documents to submit your application for review.
+            As a parent or guardian, complete all five steps to enrol your child. Once your application is approved and payment is made, your child will receive an email invitation to access the platform.
           </p>
         </div>
 
@@ -232,8 +240,8 @@ export function ApplyWizard() {
           {step === 1 && (
             <div className="grid gap-4">
               <div>
-                <p className="text-sm font-bold text-slate-900">Which grade are you applying for?</p>
-                <p className="mt-1 text-xs text-slate-400">Select the grade you will be entering in the upcoming academic year.</p>
+                <p className="text-sm font-bold text-slate-900">Which grade is your child applying for?</p>
+                <p className="mt-1 text-xs text-slate-400">Select the grade your learner will be entering in the upcoming academic year.</p>
               </div>
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
                 {HS_GRADES.map((grade) => (
@@ -254,29 +262,68 @@ export function ApplyWizard() {
             </div>
           )}
 
-          {/* ── Step 2: Personal Details ── */}
+          {/* ── Step 2: Learner Details ── */}
           {step === 2 && (
-            <div className="grid gap-5 sm:grid-cols-3">
-              <label className="grid gap-2 text-sm font-bold text-slate-900">
-                Contact Number
-                <input type="tel" placeholder="+27 ..." value={phone} onChange={(e) => setPhone(e.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-slate-900">
-                Date of Birth
-                <input type="date" value={dob} onChange={(e) => setDob(e.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-slate-900">
-                Gender
-                <select value={gender} onChange={(e) => setGender(e.target.value)}
-                  className="rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 appearance-none">
-                  <option value="">Select</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other / Prefer not to say</option>
-                </select>
-              </label>
+            <div className="grid gap-5">
+              <div>
+                <p className="text-sm font-bold text-slate-900">Learner Information</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Enter your child&apos;s details. Once payment is confirmed, an invitation email will be sent to their email address so they can create their account.
+                </p>
+              </div>
+
+              {/* Student email — required */}
+              <div className="rounded-2xl border-2 border-sky-100 bg-sky-50/50 p-5 grid gap-4">
+                <p className="text-xs font-black uppercase tracking-widest text-sky-600">Learner&apos;s Account Email</p>
+                <label className="grid gap-1.5 text-sm font-bold text-slate-900">
+                  Email Address <span className="text-rose-500">*</span>
+                  <input
+                    type="email"
+                    required
+                    placeholder="learner@example.com"
+                    value={studentEmail}
+                    onChange={(e) => setStudentEmail(e.target.value)}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
+                  />
+                  <span className="text-xs font-normal text-slate-400">This is the email your child will use to sign in to the platform.</span>
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-1.5 text-sm font-bold text-slate-900">
+                  First Name
+                  <input type="text" placeholder="e.g. Thabo" value={studentFirstName} onChange={(e) => setStudentFirstName(e.target.value)}
+                    className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" />
+                </label>
+                <label className="grid gap-1.5 text-sm font-bold text-slate-900">
+                  Last Name
+                  <input type="text" placeholder="e.g. Dlamini" value={studentLastName} onChange={(e) => setStudentLastName(e.target.value)}
+                    className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" />
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <label className="grid gap-1.5 text-sm font-bold text-slate-900">
+                  Date of Birth
+                  <input type="date" value={dob} onChange={(e) => setDob(e.target.value)}
+                    className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" />
+                </label>
+                <label className="grid gap-1.5 text-sm font-bold text-slate-900">
+                  Gender
+                  <select value={gender} onChange={(e) => setGender(e.target.value)}
+                    className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 appearance-none">
+                    <option value="">Select</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other / Prefer not to say</option>
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-sm font-bold text-slate-900">
+                  Your Contact Number
+                  <input type="tel" placeholder="+27 ..." value={phone} onChange={(e) => setPhone(e.target.value)}
+                    className="rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" />
+                </label>
+              </div>
             </div>
           )}
 
@@ -396,6 +443,11 @@ export function ApplyWizard() {
               <div className="rounded-3xl bg-slate-50 border border-slate-100 p-7 grid gap-5">
                 <h3 className="text-base font-black text-slate-900">Application Summary</h3>
                 <div className="grid gap-4 text-sm sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Learner</p>
+                    <p className="font-bold text-slate-950">{[studentFirstName, studentLastName].filter(Boolean).join(" ") || "—"}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{studentEmail}</p>
+                  </div>
                   <div>
                     <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Grade Applying For</p>
                     <p className="font-bold text-slate-950">{gradeLabel || "—"}</p>
@@ -456,7 +508,7 @@ export function ApplyWizard() {
 
             {step < 5 ? (
               <button type="button" onClick={() => setStep((s) => s + 1)}
-                disabled={(step === 1 && !gradeLabel) || (step === 3 && selectedSubjects.length === 0)}
+                disabled={(step === 1 && !gradeLabel) || (step === 2 && !studentEmail.trim()) || (step === 3 && selectedSubjects.length === 0)}
                 className="rounded-2xl bg-slate-950 px-9 py-3.5 text-sm font-bold text-white shadow-xl shadow-slate-950/20 hover:bg-slate-800 transition disabled:opacity-40">
                 Next
               </button>

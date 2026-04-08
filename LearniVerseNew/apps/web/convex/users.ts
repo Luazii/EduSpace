@@ -100,6 +100,8 @@ export const upsertFromClerk = mutation({
       ? ["admin", "teacher", "student", "parent", "warehouse_admin"]
       : undefined;
 
+    let userId: string;
+
     if (existing) {
       await ctx.db.patch(existing._id, {
         email: args.email,
@@ -112,23 +114,84 @@ export const upsertFromClerk = mutation({
         isActive: true,
         updatedAt: now,
       });
-
-      return existing._id;
+      userId = existing._id;
+    } else {
+      userId = await ctx.db.insert("users", {
+        clerkUserId: args.clerkUserId,
+        email: args.email,
+        firstName: args.firstName,
+        lastName: args.lastName,
+        fullName: args.fullName,
+        phone: args.phone,
+        role: bootstrapRole ?? "student",
+        availableRoles: bootstrapAvailableRoles,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
     }
 
-    return await ctx.db.insert("users", {
-      clerkUserId: args.clerkUserId,
-      email: args.email,
-      firstName: args.firstName,
-      lastName: args.lastName,
-      fullName: args.fullName,
-      phone: args.phone,
-      role: bootstrapRole ?? "student",
-      availableRoles: bootstrapAvailableRoles,
-      isActive: true,
-      createdAt: now,
-      updatedAt: now,
-    });
+    // ── Auto-provision learner if this email matches a paid + approved application ──
+    const matchingApps = await ctx.db
+      .query("enrollmentApplications")
+      .withIndex("by_student_email", (q) => q.eq("studentEmail", normalizedEmail))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "approved"),
+          q.eq(q.field("paymentStatus"), "paid"),
+        ),
+      )
+      .collect();
+
+    for (const app of matchingApps) {
+      // Skip if student profile already exists (idempotent)
+      const existingProfile = await ctx.db
+        .query("studentProfiles")
+        .withIndex("by_user_id", (q) => q.eq("userId", userId as any))
+        .first();
+
+      if (!existingProfile) {
+        // Create student profile with the grade from the application
+        await ctx.db.insert("studentProfiles", {
+          userId: userId as any,
+          qualificationId: app.gradeLabel,
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        // Ensure role is "student"
+        await ctx.db.patch(userId as any, { role: "student", updatedAt: now });
+
+        // Create parent–student link
+        const existingLink = await ctx.db
+          .query("parentStudentLinks")
+          .withIndex("by_student", (q) => q.eq("studentId", userId as any))
+          .first();
+
+        if (!existingLink) {
+          await ctx.db.insert("parentStudentLinks", {
+            parentId: app.studentUserId,
+            studentId: userId as any,
+            createdAt: now,
+          });
+        }
+
+        const studentDisplayName = args.firstName ?? args.email;
+        const grade = app.gradeLabel ?? "High School";
+
+        // Notify the parent that their child is now active
+        await ctx.db.insert("notifications", {
+          userId: app.studentUserId,
+          title: "Learner Account Activated",
+          body: `${studentDisplayName} has signed in and is now enrolled in ${grade}. They can access the platform immediately.`,
+          type: "enrollment",
+          isRead: false,
+          createdAt: now,
+        });
+      }
+    }
+
+    return userId;
   },
 });
 

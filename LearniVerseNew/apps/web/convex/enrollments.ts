@@ -366,6 +366,10 @@ export const submitApplication = mutation({
   args: {
     qualificationId: v.optional(v.id("qualifications")),
     gradeLabel: v.optional(v.string()),
+    // The learner being registered by the parent
+    studentEmail: v.string(),
+    studentFirstName: v.optional(v.string()),
+    studentLastName: v.optional(v.string()),
     selectedCourseIds: v.array(v.id("courses")),
     selectedSubjectNames: v.optional(v.array(v.string())),
     currentMarks: v.optional(
@@ -443,10 +447,16 @@ export const submitApplication = mutation({
       finalNotes = finalNotes ? finalNotes + "\n\n[Auto-Approved: Average score >= 60%, awaiting admin manual verification for fraud check]" : "[Auto-Approved: Average score >= 60%, awaiting admin manual verification for fraud check]";
     }
 
+    const studentEmail = args.studentEmail.trim().toLowerCase();
+    const studentName = [args.studentFirstName, args.studentLastName].filter(Boolean).join(" ") || studentEmail;
+
     if (existingDraft) {
       await ctx.db.patch(existingDraft._id, {
         qualificationId: args.qualificationId,
         gradeLabel: args.gradeLabel,
+        studentEmail,
+        studentFirstName: args.studentFirstName,
+        studentLastName: args.studentLastName,
         selectedCourseIds: args.selectedCourseIds,
         selectedSubjectNames: args.selectedSubjectNames,
         currentMarks: args.currentMarks,
@@ -460,9 +470,9 @@ export const submitApplication = mutation({
       await ctx.db.insert("notifications", {
         userId: user._id,
         title: isAutoApproved ? "Application Pre-Approved" : "Application Submitted",
-        body: isAutoApproved 
-          ? "Congratulations! Your application meets our academic requirements and is pre-approved! Your spot is tentatively reserved pending a manual document review." 
-          : `Your ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
+        body: isAutoApproved
+          ? `${studentName}'s application meets our academic requirements and is pre-approved! Your spot is tentatively reserved pending a manual document review.`
+          : `${studentName}'s ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
         type: "enrollment",
         link: `/apply/submitted/${existingDraft._id}`,
         isRead: false,
@@ -476,6 +486,9 @@ export const submitApplication = mutation({
       studentUserId: user._id,
       qualificationId: args.qualificationId,
       gradeLabel: args.gradeLabel,
+      studentEmail,
+      studentFirstName: args.studentFirstName,
+      studentLastName: args.studentLastName,
       selectedCourseIds: args.selectedCourseIds,
       selectedSubjectNames: args.selectedSubjectNames,
       currentMarks: args.currentMarks,
@@ -490,9 +503,9 @@ export const submitApplication = mutation({
     await ctx.db.insert("notifications", {
       userId: user._id,
       title: isAutoApproved ? "Application Pre-Approved" : "Application Submitted",
-      body: isAutoApproved 
-        ? "Congratulations! Your application meets our academic requirements and is pre-approved! Your spot is tentatively reserved pending a manual document review." 
-        : `Your ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
+      body: isAutoApproved
+        ? `${studentName}'s application meets our academic requirements and is pre-approved! Your spot is tentatively reserved pending a manual document review.`
+        : `${studentName}'s ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
       type: "enrollment",
       link: `/apply/submitted/${applicationId}`,
       isRead: false,
@@ -520,23 +533,6 @@ export const approveApplication = mutation({
       throw new Error("Application not found.");
     }
 
-    for (const courseId of application.selectedCourseIds) {
-      const existingEnrollment = await ctx.db
-        .query("enrollments")
-        .withIndex("by_application", (q) => q.eq("applicationId", application._id))
-        .collect();
-
-      if (!existingEnrollment.some((enrollment) => enrollment.courseId === courseId)) {
-        await ctx.db.insert("enrollments", {
-          studentUserId: application.studentUserId,
-          courseId,
-          applicationId: application._id,
-          enrolledAt: Date.now(),
-          status: "active",
-        });
-      }
-    }
-
     await ctx.db.patch(application._id, {
       status: "approved",
       reviewedAt: Date.now(),
@@ -544,11 +540,16 @@ export const approveApplication = mutation({
       updatedAt: Date.now(),
     });
 
-    // 3. Notify Student
+    const studentName = [application.studentFirstName, application.studentLastName].filter(Boolean).join(" ")
+      || application.studentEmail
+      || "Your learner";
+    const grade = application.gradeLabel ?? "High School";
+
+    // Notify the parent to pay
     await ctx.db.insert("notifications", {
       userId: application.studentUserId,
-      title: "Application Approved",
-      body: "Your application has been approved! You can now proceed to pay the registration fee.",
+      title: "Application Approved — Pay to Enrol",
+      body: `${studentName}'s application for ${grade} has been approved! Please pay the registration fee to secure their place and send them their access link.`,
       type: "enrollment",
       link: `/apply/submitted/${application._id}`,
       isRead: false,

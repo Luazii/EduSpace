@@ -9,6 +9,7 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 async function getCurrentUserForQuery(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -385,7 +386,7 @@ export const internalRecordVerificationResult = internalMutation({
     gatewayResponse: v.optional(v.string()),
     paidAt: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<void> => {
     const payment = await ctx.db
       .query("payments")
       .withIndex("by_reference", (q) => q.eq("reference", args.reference))
@@ -425,14 +426,31 @@ export const internalRecordVerificationResult = internalMutation({
     });
 
     if (args.status === "success") {
+      // Fetch the application to get student details
+      const application = await ctx.db.get(args.applicationId);
+
+      // Notify the parent: payment confirmed
       await ctx.db.insert("notifications", {
         userId: args.studentUserId,
-        title: "Payment Successful",
-        body: "Your registration fee payment was successful! You can now access your courses and timetable on your dashboard.",
+        title: "Payment Confirmed",
+        body: application?.studentEmail
+          ? `Payment received! An invitation email has been sent to ${application.studentEmail}. Your learner can click the link to create their account and start studying.`
+          : "Your registration fee payment was successful! Your learner will receive access details shortly.",
         type: "enrollment",
+        link: `/apply/submitted/${args.applicationId}`,
         isRead: false,
         createdAt: now,
       });
+
+      // Schedule the Clerk invitation email to the student
+      if (application?.studentEmail) {
+        await ctx.scheduler.runAfter(0, internal.invitations.sendStudentInvite, {
+          studentEmail: application.studentEmail,
+          studentFirstName: application.studentFirstName,
+          gradeLabel: application.gradeLabel,
+          applicationId: args.applicationId as string,
+        });
+      }
     }
   },
 });
