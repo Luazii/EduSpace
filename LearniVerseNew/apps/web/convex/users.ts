@@ -7,9 +7,11 @@ const BOOTSTRAP_ADMIN_EMAILS = new Set<string>(["lgumbi2169@gmail.com", "faxqini
 const BOOTSTRAP_TEACHER_EMAILS = new Set<string>([
   "lgumbi2169@gmail.com",
   "lgumbi2169+teacher@gmail.com",
+  "sitholeandries89@gmail.com",
 ]);
 const BOOTSTRAP_PARENT_EMAILS = new Set<string>([
   "lgumbi2169+parent@gmail.com",
+  "njabulomorris0@gmail.com",
 ]);
 
 export const current = query({
@@ -219,8 +221,8 @@ export const applyBootstrapRoles = mutation({
       let newRole = user.role;
       let availableRoles = user.availableRoles ?? [];
 
-      if (BOOTSTRAP_ADMIN_EMAILS.has(email) || BOOTSTRAP_TEACHER_EMAILS.has(email)) {
-        const targetRole = BOOTSTRAP_ADMIN_EMAILS.has(email) ? "admin" : "teacher";
+      if (BOOTSTRAP_ADMIN_EMAILS.has(email) || BOOTSTRAP_TEACHER_EMAILS.has(email) || BOOTSTRAP_PARENT_EMAILS.has(email)) {
+        const targetRole = BOOTSTRAP_ADMIN_EMAILS.has(email) ? "admin" : BOOTSTRAP_TEACHER_EMAILS.has(email) ? "teacher" : "parent";
         if (user.role !== targetRole) {
            newRole = targetRole as any;
            changed = true;
@@ -231,8 +233,8 @@ export const applyBootstrapRoles = mutation({
              changed = true;
           }
         } else {
-           if (!availableRoles.includes("teacher")) {
-              availableRoles = [...availableRoles, "teacher"] as any;
+           if (!availableRoles.includes(targetRole)) {
+              availableRoles = [...availableRoles, targetRole] as any;
               changed = true;
            }
         }
