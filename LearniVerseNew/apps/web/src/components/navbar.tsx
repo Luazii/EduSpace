@@ -41,8 +41,8 @@ export function Navbar() {
       label: isAdmin ? "Applications" : "Apply",
       show: !isTeacher && !isParent,
     },
-    // Courses catalogue — everyone sees this
-    { href: "/courses", label: "Courses", show: true },
+    // Classroom catalogue — everyone sees this
+    { href: "/courses", label: "Classroom", show: true },
     // Dashboard — role-aware
     {
       href: dashboardHref,

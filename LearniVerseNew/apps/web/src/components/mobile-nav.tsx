@@ -51,7 +51,7 @@ export function MobileNav() {
     },
     {
       href: "/courses",
-      label: "Subjects",
+      label: "Classroom",
       icon: <BookOpen className="h-3.5 w-3.5" />,
       show: true,
     },

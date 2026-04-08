@@ -9,12 +9,11 @@ export default function CoursesPage() {
             Student learning
           </p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
-            Course catalog
+            Classroom
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-            This is now backed by live Convex data. As we continue building, each
-            course card will open into classroom resources, assignments, quizzes,
-            and progress tracking.
+            Your virtual classroom. All your enrolled subjects, assignments, quizzes,
+            and learning resources are stored and organized here.
           </p>
         </section>
         <CourseCatalog />
