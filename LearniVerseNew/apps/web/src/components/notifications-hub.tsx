@@ -11,7 +11,7 @@ import {
   X,
   Inbox
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -28,6 +28,13 @@ export function NotificationsHub() {
   const unreadCount = (useQuery(api.notifications.getUnreadCount, isAuthenticated ? {} : "skip") ?? 0) as number;
   const markAsRead = useMutation(api.notifications.markAsRead);
   const markAllAsRead = useMutation(api.notifications.markAllAsRead);
+  const backfillLinks = useMutation(api.notifications.backfillEnrollmentLinks);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      backfillLinks().catch(() => {}); // Silent catch as this is a background optimization
+    }
+  }, [isAuthenticated, backfillLinks]);
 
   if (!isAuthenticated) return null;
 
@@ -97,9 +104,13 @@ export function NotificationsHub() {
               ) : (
                 <div className="divide-y divide-slate-50">
                   {notifications?.map((item: any) => (
-                    <div 
+                    <Link 
                       key={item._id}
-                      onClick={() => handleNotificationClick(item)}
+                      href={item.link || "#"}
+                      onClick={(e) => {
+                        if (!item.link) e.preventDefault();
+                        handleNotificationClick(item);
+                      }}
                       className={cn(
                         "group relative flex flex-col gap-1 px-6 py-5 transition hover:bg-slate-50/50 cursor-pointer",
                         !item.isRead && "bg-sky-50/20"
@@ -133,7 +144,7 @@ export function NotificationsHub() {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

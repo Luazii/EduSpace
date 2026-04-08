@@ -82,6 +82,7 @@ export const createInternal = mutation({
     title: v.string(),
     body: v.string(),
     type: v.union(v.literal("grade"), v.literal("enrollment"), v.literal("deadline"), v.literal("system")),
+    link: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("notifications", {
@@ -89,8 +90,73 @@ export const createInternal = mutation({
       title: args.title,
       body: args.body,
       type: args.type,
+      link: args.link,
       isRead: false,
       createdAt: Date.now(),
     });
+  },
+});
+
+export const backfillEnrollmentLinks = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // We allow this to be run by any authenticated user for their own notifications, 
+    // or as a global admin tool. For simplicity here, we'll process all 
+    // but check for admin role if we want a global sweep.
+    const user = await getCurrentUser(ctx);
+    if (!user) throw new Error("Unauthorized");
+
+    let count = 0;
+    
+    if (user.role === "admin") {
+      // Global sweep for admins
+      const notifications = await ctx.db
+        .query("notifications")
+        .filter((q) => q.eq(q.field("type"), "enrollment"))
+        .collect();
+
+      for (const notification of notifications) {
+        if (!notification.link) {
+          const latestApp = await ctx.db
+            .query("enrollmentApplications")
+            .withIndex("by_student", (q) => q.eq("studentUserId", notification.userId))
+            .order("desc")
+            .first();
+
+          if (latestApp) {
+            await ctx.db.patch(notification._id, {
+              link: `/apply/submitted/${latestApp._id}`,
+            });
+            count++;
+          }
+        }
+      }
+    } else {
+      // Just for current user
+      const notifications = await ctx.db
+        .query("notifications")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .filter((q) => q.eq(q.field("type"), "enrollment"))
+        .collect();
+
+      for (const notification of notifications) {
+        if (!notification.link) {
+          const latestApp = await ctx.db
+            .query("enrollmentApplications")
+            .withIndex("by_student", (q) => q.eq("studentUserId", user._id))
+            .order("desc")
+            .first();
+
+          if (latestApp) {
+            await ctx.db.patch(notification._id, {
+              link: `/apply/submitted/${latestApp._id}`,
+            });
+            count++;
+          }
+        }
+      }
+    }
+    
+    return count;
   },
 });
