@@ -13,5 +13,8 @@
   },
   "dependencies": {
     "@swc/helpers": "^0.5.15"
+  },
+  "overrides": {
+    "next": "~15.5.14"
   }
 }
