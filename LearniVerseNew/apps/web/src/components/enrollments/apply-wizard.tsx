@@ -470,50 +470,6 @@ export function ApplyWizard() {
         )}
       </form>
 
-      {/* Application history */}
-      <section className="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-700 mb-2">My Applications</p>
-        <h2 className="text-2xl font-black text-slate-950 mb-6">Enrolment History</h2>
-        <div className="grid gap-4">
-          {applications.length === 0 ? (
-            <div className="rounded-3xl border-2 border-dashed border-slate-100 p-10 text-center text-sm text-slate-400">
-              No applications on record.
-            </div>
-          ) : (
-            applications.map((app) => (
-              <article key={app._id} className="rounded-3xl border border-slate-100 p-6 hover:border-sky-100 transition hover:bg-sky-50/10">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-950">{app.gradeLabel ?? app.qualification?.name ?? "—"}</h3>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
-                        app.status === "submitted" ? "bg-sky-50 text-sky-700" :
-                        app.status === "approved"  ? "bg-emerald-50 text-emerald-700" :
-                        "bg-rose-50 text-rose-700"
-                      }`}>{app.status}</span>
-                      {app.totalAmount > 0 && (
-                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
-                          app.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-                        }`}>Payment: {app.paymentStatus}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    {app.totalAmount > 0 ? (
-                      <>
-                        <p className="text-sm font-black text-slate-950 mb-2">R {app.totalAmount.toFixed(2)}</p>
-                        {app.paymentStatus !== "paid" && <CheckoutButton applicationId={app._id} />}
-                      </>
-                    ) : (
-                      <p className="text-sm font-bold text-slate-500">No payment required</p>
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))
-          )}
-        </div>
-      </section>
     </div>
   );
 }

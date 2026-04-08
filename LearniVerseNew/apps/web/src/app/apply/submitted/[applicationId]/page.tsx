@@ -149,12 +149,12 @@ export default function SubmittedApplicationPage({
       </div>
 
       {/* ── Payment CTA ── */}
-      {application.paymentStatus !== "paid" && (
+      {application.status === "approved" && application.paymentStatus !== "paid" && (
         <div className="rounded-3xl border-2 border-primary-container/30 bg-primary-container/10 p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
           <div>
             <p className="font-headline font-bold text-on-surface">Pay Registration Fee</p>
             <p className="mt-1 text-sm text-on-surface-variant max-w-sm">
-              Secure your place by paying the registration fee. Your application is pending payment confirmation.
+              Secure your place by paying the registration fee. Your application has been approved and is awaiting payment!
             </p>
           </div>
           <div className="flex-shrink-0">

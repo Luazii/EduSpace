@@ -116,18 +116,21 @@ export function VerifyPaymentClient({
         </p>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href="/apply"
-            className="rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-          >
-            Back to applications
-          </Link>
-          <Link
-            href="/payments"
-            className="rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-950"
-          >
-            View payment history
-          </Link>
+          {status === "success" ? (
+            <Link
+              href="/dashboard"
+              className="rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Go to Dashboard
+            </Link>
+          ) : (
+            <Link
+              href="/apply"
+              className="rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            >
+              Back to applications
+            </Link>
+          )}
         </div>
       </div>
     </section>

@@ -250,6 +250,10 @@ export const listForAdmin = query({
       .query("enrollmentApplications")
       .withIndex("by_status", (q) => q.eq("status", "submitted"))
       .collect();
+    const preApproved = await ctx.db
+      .query("enrollmentApplications")
+      .withIndex("by_status", (q) => q.eq("status", "pre_approved"))
+      .collect();
     const rejected = await ctx.db
       .query("enrollmentApplications")
       .withIndex("by_status", (q) => q.eq("status", "rejected"))
@@ -259,7 +263,7 @@ export const listForAdmin = query({
       .withIndex("by_status", (q) => q.eq("status", "approved"))
       .collect();
 
-    const combined = [...applications, ...rejected, ...approved].sort(
+    const combined = [...applications, ...preApproved, ...rejected, ...approved].sort(
       (a, b) => b.updatedAt - a.updatedAt,
     );
 
@@ -433,7 +437,7 @@ export const submitApplication = mutation({
 
     const gradeDisplay = args.gradeLabel ?? "High School";
     const isAutoApproved = checkAutoApproval(args.currentMarks);
-    const initialStatus = isAutoApproved ? "approved" : "submitted";
+    const initialStatus = isAutoApproved ? "pre_approved" : "submitted";
     let finalNotes = args.notes;
     if (isAutoApproved) {
       finalNotes = finalNotes ? finalNotes + "\n\n[Auto-Approved: Average score >= 60%, awaiting admin manual verification for fraud check]" : "[Auto-Approved: Average score >= 60%, awaiting admin manual verification for fraud check]";
@@ -455,9 +459,9 @@ export const submitApplication = mutation({
 
       await ctx.db.insert("notifications", {
         userId: user._id,
-        title: isAutoApproved ? "Application Approved" : "Application Submitted",
+        title: isAutoApproved ? "Application Pre-Approved" : "Application Submitted",
         body: isAutoApproved 
-          ? "Your application has been manually audited and auto-approved! You can now proceed to pay the registration fee on your dashboard." 
+          ? "Congratulations! Your application meets our academic requirements and is pre-approved! Your spot is tentatively reserved pending a manual document review." 
           : `Your ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
         type: "enrollment",
         isRead: false,
@@ -484,9 +488,9 @@ export const submitApplication = mutation({
 
     await ctx.db.insert("notifications", {
       userId: user._id,
-      title: isAutoApproved ? "Application Approved" : "Application Submitted",
+      title: isAutoApproved ? "Application Pre-Approved" : "Application Submitted",
       body: isAutoApproved 
-        ? "Your application has been manually audited and auto-approved! You can now proceed to pay the registration fee on your dashboard." 
+        ? "Congratulations! Your application meets our academic requirements and is pre-approved! Your spot is tentatively reserved pending a manual document review." 
         : `Your ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
       type: "enrollment",
       isRead: false,

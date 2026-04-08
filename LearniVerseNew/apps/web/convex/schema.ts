@@ -221,6 +221,7 @@ export default defineSchema({
     status: v.union(
       v.literal("draft"),
       v.literal("submitted"),
+      v.literal("pre_approved"),
       v.literal("approved"),
       v.literal("rejected"),
     ),

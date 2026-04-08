@@ -423,5 +423,16 @@ export const internalRecordVerificationResult = internalMutation({
       paymentStatus: args.status === "success" ? "paid" : "pending",
       updatedAt: now,
     });
+
+    if (args.status === "success") {
+      await ctx.db.insert("notifications", {
+        userId: args.studentUserId,
+        title: "Payment Successful",
+        body: "Your registration fee payment was successful! You can now access your courses and timetable on your dashboard.",
+        type: "enrollment",
+        isRead: false,
+        createdAt: now,
+      });
+    }
   },
 });
