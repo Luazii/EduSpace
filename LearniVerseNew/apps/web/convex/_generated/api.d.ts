@@ -14,6 +14,7 @@ import type * as bookings from "../bookings.js";
 import type * as courses from "../courses.js";
 import type * as enrollments from "../enrollments.js";
 import type * as faculties from "../faculties.js";
+import type * as invitations from "../invitations.js";
 import type * as liveSessions from "../liveSessions.js";
 import type * as meetings from "../meetings.js";
 import type * as messages from "../messages.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   courses: typeof courses;
   enrollments: typeof enrollments;
   faculties: typeof faculties;
+  invitations: typeof invitations;
   liveSessions: typeof liveSessions;
   meetings: typeof meetings;
   messages: typeof messages;
