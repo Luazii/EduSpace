@@ -1,11 +1,5 @@
 import type { Metadata } from "next";
-import {
-  ClerkProvider,
-  Show,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from "@clerk/nextjs";
+import { ClerkProvider, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
 import { ConvexClientProvider } from "@/components/convex-client-provider";
@@ -18,7 +12,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "EduSpace",
-  description: "Next.js, Convex, and Clerk academic platform for EduSpace.",
+  description: "A modern online high school delivering world-class CAPS education.",
 };
 
 export default function RootLayout({
@@ -28,46 +22,103 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
-      <body className="min-h-full bg-[linear-gradient(180deg,#f6fbff_0%,#eef2ff_45%,#ffffff_100%)] text-slate-950" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="min-h-full bg-background font-body text-on-surface" suppressHydrationWarning>
         <ClerkProvider>
           <ConvexClientProvider>
             <UserBootstrapper />
             <div className="relative flex min-h-full flex-col">
-              <div className="absolute top-0 -z-10 h-105 w-full bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.18),transparent_35%),radial-gradient(circle_at_top_right,rgba(124,77,255,0.18),transparent_32%)]" />
-              <header className="sticky top-0 z-50 border-b border-black/5 bg-white/70 backdrop-blur-xl">
-                <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 sm:px-10">
+
+              {/* Header */}
+              <header className="sticky top-0 z-50 border-b border-outline-variant/20 bg-surface-container-lowest/80 backdrop-blur-xl">
+                <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4 sm:px-10">
+
+                  {/* Logo */}
                   <Link href="/" className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-sm font-semibold text-white">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl deep-sea-gradient text-sm font-bold text-on-primary shadow-md">
                       ES
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-base font-black tracking-tighter text-slate-950">EDUSPACE</span>
-                      <span className="text-[10px] font-bold tracking-widest text-[#7c4dff]">HIGH SCHOOL</span>
+                      <span className="font-headline text-base font-extrabold tracking-tighter text-primary">
+                        EDUSPACE
+                      </span>
+                      <span className="text-[10px] font-bold tracking-widest text-secondary">
+                        HIGH SCHOOL
+                      </span>
                     </div>
                   </Link>
 
+                  {/* Desktop Nav */}
                   <Navbar />
 
+                  {/* Auth Controls */}
                   <div className="flex items-center gap-4">
                     <RoleSwitch />
                     <NotificationsHub />
                     <UserButton />
                   </div>
                 </div>
+
+                {/* Mobile Nav Row */}
                 <MobileNav />
               </header>
 
+              {/* Page Content */}
               <div className="flex flex-1 flex-col">
                 {children}
               </div>
 
-              <footer className="border-t border-black/5 bg-white py-12">
-                <div className="mx-auto max-w-6xl px-6 text-center sm:px-10">
-                  <p className="text-sm font-medium text-slate-400">
-                    &copy; {new Date().getFullYear()} EduSpace. Empowering future leaders through hybrid excellence.
-                  </p>
+              {/* Footer */}
+              <footer className="bg-surface-container-low rounded-t-3xl mt-20">
+                <div className="mx-auto max-w-7xl px-6 sm:px-10 py-12 grid grid-cols-2 md:grid-cols-4 gap-8 font-body text-sm">
+                  <div className="col-span-2 md:col-span-1 space-y-4">
+                    <div className="font-headline text-xl font-extrabold text-primary">EduSpace</div>
+                    <p className="text-on-surface-variant leading-relaxed">
+                      Empowering the next generation of leaders through flexible, high-quality digital education.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h5 className="font-bold text-on-surface">Programs</h5>
+                    <ul className="space-y-2">
+                      <li><Link href="/courses" className="text-on-surface-variant hover:text-secondary transition-colors">All Subjects</Link></li>
+                      <li><Link href="/apply" className="text-on-surface-variant hover:text-secondary transition-colors">Enrol Now</Link></li>
+                      <li><Link href="/courses" className="text-on-surface-variant hover:text-secondary transition-colors">Grade Overview</Link></li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h5 className="font-bold text-on-surface">Platform</h5>
+                    <ul className="space-y-2">
+                      <li><Link href="/dashboard" className="text-on-surface-variant hover:text-secondary transition-colors">Dashboard</Link></li>
+                      <li><Link href="/profile" className="text-on-surface-variant hover:text-secondary transition-colors">My Profile</Link></li>
+                      <li><Link href="/bookings/teachers" className="text-on-surface-variant hover:text-secondary transition-colors">Book a Teacher</Link></li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h5 className="font-bold text-on-surface">Support</h5>
+                    <ul className="space-y-2">
+                      <li><span className="text-on-surface-variant">Help Centre</span></li>
+                      <li><span className="text-on-surface-variant">Contact Us</span></li>
+                      <li><span className="text-on-surface-variant">Privacy Policy</span></li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="mx-auto max-w-7xl px-6 sm:px-10 py-6 border-t border-outline-variant/30 flex flex-col md:flex-row justify-between items-center gap-4 text-on-surface-variant text-xs">
+                  <p>&copy; {new Date().getFullYear()} EduSpace High School. All rights reserved.</p>
+                  <p className="font-medium text-outline">Empowering future leaders through hybrid excellence.</p>
                 </div>
               </footer>
+
             </div>
           </ConvexClientProvider>
         </ClerkProvider>
