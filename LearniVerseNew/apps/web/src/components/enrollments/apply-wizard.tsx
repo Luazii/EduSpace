@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
@@ -96,6 +97,7 @@ const DOCS: { key: DocKey; label: string; hint: string; required: boolean }[] = 
 const STEPS = ["Grade", "Personal", "Subjects", "Documents", "Review"];
 
 export function ApplyWizard() {
+  const router            = useRouter();
   const applications      = useQuery(api.enrollments.listMine) ?? [];
   const saveDraft         = useMutation(api.enrollments.saveDraft);
   const generateUploadUrl = useMutation(api.enrollments.generateNscUploadUrl);
@@ -112,7 +114,6 @@ export function ApplyWizard() {
 
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submittedApplicationId, setSubmittedApplicationId] = useState<string | null>(null);
 
   function toggleSubject(name: string) {
     setSelectedSubjects((cur) =>
@@ -160,8 +161,7 @@ export function ApplyWizard() {
         birthCertStorageId, parentIdStorageId, proofOfResidenceStorageId, schoolReportStorageId, transferLetterStorageId,
       });
 
-      setSubmittedApplicationId(appId);
-      setStep(6);
+      router.push(`/apply/submitted/${appId}`);
     } finally { setIsSubmitting(false); }
   }
 
@@ -381,30 +381,6 @@ export function ApplyWizard() {
             </div>
           )}
 
-          {/* ── Step 6: Success ── */}
-          {step === 6 && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 mb-6">
-                <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h2 className="text-3xl font-black text-slate-950 mb-3">Application Submitted!</h2>
-              <p className="text-slate-500 max-w-md leading-relaxed mb-10">
-                Your high school enrolment application has been received and is under review by the admissions office.
-                Pay the registration fee to finalise your place.
-              </p>
-              {submittedApplicationId && (
-                <div className="transform scale-110">
-                  <CheckoutButton applicationId={submittedApplicationId} />
-                </div>
-              )}
-              <button type="button" onClick={() => window.location.reload()}
-                className="mt-10 text-sm font-bold text-slate-400 hover:text-slate-600">
-                Back to Dashboard
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Navigation buttons */}

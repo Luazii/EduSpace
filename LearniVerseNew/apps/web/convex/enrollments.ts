@@ -397,6 +397,8 @@ export const submitApplication = mutation({
       transferLetterStorageId: args.transferLetterStorageId,
     };
 
+    const gradeDisplay = args.gradeLabel ?? "High School";
+
     if (existingDraft) {
       await ctx.db.patch(existingDraft._id, {
         qualificationId: args.qualificationId,
@@ -409,10 +411,20 @@ export const submitApplication = mutation({
         paymentStatus: "pending",
         updatedAt: now,
       });
+
+      await ctx.db.insert("notifications", {
+        userId: user._id,
+        title: "Application Submitted",
+        body: `Your ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
+        type: "enrollment",
+        isRead: false,
+        createdAt: now,
+      });
+
       return existingDraft._id;
     }
 
-    return await ctx.db.insert("enrollmentApplications", {
+    const applicationId = await ctx.db.insert("enrollmentApplications", {
       studentUserId: user._id,
       qualificationId: args.qualificationId,
       gradeLabel: args.gradeLabel,
@@ -425,6 +437,17 @@ export const submitApplication = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await ctx.db.insert("notifications", {
+      userId: user._id,
+      title: "Application Submitted",
+      body: `Your ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
+      type: "enrollment",
+      isRead: false,
+      createdAt: now,
+    });
+
+    return applicationId;
   },
 });
 
