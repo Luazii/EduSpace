@@ -21,6 +21,14 @@ async function getOptionalUser(ctx: QueryCtx | MutationCtx) {
     .query("users")
     .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
     .first();
+
+}
+
+function checkAutoApproval(currentMarks?: Array<{ subject: string; mark: number }>) {
+  if (!currentMarks || currentMarks.length === 0) return false;
+  const sum = currentMarks.reduce((acc, curr) => acc + curr.mark, 0);
+  const avg = sum / currentMarks.length;
+  return avg >= 60;
 }
 
 async function enrichApplication(
@@ -424,6 +432,12 @@ export const submitApplication = mutation({
     };
 
     const gradeDisplay = args.gradeLabel ?? "High School";
+    const isAutoApproved = checkAutoApproval(args.currentMarks);
+    const initialStatus = isAutoApproved ? "approved" : "submitted";
+    let finalNotes = args.notes;
+    if (isAutoApproved) {
+      finalNotes = finalNotes ? finalNotes + "\n\n[Auto-Approved: Average score >= 60%, awaiting admin manual verification for fraud check]" : "[Auto-Approved: Average score >= 60%, awaiting admin manual verification for fraud check]";
+    }
 
     if (existingDraft) {
       await ctx.db.patch(existingDraft._id, {
@@ -433,16 +447,18 @@ export const submitApplication = mutation({
         selectedSubjectNames: args.selectedSubjectNames,
         currentMarks: args.currentMarks,
         ...docFields,
-        notes: args.notes,
-        status: "submitted",
+        notes: finalNotes,
+        status: initialStatus,
         paymentStatus: "pending",
         updatedAt: now,
       });
 
       await ctx.db.insert("notifications", {
         userId: user._id,
-        title: "Application Submitted",
-        body: `Your ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
+        title: isAutoApproved ? "Application Approved" : "Application Submitted",
+        body: isAutoApproved 
+          ? "Your application has been manually audited and auto-approved! You can now proceed to pay the registration fee on your dashboard." 
+          : `Your ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
         type: "enrollment",
         isRead: false,
         createdAt: now,
@@ -459,17 +475,19 @@ export const submitApplication = mutation({
       selectedSubjectNames: args.selectedSubjectNames,
       currentMarks: args.currentMarks,
       ...docFields,
-      status: "submitted",
+      status: initialStatus,
       paymentStatus: "pending",
-      notes: args.notes,
+      notes: finalNotes,
       createdAt: now,
       updatedAt: now,
     });
 
     await ctx.db.insert("notifications", {
       userId: user._id,
-      title: "Application Submitted",
-      body: `Your ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
+      title: isAutoApproved ? "Application Approved" : "Application Submitted",
+      body: isAutoApproved 
+        ? "Your application has been manually audited and auto-approved! You can now proceed to pay the registration fee on your dashboard." 
+        : `Your ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
       type: "enrollment",
       isRead: false,
       createdAt: now,
