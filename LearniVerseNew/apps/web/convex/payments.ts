@@ -312,7 +312,14 @@ export const internalGetApplicationForPayment = internalQuery({
       application.selectedCourseIds.map((courseId) => ctx.db.get(courseId)),
     );
 
-    const BASE_APPLICATION_FEE = 7500;
+    const GRADE_PRICES: Record<string, number> = {
+      "Grade 8": 7500,
+      "Grade 9": 8750,
+      "Grade 10": 10000,
+      "Grade 11": 11250,
+      "Grade 12": 12500,
+    };
+    const BASE_APPLICATION_FEE = application.gradeLabel ? (GRADE_PRICES[application.gradeLabel] ?? 7500) : 7500;
     return {
       ...application,
       totalAmount: BASE_APPLICATION_FEE + courses

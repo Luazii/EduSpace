@@ -204,6 +204,14 @@ export default defineSchema({
     nscSubmissionId: v.optional(v.id("nscSubmissions")),
     // High school subject names (static SA curriculum list)
     selectedSubjectNames: v.optional(v.array(v.string())),
+    currentMarks: v.optional(
+      v.array(
+        v.object({
+          subject: v.string(),
+          mark: v.number(),
+        }),
+      ),
+    ),
     // High school registration documents
     birthCertStorageId: v.optional(v.id("_storage")),
     parentIdStorageId: v.optional(v.id("_storage")),

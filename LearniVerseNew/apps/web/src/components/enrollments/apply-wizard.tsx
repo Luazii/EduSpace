@@ -77,8 +77,31 @@ const SA_SUBJECTS: Record<string, string[]> = {
     "Design",
     "Hospitality Studies",
     "Sport and Exercise Science",
-    "Marine Sciences",
-    "Nautical Science",
+  ],
+};
+
+const SENIOR_PHASE_SUBJECTS: Record<string, string[]> = {
+  "Languages": [
+    "English Home Language",
+    "Afrikaans Home Language",
+    "IsiZulu Home Language",
+    "English First Additional Language",
+    "Afrikaans First Additional Language",
+  ],
+  "Mathematics & Science": [
+    "Mathematics",
+    "Natural Sciences",
+  ],
+  "Humanities & Arts": [
+    "Social Sciences",
+    "Life Orientation",
+    "Creative Arts",
+  ],
+  "Other": [
+    "Economic and Management Sciences (EMS)",
+    "Technology",
+    "Information Technology (IT)",
+    "Agricultural Sciences",
   ],
 };
 
@@ -109,6 +132,7 @@ export function ApplyWizard() {
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [currentMarks, setCurrentMarks] = useState<Record<string, string>>({});
   const [docs, setDocs] = useState<DocState>({ birthCert: null, parentId: null, proofOfResidence: null, schoolReport: null, transferLetter: null });
   const [notes, setNotes] = useState("");
 
@@ -132,7 +156,8 @@ export function ApplyWizard() {
     if (!gradeLabel) return;
     setIsSavingDraft(true);
     try {
-      await saveDraft({ gradeLabel, selectedSubjectNames: selectedSubjects, notes: notes.trim() || undefined });
+      const marksArray = Object.entries(currentMarks).map(([subject, mark]) => ({ subject, mark: Number(mark) }));
+      await saveDraft({ gradeLabel, selectedSubjectNames: selectedSubjects, currentMarks: marksArray, notes: notes.trim() || undefined });
     } finally { setIsSavingDraft(false); }
   }
 
@@ -150,10 +175,13 @@ export function ApplyWizard() {
           docs.transferLetter   ? uploadFile(docs.transferLetter)   : Promise.resolve(undefined),
         ]);
 
+      const marksArray = Object.entries(currentMarks).map(([subject, mark]) => ({ subject, mark: Number(mark) }));
+
       const appId = await submitApplication({
         gradeLabel,
         selectedCourseIds: [],
         selectedSubjectNames: selectedSubjects,
+        currentMarks: marksArray,
         notes: notes.trim() || undefined,
         phone: phone.trim() || undefined,
         gender: gender || undefined,
@@ -266,7 +294,7 @@ export function ApplyWizard() {
               </div>
 
               <div className="grid gap-5">
-                {Object.entries(SA_SUBJECTS).map(([category, subjects]) => (
+                {Object.entries(gradeLabel === "Grade 8" || gradeLabel === "Grade 9" ? SENIOR_PHASE_SUBJECTS : SA_SUBJECTS).map(([category, subjects]) => (
                   <div key={category}>
                     <p className="mb-2 text-xs font-black uppercase tracking-widest text-slate-400">{category}</p>
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -299,9 +327,9 @@ export function ApplyWizard() {
             </div>
           )}
 
-          {/* ── Step 4: Documents ── */}
+          {/* ── Step 4: Documents & Marks ── */}
           {step === 4 && (
-            <div className="grid gap-5">
+            <div className="grid gap-8">
               <div>
                 <p className="text-sm font-bold text-slate-900">Supporting Documents</p>
                 <p className="mt-1 text-xs text-slate-400">Upload certified copies. Accepted formats: PDF, JPG, PNG.</p>
@@ -332,6 +360,33 @@ export function ApplyWizard() {
                   </label>
                 );
               })}
+
+              {/* Enter current marks for selected subjects */}
+              {selectedSubjects.length > 0 && (
+                <div className="mt-4 pt-6 border-t border-slate-100">
+                  <p className="text-sm font-bold text-slate-900 mb-4">Current Marks</p>
+                  <p className="text-xs text-slate-400 mb-4">Please enter your most recent percentage mark for the subjects you intend to study.</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {selectedSubjects.map((subject) => (
+                      <label key={subject} className="flex flex-col gap-1.5 text-xs font-bold text-slate-700">
+                        {subject}
+                        <div className="relative">
+                          <input 
+                            type="number" 
+                            min="0" 
+                            max="100" 
+                            placeholder="e.g. 75"
+                            value={currentMarks[subject] ?? ""}
+                            onChange={(e) => setCurrentMarks((prev) => ({ ...prev, [subject]: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" 
+                          />
+                          <span className="absolute right-4 top-2.5 text-sm text-slate-400">%</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

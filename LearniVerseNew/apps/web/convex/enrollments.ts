@@ -43,7 +43,14 @@ async function enrichApplication(
   const nscSubmission = application.nscSubmissionId
     ? await ctx.db.get(application.nscSubmissionId)
     : null;
-  const BASE_APPLICATION_FEE = 7500;
+  const GRADE_PRICES: Record<string, number> = {
+    "Grade 8": 7500,
+    "Grade 9": 8750,
+    "Grade 10": 10000,
+    "Grade 11": 11250,
+    "Grade 12": 12500,
+  };
+  const BASE_APPLICATION_FEE = application.gradeLabel ? (GRADE_PRICES[application.gradeLabel] ?? 7500) : 7500;
   const totalAmount = BASE_APPLICATION_FEE + courses
     .filter(Boolean)
     .reduce((sum, course) => sum + (course?.price ?? 0), 0);
@@ -286,6 +293,14 @@ export const saveDraft = mutation({
     gradeLabel: v.optional(v.string()),
     selectedCourseIds: v.optional(v.array(v.id("courses"))),
     selectedSubjectNames: v.optional(v.array(v.string())),
+    currentMarks: v.optional(
+      v.array(
+        v.object({
+          subject: v.string(),
+          mark: v.number(),
+        }),
+      ),
+    ),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -309,6 +324,7 @@ export const saveDraft = mutation({
         gradeLabel: args.gradeLabel ?? existingDraft.gradeLabel,
         selectedCourseIds: args.selectedCourseIds ?? existingDraft.selectedCourseIds,
         selectedSubjectNames: args.selectedSubjectNames ?? existingDraft.selectedSubjectNames,
+        currentMarks: args.currentMarks ?? existingDraft.currentMarks,
         notes: args.notes ?? existingDraft.notes,
         updatedAt: now,
       });
@@ -324,6 +340,7 @@ export const saveDraft = mutation({
       gradeLabel: args.gradeLabel,
       selectedCourseIds: args.selectedCourseIds ?? [],
       selectedSubjectNames: args.selectedSubjectNames,
+      currentMarks: args.currentMarks,
       status: "draft",
       paymentStatus: "not_started",
       notes: args.notes,
@@ -339,6 +356,14 @@ export const submitApplication = mutation({
     gradeLabel: v.optional(v.string()),
     selectedCourseIds: v.array(v.id("courses")),
     selectedSubjectNames: v.optional(v.array(v.string())),
+    currentMarks: v.optional(
+      v.array(
+        v.object({
+          subject: v.string(),
+          mark: v.number(),
+        }),
+      ),
+    ),
     notes: v.optional(v.string()),
     gender: v.optional(v.string()),
     dob: v.optional(v.number()),
@@ -406,6 +431,7 @@ export const submitApplication = mutation({
         gradeLabel: args.gradeLabel,
         selectedCourseIds: args.selectedCourseIds,
         selectedSubjectNames: args.selectedSubjectNames,
+        currentMarks: args.currentMarks,
         ...docFields,
         notes: args.notes,
         status: "submitted",
@@ -431,6 +457,7 @@ export const submitApplication = mutation({
       gradeLabel: args.gradeLabel,
       selectedCourseIds: args.selectedCourseIds,
       selectedSubjectNames: args.selectedSubjectNames,
+      currentMarks: args.currentMarks,
       ...docFields,
       status: "submitted",
       paymentStatus: "pending",
@@ -496,8 +523,8 @@ export const approveApplication = mutation({
     // 3. Notify Student
     await ctx.db.insert("notifications", {
       userId: application.studentUserId,
-      title: "Admissions Update",
-      body: "Institutional Review of your application has been completed. You are now formally enrolled.",
+      title: "Application Approved",
+      body: "Your application has been approved! You can now proceed to pay the registration fee on your dashboard.",
       type: "enrollment",
       isRead: false,
       createdAt: Date.now(),
@@ -536,8 +563,8 @@ export const rejectApplication = mutation({
     // 3. Notify Student
     await ctx.db.insert("notifications", {
       userId: application.studentUserId,
-      title: "Admissions Update",
-      body: "Institutional Review of your application has been completed. Please check your dashboard for institutional feedback.",
+      title: "Application Rejected",
+      body: "We regret to let you know that your application has been rejected. Please check your dashboard for institutional feedback.",
       type: "enrollment",
       isRead: false,
       createdAt: Date.now(),
