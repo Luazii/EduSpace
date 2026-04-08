@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { AppShell } from "@/components/app-shell";
+
 import { ProfileForm } from "@/components/profile/profile-form";
 import { UserCircle, ShieldCheck, Mail } from "lucide-react";
 
@@ -12,7 +12,7 @@ export default function ProfilePage() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 px-6 py-14 sm:px-10">
       <div className="grid w-full gap-10">
-        <AppShell />
+
         
         <div className="grid gap-10 lg:grid-cols-[1fr_350px]">
           <div className="space-y-10">

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useQuery } from "convex/react";
 
-import { AppShell } from "@/components/app-shell";
+
 import { FeatureGrid } from "@/components/feature-grid";
 import { ActiveCoursesGrid } from "@/components/dashboard/active-courses-grid";
 import { ApplicationStatusCard } from "@/components/dashboard/application-status-card";
@@ -32,7 +32,7 @@ export default function DashboardPage() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 px-6 py-14 sm:px-10">
       <div className="grid w-full gap-10">
-        <AppShell />
+
         
         {enrolled ? (
           <div className="grid gap-10 lg:grid-cols-[1fr_350px]">
