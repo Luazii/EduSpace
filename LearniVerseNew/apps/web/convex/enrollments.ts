@@ -43,7 +43,8 @@ async function enrichApplication(
   const nscSubmission = application.nscSubmissionId
     ? await ctx.db.get(application.nscSubmissionId)
     : null;
-  const totalAmount = courses
+  const BASE_APPLICATION_FEE = 7500;
+  const totalAmount = BASE_APPLICATION_FEE + courses
     .filter(Boolean)
     .reduce((sum, course) => sum + (course?.price ?? 0), 0);
 

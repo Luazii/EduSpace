@@ -436,14 +436,22 @@ export function ApplyWizard() {
                         app.status === "approved"  ? "bg-emerald-50 text-emerald-700" :
                         "bg-rose-50 text-rose-700"
                       }`}>{app.status}</span>
-                      <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
-                        app.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-                      }`}>Payment: {app.paymentStatus}</span>
+                      {app.totalAmount > 0 && (
+                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
+                          app.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                        }`}>Payment: {app.paymentStatus}</span>
+                      )}
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-black text-slate-950 mb-2">R {app.totalAmount.toFixed(2)}</p>
-                    {app.paymentStatus !== "paid" && <CheckoutButton applicationId={app._id} />}
+                    {app.totalAmount > 0 ? (
+                      <>
+                        <p className="text-sm font-black text-slate-950 mb-2">R {app.totalAmount.toFixed(2)}</p>
+                        {app.paymentStatus !== "paid" && <CheckoutButton applicationId={app._id} />}
+                      </>
+                    ) : (
+                      <p className="text-sm font-bold text-slate-500">No payment required</p>
+                    )}
                   </div>
                 </div>
               </article>

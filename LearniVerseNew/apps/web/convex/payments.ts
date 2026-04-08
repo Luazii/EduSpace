@@ -312,9 +312,10 @@ export const internalGetApplicationForPayment = internalQuery({
       application.selectedCourseIds.map((courseId) => ctx.db.get(courseId)),
     );
 
+    const BASE_APPLICATION_FEE = 7500;
     return {
       ...application,
-      totalAmount: courses
+      totalAmount: BASE_APPLICATION_FEE + courses
         .filter(Boolean)
         .reduce((sum, course) => sum + (course?.price ?? 0), 0),
     };
