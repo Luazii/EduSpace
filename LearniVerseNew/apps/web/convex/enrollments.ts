@@ -283,6 +283,7 @@ export const saveDraft = mutation({
   args: {
     qualificationId: v.optional(v.id("qualifications")),
     selectedCourseIds: v.optional(v.array(v.id("courses"))),
+    selectedSubjectNames: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -304,6 +305,7 @@ export const saveDraft = mutation({
       await ctx.db.patch(existingDraft._id, {
         qualificationId: args.qualificationId ?? existingDraft.qualificationId,
         selectedCourseIds: args.selectedCourseIds ?? existingDraft.selectedCourseIds,
+        selectedSubjectNames: args.selectedSubjectNames ?? existingDraft.selectedSubjectNames,
         notes: args.notes ?? existingDraft.notes,
         updatedAt: now,
       });
@@ -318,6 +320,7 @@ export const saveDraft = mutation({
       studentUserId: user._id,
       qualificationId: args.qualificationId,
       selectedCourseIds: args.selectedCourseIds ?? [],
+      selectedSubjectNames: args.selectedSubjectNames,
       status: "draft",
       paymentStatus: "not_started",
       notes: args.notes,
@@ -331,6 +334,7 @@ export const submitApplication = mutation({
   args: {
     qualificationId: v.id("qualifications"),
     selectedCourseIds: v.array(v.id("courses")),
+    selectedSubjectNames: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
     gender: v.optional(v.string()),
     dob: v.optional(v.number()),
@@ -394,6 +398,7 @@ export const submitApplication = mutation({
       await ctx.db.patch(existingDraft._id, {
         qualificationId: args.qualificationId,
         selectedCourseIds: args.selectedCourseIds,
+        selectedSubjectNames: args.selectedSubjectNames,
         ...docFields,
         notes: args.notes,
         status: "submitted",
@@ -407,6 +412,7 @@ export const submitApplication = mutation({
       studentUserId: user._id,
       qualificationId: args.qualificationId,
       selectedCourseIds: args.selectedCourseIds,
+      selectedSubjectNames: args.selectedSubjectNames,
       ...docFields,
       status: "submitted",
       paymentStatus: "pending",

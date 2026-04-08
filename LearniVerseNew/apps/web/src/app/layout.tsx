@@ -34,7 +34,7 @@ export default function RootLayout({
             <UserBootstrapper />
             <div className="relative flex min-h-full flex-col">
               <div className="absolute top-0 -z-10 h-105 w-full bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.18),transparent_35%),radial-gradient(circle_at_top_right,rgba(124,77,255,0.18),transparent_32%)]" />
-              <header className="relative border-b border-black/5 bg-white/70 backdrop-blur-xl">
+              <header className="sticky top-0 z-50 border-b border-black/5 bg-white/70 backdrop-blur-xl">
                 <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 sm:px-10">
                   <Link href="/" className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-sm font-semibold text-white">
@@ -42,7 +42,7 @@ export default function RootLayout({
                     </div>
                     <div className="flex flex-col">
                       <span className="text-base font-black tracking-tighter text-slate-950">EDUSPACE</span>
-                      <span className="text-[10px] font-bold tracking-widest text-[#7c4dff]">VIRTUAL CAMPUS</span>
+                      <span className="text-[10px] font-bold tracking-widest text-[#7c4dff]">HIGH SCHOOL</span>
                     </div>
                   </Link>
 
@@ -54,12 +54,12 @@ export default function RootLayout({
                     <UserButton />
                   </div>
                 </div>
+                <MobileNav />
               </header>
 
-              <div className="flex flex-1 flex-col pb-24 md:pb-0">
+              <div className="flex flex-1 flex-col">
                 {children}
               </div>
-              <MobileNav />
 
               <footer className="border-t border-black/5 bg-white py-12">
                 <div className="mx-auto max-w-6xl px-6 text-center sm:px-10">
