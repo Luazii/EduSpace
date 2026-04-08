@@ -198,7 +198,8 @@ export default defineSchema({
   enrollmentApplications: defineTable({
     studentUserId: v.id("users"),
     facultyId: v.optional(v.id("faculties")),
-    qualificationId: v.id("qualifications"),
+    qualificationId: v.optional(v.id("qualifications")),
+    gradeLabel: v.optional(v.string()),           // e.g. "Grade 8" — static high school grade
     selectedCourseIds: v.array(v.id("courses")),
     nscSubmissionId: v.optional(v.id("nscSubmissions")),
     // High school subject names (static SA curriculum list)

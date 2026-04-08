@@ -27,9 +27,9 @@ async function enrichApplication(
   ctx: QueryCtx | MutationCtx,
   application: Doc<"enrollmentApplications">,
 ) {
-  const { facultyId } = application;
+  const { facultyId, qualificationId } = application;
   const faculty = facultyId ? await ctx.db.get(facultyId) : null;
-  const qualification = await ctx.db.get(application.qualificationId);
+  const qualification = qualificationId ? await ctx.db.get(qualificationId) : null;
   const courses = await Promise.all(
     application.selectedCourseIds.map((courseId: Id<"courses">) => ctx.db.get(courseId)),
   );
@@ -282,6 +282,7 @@ export const generateNscUploadUrl = mutation({
 export const saveDraft = mutation({
   args: {
     qualificationId: v.optional(v.id("qualifications")),
+    gradeLabel: v.optional(v.string()),
     selectedCourseIds: v.optional(v.array(v.id("courses"))),
     selectedSubjectNames: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
@@ -304,6 +305,7 @@ export const saveDraft = mutation({
     if (existingDraft) {
       await ctx.db.patch(existingDraft._id, {
         qualificationId: args.qualificationId ?? existingDraft.qualificationId,
+        gradeLabel: args.gradeLabel ?? existingDraft.gradeLabel,
         selectedCourseIds: args.selectedCourseIds ?? existingDraft.selectedCourseIds,
         selectedSubjectNames: args.selectedSubjectNames ?? existingDraft.selectedSubjectNames,
         notes: args.notes ?? existingDraft.notes,
@@ -312,13 +314,13 @@ export const saveDraft = mutation({
       return existingDraft._id;
     }
 
-    if (!args.qualificationId) {
+    if (!args.gradeLabel) {
       throw new Error("Grade is required to create a draft.");
     }
 
     return await ctx.db.insert("enrollmentApplications", {
       studentUserId: user._id,
-      qualificationId: args.qualificationId,
+      gradeLabel: args.gradeLabel,
       selectedCourseIds: args.selectedCourseIds ?? [],
       selectedSubjectNames: args.selectedSubjectNames,
       status: "draft",
@@ -332,7 +334,8 @@ export const saveDraft = mutation({
 
 export const submitApplication = mutation({
   args: {
-    qualificationId: v.id("qualifications"),
+    qualificationId: v.optional(v.id("qualifications")),
+    gradeLabel: v.optional(v.string()),
     selectedCourseIds: v.array(v.id("courses")),
     selectedSubjectNames: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
@@ -397,6 +400,7 @@ export const submitApplication = mutation({
     if (existingDraft) {
       await ctx.db.patch(existingDraft._id, {
         qualificationId: args.qualificationId,
+        gradeLabel: args.gradeLabel,
         selectedCourseIds: args.selectedCourseIds,
         selectedSubjectNames: args.selectedSubjectNames,
         ...docFields,
@@ -411,6 +415,7 @@ export const submitApplication = mutation({
     return await ctx.db.insert("enrollmentApplications", {
       studentUserId: user._id,
       qualificationId: args.qualificationId,
+      gradeLabel: args.gradeLabel,
       selectedCourseIds: args.selectedCourseIds,
       selectedSubjectNames: args.selectedSubjectNames,
       ...docFields,

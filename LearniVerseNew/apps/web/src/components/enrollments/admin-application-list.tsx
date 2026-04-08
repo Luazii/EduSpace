@@ -34,7 +34,7 @@ export function AdminApplicationList() {
                   {application.student?.fullName ?? application.student?.email ?? "Student"}
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
-                  {application.faculty?.name} · {application.qualification?.name}
+                  {application.gradeLabel ?? application.qualification?.name ?? "—"}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">

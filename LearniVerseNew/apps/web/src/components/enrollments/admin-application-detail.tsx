@@ -81,7 +81,7 @@ export function AdminApplicationDetail({
               {application.student?.fullName ?? application.student?.email}
             </h1>
             <p className="mt-3 text-sm leading-7 text-slate-600">
-              Grade: {application.qualification?.name}
+              Grade: {application.gradeLabel ?? application.qualification?.name ?? "—"}
             </p>
           </div>
           <Link

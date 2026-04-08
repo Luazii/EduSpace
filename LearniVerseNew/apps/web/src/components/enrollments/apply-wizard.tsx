@@ -6,6 +6,9 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
 import { CheckoutButton } from "@/components/payments/checkout-button";
 
+// ── Static high school grades ─────────────────────────────────────────────────
+const HS_GRADES = ["Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
+
 // ── South African High School Subject List ───────────────────────────────────
 const SA_SUBJECTS: Record<string, string[]> = {
   "Home Language": [
@@ -93,14 +96,13 @@ const DOCS: { key: DocKey; label: string; hint: string; required: boolean }[] = 
 const STEPS = ["Grade", "Personal", "Subjects", "Documents", "Review"];
 
 export function ApplyWizard() {
-  const grades      = useQuery(api.qualifications.list) ?? [];
-  const applications = useQuery(api.enrollments.listMine) ?? [];
-  const saveDraft        = useMutation(api.enrollments.saveDraft);
+  const applications      = useQuery(api.enrollments.listMine) ?? [];
+  const saveDraft         = useMutation(api.enrollments.saveDraft);
   const generateUploadUrl = useMutation(api.enrollments.generateNscUploadUrl);
   const submitApplication = useMutation(api.enrollments.submitApplication);
 
   const [step, setStep] = useState(1);
-  const [gradeId, setGradeId] = useState("");
+  const [gradeLabel, setGradeLabel] = useState("");   // "Grade 8" … "Grade 12"
   const [phone, setPhone] = useState("");
   const [gender, setGender] = useState("");
   const [dob, setDob] = useState("");
@@ -111,8 +113,6 @@ export function ApplyWizard() {
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedApplicationId, setSubmittedApplicationId] = useState<string | null>(null);
-
-  const selectedGrade = grades.find((g) => g._id === gradeId);
 
   function toggleSubject(name: string) {
     setSelectedSubjects((cur) =>
@@ -128,16 +128,16 @@ export function ApplyWizard() {
   }
 
   async function onSaveDraft() {
-    if (!gradeId) return;
+    if (!gradeLabel) return;
     setIsSavingDraft(true);
     try {
-      await saveDraft({ qualificationId: gradeId as Id<"qualifications">, selectedSubjectNames: selectedSubjects, notes: notes.trim() || undefined });
+      await saveDraft({ gradeLabel, selectedSubjectNames: selectedSubjects, notes: notes.trim() || undefined });
     } finally { setIsSavingDraft(false); }
   }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!gradeId || selectedSubjects.length === 0) return;
+    if (!gradeLabel || selectedSubjects.length === 0) return;
     setIsSubmitting(true);
     try {
       const [birthCertStorageId, parentIdStorageId, proofOfResidenceStorageId, schoolReportStorageId, transferLetterStorageId] =
@@ -150,7 +150,7 @@ export function ApplyWizard() {
         ]);
 
       const appId = await submitApplication({
-        qualificationId: gradeId as Id<"qualifications">,
+        gradeLabel,
         selectedCourseIds: [],
         selectedSubjectNames: selectedSubjects,
         notes: notes.trim() || undefined,
@@ -207,28 +207,22 @@ export function ApplyWizard() {
                 <p className="text-sm font-bold text-slate-900">Which grade are you applying for?</p>
                 <p className="mt-1 text-xs text-slate-400">Select the grade you will be entering in the upcoming academic year.</p>
               </div>
-              {grades.filter((g) => g.isActive).length === 0 ? (
-                <div className="rounded-3xl border-2 border-dashed border-slate-100 p-8 text-center text-sm text-slate-400">
-                  No grades are currently open for registration. Please contact the school office.
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-                  {grades.filter((g) => g.isActive).map((grade) => (
-                    <button
-                      key={grade._id}
-                      type="button"
-                      onClick={() => { setGradeId(grade._id); setSelectedSubjects([]); }}
-                      className={`rounded-3xl border-2 p-5 text-center transition-all ${
-                        gradeId === grade._id
-                          ? "border-sky-500 bg-sky-50 ring-4 ring-sky-500/10"
-                          : "border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white"
-                      }`}
-                    >
-                      <p className={`text-sm font-black ${gradeId === grade._id ? "text-sky-700" : "text-slate-700"}`}>{grade.name}</p>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+                {HS_GRADES.map((grade) => (
+                  <button
+                    key={grade}
+                    type="button"
+                    onClick={() => { setGradeLabel(grade); setSelectedSubjects([]); }}
+                    className={`rounded-3xl border-2 p-5 text-center transition-all ${
+                      gradeLabel === grade
+                        ? "border-sky-500 bg-sky-50 ring-4 ring-sky-500/10"
+                        : "border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-white"
+                    }`}
+                  >
+                    <p className={`text-sm font-black ${gradeLabel === grade ? "text-sky-700" : "text-slate-700"}`}>{grade}</p>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -263,7 +257,7 @@ export function ApplyWizard() {
             <div className="grid gap-5">
               <div>
                 <p className="text-sm font-bold text-slate-900">
-                  Select your subjects for {selectedGrade?.name ?? "this grade"}
+                  Select your subjects for {gradeLabel || "this grade"}
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
                   Learners typically take 7 subjects. Life Orientation is compulsory. Select at least one Home Language and one Mathematics option.
@@ -349,7 +343,7 @@ export function ApplyWizard() {
                 <div className="grid gap-4 text-sm sm:grid-cols-2">
                   <div>
                     <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Grade Applying For</p>
-                    <p className="font-bold text-slate-950">{selectedGrade?.name ?? "—"}</p>
+                    <p className="font-bold text-slate-950">{gradeLabel || "—"}</p>
                   </div>
                   <div>
                     <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Subjects Selected</p>
@@ -423,7 +417,7 @@ export function ApplyWizard() {
                   Back
                 </button>
               )}
-              <button type="button" onClick={() => void onSaveDraft()} disabled={isSavingDraft || !gradeId}
+              <button type="button" onClick={() => void onSaveDraft()} disabled={isSavingDraft || !gradeLabel}
                 className="text-sm font-bold text-sky-600 hover:text-sky-700 disabled:opacity-30">
                 {isSavingDraft ? "Saving…" : "Save Draft"}
               </button>
@@ -431,12 +425,12 @@ export function ApplyWizard() {
 
             {step < 5 ? (
               <button type="button" onClick={() => setStep((s) => s + 1)}
-                disabled={(step === 1 && !gradeId) || (step === 3 && selectedSubjects.length === 0)}
+                disabled={(step === 1 && !gradeLabel) || (step === 3 && selectedSubjects.length === 0)}
                 className="rounded-2xl bg-slate-950 px-9 py-3.5 text-sm font-bold text-white shadow-xl shadow-slate-950/20 hover:bg-slate-800 transition disabled:opacity-40">
                 Next
               </button>
             ) : (
-              <button type="submit" disabled={isSubmitting || !gradeId || selectedSubjects.length === 0}
+              <button type="submit" disabled={isSubmitting || !gradeLabel || selectedSubjects.length === 0}
                 className="rounded-2xl bg-[#7c4dff] px-9 py-3.5 text-sm font-bold text-white shadow-xl shadow-[#7c4dff]/20 hover:bg-[#6c3bed] transition disabled:opacity-50">
                 {isSubmitting ? "Submitting…" : "Submit Application"}
               </button>
@@ -459,7 +453,7 @@ export function ApplyWizard() {
               <article key={app._id} className="rounded-3xl border border-slate-100 p-6 hover:border-sky-100 transition hover:bg-sky-50/10">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-950">{app.qualification?.name}</h3>
+                    <h3 className="text-lg font-bold text-slate-950">{app.gradeLabel ?? app.qualification?.name ?? "—"}</h3>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
                         app.status === "submitted" ? "bg-sky-50 text-sky-700" :
