@@ -157,7 +157,7 @@ export default function SubmittedApplicationPage({
               Secure your place by paying the registration fee. Your application has been approved and is awaiting payment!
             </p>
           </div>
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <CheckoutButton applicationId={applicationId} />
           </div>
         </div>

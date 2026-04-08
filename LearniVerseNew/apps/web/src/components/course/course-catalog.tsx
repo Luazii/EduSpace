@@ -15,12 +15,14 @@ export function ClassroomView() {
           You are not currently enrolled in any subjects.
         </div>
       ) : (
-        courses.map((course) => (
-          <article
-            key={course._id}
-            className="flex h-full flex-col rounded-[1.75rem] border border-slate-200 bg-white/80 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.05)]"
-          >
-            <div className="flex items-start justify-between gap-3">
+        courses.map((course) => {
+          if (!course) return null;
+          return (
+            <article
+              key={course._id}
+              className="flex h-full flex-col rounded-[1.75rem] border border-slate-200 bg-white/80 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.05)]"
+            >
+              <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">
                   {course.courseCode}
@@ -55,8 +57,9 @@ export function ClassroomView() {
               </div>
             </div>
           </article>
-        ))
-      )}
+        );
+      })
+    )}
     </section>
   );
 }
