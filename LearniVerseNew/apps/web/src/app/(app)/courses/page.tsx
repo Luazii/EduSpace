@@ -1,4 +1,4 @@
-import { CourseCatalog } from "@/components/course/course-catalog";
+import { ClassroomView } from "@/components/course/course-catalog";
 
 export default function CoursesPage() {
   return (
@@ -16,7 +16,7 @@ export default function CoursesPage() {
             and learning resources are stored and organized here.
           </p>
         </section>
-        <CourseCatalog />
+        <ClassroomView />
       </div>
     </main>
   );

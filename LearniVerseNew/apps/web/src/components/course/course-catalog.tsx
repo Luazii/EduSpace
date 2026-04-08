@@ -5,14 +5,14 @@ import { useQuery } from "convex/react";
 
 import { api } from "../../../convex/_generated/api";
 
-export function CourseCatalog() {
-  const courses = useQuery(api.courses.list, {}) ?? [];
+export function ClassroomView() {
+  const courses = useQuery(api.enrollments.listMyActiveCourses) ?? [];
 
   return (
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {courses.length === 0 ? (
-        <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-white/70 px-6 py-8 text-sm leading-7 text-slate-500 md:col-span-2 xl:col-span-3">
-          No courses yet. Add the first faculty, qualification, and course from the admin pages to bring this catalog to life.
+        <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-white/70 px-6 py-8 text-sm leading-7 text-slate-500 md:col-span-2 xl:col-span-3 text-center">
+          You are not currently enrolled in any subjects.
         </div>
       ) : (
         courses.map((course) => (
@@ -39,24 +39,18 @@ export function CourseCatalog() {
               {typeof course.semester === "number" ? <span>Semester {course.semester}</span> : null}
             </div>
             <p className="mt-4 flex-1 text-sm leading-7 text-slate-600">
-              {course.description ?? "Description coming next as the classroom experience fills out."}
+              {course.description ?? "Classroom resources, assignments, and curriculum materials."}
             </p>
             <div className="mt-6 flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-900">
-                {typeof course.price === "number" ? `R ${course.price.toFixed(2)}` : "Pricing TBD"}
-              </p>
+              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md">
+                Enrolled
+              </span>
               <div className="flex gap-2">
                 <Link
                   href={`/courses/${course._id}`}
                   className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
-                  Open
-                </Link>
-                <Link
-                  href="/apply"
-                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-950"
-                >
-                  Apply
+                  Enter Classroom
                 </Link>
               </div>
             </div>
