@@ -27,7 +27,8 @@ async function enrichApplication(
   ctx: QueryCtx | MutationCtx,
   application: Doc<"enrollmentApplications">,
 ) {
-  const faculty = await ctx.db.get(application.facultyId);
+  const { facultyId } = application;
+  const faculty = facultyId ? await ctx.db.get(facultyId) : null;
   const qualification = await ctx.db.get(application.qualificationId);
   const courses = await Promise.all(
     application.selectedCourseIds.map((courseId: Id<"courses">) => ctx.db.get(courseId)),
@@ -280,7 +281,6 @@ export const generateNscUploadUrl = mutation({
 
 export const saveDraft = mutation({
   args: {
-    facultyId: v.optional(v.id("faculties")),
     qualificationId: v.optional(v.id("qualifications")),
     selectedCourseIds: v.optional(v.array(v.id("courses"))),
     notes: v.optional(v.string()),
@@ -302,23 +302,20 @@ export const saveDraft = mutation({
 
     if (existingDraft) {
       await ctx.db.patch(existingDraft._id, {
-        facultyId: args.facultyId ?? existingDraft.facultyId,
         qualificationId: args.qualificationId ?? existingDraft.qualificationId,
         selectedCourseIds: args.selectedCourseIds ?? existingDraft.selectedCourseIds,
         notes: args.notes ?? existingDraft.notes,
         updatedAt: now,
       });
-
       return existingDraft._id;
     }
 
-    if (!args.facultyId || !args.qualificationId) {
-      throw new Error("Faculty and qualification are required to create a draft.");
+    if (!args.qualificationId) {
+      throw new Error("Grade is required to create a draft.");
     }
 
     return await ctx.db.insert("enrollmentApplications", {
       studentUserId: user._id,
-      facultyId: args.facultyId,
       qualificationId: args.qualificationId,
       selectedCourseIds: args.selectedCourseIds ?? [],
       status: "draft",
@@ -332,28 +329,22 @@ export const saveDraft = mutation({
 
 export const submitApplication = mutation({
   args: {
-    facultyId: v.id("faculties"),
     qualificationId: v.id("qualifications"),
     selectedCourseIds: v.array(v.id("courses")),
     notes: v.optional(v.string()),
-    nscStorageId: v.id("_storage"),
-    nscFileName: v.string(),
-    subjects: v.array(
-      v.object({
-        name: v.string(),
-        mark: v.number(),
-      }),
-    ),
-    // Personal Details
     gender: v.optional(v.string()),
     dob: v.optional(v.number()),
     phone: v.optional(v.string()),
+    birthCertStorageId: v.optional(v.id("_storage")),
+    parentIdStorageId: v.optional(v.id("_storage")),
+    proofOfResidenceStorageId: v.optional(v.id("_storage")),
+    schoolReportStorageId: v.optional(v.id("_storage")),
+    transferLetterStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const now = Date.now();
-    
-    // 1. Update Student Profile & User details
+
     await ctx.db.patch(user._id, {
       phone: args.phone ?? user.phone,
       updatedAt: now,
@@ -368,7 +359,6 @@ export const submitApplication = mutation({
       await ctx.db.patch(existingProfile._id, {
         gender: args.gender ?? existingProfile.gender,
         dob: args.dob ?? existingProfile.dob,
-        facultyId: args.facultyId,
         qualificationId: args.qualificationId,
         updatedAt: now,
       });
@@ -377,25 +367,11 @@ export const submitApplication = mutation({
         userId: user._id,
         gender: args.gender,
         dob: args.dob,
-        facultyId: args.facultyId,
         qualificationId: args.qualificationId,
         createdAt: now,
         updatedAt: now,
       });
     }
-
-    // 2. Handle Document Submission
-    const metadata = await ctx.db.system.get("_storage", args.nscStorageId);
-
-    const nscSubmissionId = await ctx.db.insert("nscSubmissions", {
-      studentUserId: user._id,
-      storageId: args.nscStorageId,
-      fileName: args.nscFileName,
-      mimeType: metadata?.contentType,
-      size: metadata?.size,
-      subjects: args.subjects,
-      submittedAt: now,
-    });
 
     const drafts = await ctx.db
       .query("enrollmentApplications")
@@ -406,27 +382,32 @@ export const submitApplication = mutation({
         .filter((application) => application.status === "draft")
         .sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null;
 
+    const docFields = {
+      birthCertStorageId: args.birthCertStorageId,
+      parentIdStorageId: args.parentIdStorageId,
+      proofOfResidenceStorageId: args.proofOfResidenceStorageId,
+      schoolReportStorageId: args.schoolReportStorageId,
+      transferLetterStorageId: args.transferLetterStorageId,
+    };
+
     if (existingDraft) {
       await ctx.db.patch(existingDraft._id, {
-        facultyId: args.facultyId,
         qualificationId: args.qualificationId,
         selectedCourseIds: args.selectedCourseIds,
-        nscSubmissionId,
+        ...docFields,
         notes: args.notes,
         status: "submitted",
         paymentStatus: "pending",
         updatedAt: now,
       });
-
       return existingDraft._id;
     }
 
     return await ctx.db.insert("enrollmentApplications", {
       studentUserId: user._id,
-      facultyId: args.facultyId,
       qualificationId: args.qualificationId,
       selectedCourseIds: args.selectedCourseIds,
-      nscSubmissionId,
+      ...docFields,
       status: "submitted",
       paymentStatus: "pending",
       notes: args.notes,

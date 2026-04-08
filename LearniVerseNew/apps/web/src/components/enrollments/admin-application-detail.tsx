@@ -81,7 +81,7 @@ export function AdminApplicationDetail({
               {application.student?.fullName ?? application.student?.email}
             </h1>
             <p className="mt-3 text-sm leading-7 text-slate-600">
-              {application.faculty?.name} · {application.qualification?.name}
+              Grade: {application.qualification?.name}
             </p>
           </div>
           <Link
@@ -100,10 +100,18 @@ export function AdminApplicationDetail({
           </h2>
           <div className="mt-6 grid gap-4 text-sm text-slate-600">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-              Courses:{" "}
-              {application.courses
-                .map((course: (typeof application.courses)[number]) => course?.courseName)
-                .join(", ")}
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">Subjects</p>
+              {application.courses.length === 0 ? (
+                <p className="text-slate-500 italic">None selected</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {application.courses.map((course: (typeof application.courses)[number]) => (
+                    <span key={course?._id} className="rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700">
+                      {course?.courseName}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
               Status: {application.status} · Payment: {application.paymentStatus}
@@ -113,20 +121,27 @@ export function AdminApplicationDetail({
                 Notes: {application.notes}
               </div>
             ) : null}
-            {application.nscSubmission ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                <p className="font-semibold text-slate-950">
-                  NSC document: {application.nscSubmission.fileName}
-                </p>
-                <div className="mt-3 grid gap-2">
-                  {application.nscSubmission.subjects.map((subject, index) => (
-                    <p key={index}>
-                      {subject.name}: {subject.mark}
-                    </p>
-                  ))}
-                </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Registration Documents</p>
+              <div className="grid gap-2 text-sm">
+                {[
+                  { label: "Birth Certificate / Learner ID", id: application.birthCertStorageId },
+                  { label: "Parent / Guardian ID", id: application.parentIdStorageId },
+                  { label: "Proof of Residence", id: application.proofOfResidenceStorageId },
+                  { label: "Latest School Report", id: application.schoolReportStorageId },
+                  { label: "Transfer Letter", id: application.transferLetterStorageId },
+                ].map(({ label, id }) => (
+                  <div key={label} className="flex items-center gap-2">
+                    <span className={id ? "text-emerald-600" : "text-slate-300"}>
+                      {id ? "✓" : "–"}
+                    </span>
+                    <span className={id ? "text-slate-700 font-medium" : "text-slate-400"}>
+                      {label}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ) : null}
+            </div>
           </div>
         </div>
 

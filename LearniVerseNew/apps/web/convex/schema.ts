@@ -197,10 +197,16 @@ export default defineSchema({
 
   enrollmentApplications: defineTable({
     studentUserId: v.id("users"),
-    facultyId: v.id("faculties"),
+    facultyId: v.optional(v.id("faculties")),
     qualificationId: v.id("qualifications"),
     selectedCourseIds: v.array(v.id("courses")),
     nscSubmissionId: v.optional(v.id("nscSubmissions")),
+    // High school registration documents
+    birthCertStorageId: v.optional(v.id("_storage")),
+    parentIdStorageId: v.optional(v.id("_storage")),
+    proofOfResidenceStorageId: v.optional(v.id("_storage")),
+    schoolReportStorageId: v.optional(v.id("_storage")),
+    transferLetterStorageId: v.optional(v.id("_storage")),
     status: v.union(
       v.literal("draft"),
       v.literal("submitted"),
