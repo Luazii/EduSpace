@@ -13,6 +13,7 @@ import { UserBootstrapper } from "@/components/user-bootstrapper";
 import { NotificationsHub } from "@/components/notifications-hub";
 import { RoleSwitch } from "@/components/role-switch";
 import { Navbar } from "@/components/navbar";
+import { MobileNav } from "@/components/mobile-nav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -55,9 +56,10 @@ export default function RootLayout({
                 </div>
               </header>
 
-              <div className="flex flex-1 flex-col">
+              <div className="flex flex-1 flex-col pb-24 md:pb-0">
                 {children}
               </div>
+              <MobileNav />
 
               <footer className="border-t border-black/5 bg-white py-12">
                 <div className="mx-auto max-w-6xl px-6 text-center sm:px-10">
