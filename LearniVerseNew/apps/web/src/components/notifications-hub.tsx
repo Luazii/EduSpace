@@ -12,6 +12,7 @@ import {
   Inbox
 } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -20,6 +21,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export function NotificationsHub() {
+  const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
   const [isOpen, setIsOpen] = useState(false);
   const notifications = useQuery(api.notifications.list, isAuthenticated ? { limit: 10 } : "skip");
@@ -38,8 +40,14 @@ export function NotificationsHub() {
     }
   };
 
-  const handleMarkAsRead = async (id: any) => {
-    await markAsRead({ notificationId: id });
+  const handleNotificationClick = async (item: any) => {
+    if (!item.isRead) {
+      await markAsRead({ notificationId: item._id });
+    }
+    if (item.link) {
+      setIsOpen(false);
+      router.push(item.link);
+    }
   };
 
   return (
@@ -91,7 +99,7 @@ export function NotificationsHub() {
                   {notifications?.map((item: any) => (
                     <div 
                       key={item._id}
-                      onClick={() => !item.isRead && handleMarkAsRead(item._id)}
+                      onClick={() => handleNotificationClick(item)}
                       className={cn(
                         "group relative flex flex-col gap-1 px-6 py-5 transition hover:bg-slate-50/50 cursor-pointer",
                         !item.isRead && "bg-sky-50/20"
@@ -113,9 +121,16 @@ export function NotificationsHub() {
                           <p className="mt-1 text-xs leading-relaxed text-slate-500 line-clamp-2">
                             {item.body}
                           </p>
-                          <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                            {format(item.createdAt, "PPP p")}
-                          </p>
+                          <div className="mt-2 flex items-center justify-between">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              {format(item.createdAt, "PPP p")}
+                            </p>
+                            {item.link && (
+                              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                Take Action
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

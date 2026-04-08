@@ -373,6 +373,7 @@ export default defineSchema({
     title: v.string(),
     body: v.string(),
     type: v.union(v.literal("grade"), v.literal("enrollment"), v.literal("deadline"), v.literal("system"), v.literal("booking")),
+    link: v.optional(v.string()),
     isRead: v.boolean(),
     createdAt: v.number(),
   }).index("by_user", ["userId"]),

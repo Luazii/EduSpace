@@ -464,6 +464,7 @@ export const submitApplication = mutation({
           ? "Congratulations! Your application meets our academic requirements and is pre-approved! Your spot is tentatively reserved pending a manual document review." 
           : `Your ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
         type: "enrollment",
+        link: `/apply/submitted/${existingDraft._id}`,
         isRead: false,
         createdAt: now,
       });
@@ -493,6 +494,7 @@ export const submitApplication = mutation({
         ? "Congratulations! Your application meets our academic requirements and is pre-approved! Your spot is tentatively reserved pending a manual document review." 
         : `Your ${gradeDisplay} enrolment application has been received and is under review. You will be notified once a decision is made.`,
       type: "enrollment",
+      link: `/apply/submitted/${applicationId}`,
       isRead: false,
       createdAt: now,
     });
@@ -546,8 +548,9 @@ export const approveApplication = mutation({
     await ctx.db.insert("notifications", {
       userId: application.studentUserId,
       title: "Application Approved",
-      body: "Your application has been approved! You can now proceed to pay the registration fee on your dashboard.",
+      body: "Your application has been approved! You can now proceed to pay the registration fee.",
       type: "enrollment",
+      link: `/apply/submitted/${application._id}`,
       isRead: false,
       createdAt: Date.now(),
     });
