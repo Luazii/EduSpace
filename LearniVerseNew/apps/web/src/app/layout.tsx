@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
-import { ClerkProvider, UserButton, SignOutButton } from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
 import Link from "next/link";
-
-import { Authenticated, Unauthenticated } from "convex/react";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { UserBootstrapper } from "@/components/user-bootstrapper";
-import { NotificationsHub } from "@/components/notifications-hub";
-import { RoleSwitch } from "@/components/role-switch";
-import { Navbar } from "@/components/navbar";
-import { MobileNav } from "@/components/mobile-nav";
+import { AppHeader } from "@/components/app-header";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -37,63 +32,7 @@ export default function RootLayout({
             <UserBootstrapper />
             <div className="relative flex min-h-full flex-col">
 
-              {/* Header */}
-              <header className="sticky top-6 z-50 w-full px-6 sm:px-10">
-                <div className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-black/5 bg-white/60 p-2 pl-6 pr-2 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] backdrop-blur-xl">
-                  
-                  {/* Logo */}
-                  <Link href="/" className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl deep-sea-gradient text-xs font-bold text-on-primary shadow-sm">
-                      ES
-                    </div>
-                    <div className="hidden flex-col sm:flex">
-                      <span className="font-headline text-sm font-extrabold tracking-tighter text-primary">
-                        EDUSPACE
-                      </span>
-                      <span className="text-[9px] font-bold tracking-widest text-secondary">
-                        HIGH SCHOOL
-                      </span>
-                    </div>
-                  </Link>
-
-                  {/* Desktop Nav */}
-                  <Navbar />
-
-                  {/* Auth Controls */}
-                  <div className="flex items-center gap-2">
-                    <div className="hidden items-center gap-2 md:flex">
-                      <RoleSwitch />
-                      <NotificationsHub />
-                    </div>
-                    
-                    <div className="ml-2 flex items-center gap-3">
-                      <Authenticated>
-                        <div className="flex items-center gap-4">
-                          <SignOutButton>
-                            <button className="hidden text-[10px] font-bold uppercase tracking-widest text-slate-500 transition hover:text-slate-950 sm:block">
-                              Log Out
-                            </button>
-                          </SignOutButton>
-                          <UserButton />
-                        </div>
-                      </Authenticated>
-                      <Unauthenticated>
-                        <Link 
-                          href="/sign-in"
-                          className="rounded-full bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800"
-                        >
-                          Log In
-                        </Link>
-                      </Unauthenticated>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Mobile Nav Row - now tucked inside the header area if needed, or remains below */}
-                <div className="mt-3">
-                  <MobileNav />
-                </div>
-              </header>
+              <AppHeader />
 
               {/* Page Content */}
               <div className="flex flex-1 flex-col">
