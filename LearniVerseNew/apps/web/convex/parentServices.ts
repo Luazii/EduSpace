@@ -50,15 +50,16 @@ export const createAnnouncement = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
-    
+
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
       .first();
-      
-    if (!user) throw new Error("User not found");
 
-    return await ctx.db.insert("announcements", {
+    if (!user) throw new Error("User not found");
+    if (user.role !== "admin" && user.role !== "teacher") throw new Error("Only admins and teachers can create announcements.");
+
+    const announcementId = await ctx.db.insert("announcements", {
       senderId: user._id,
       targetRole: args.targetRole,
       title: args.title,
@@ -66,6 +67,26 @@ export const createAnnouncement = mutation({
       importance: args.importance,
       createdAt: Date.now(),
     });
+
+    // Send in-app notification to every matching user
+    const allUsers = await ctx.db.query("users").collect();
+    const now = Date.now();
+    await Promise.all(
+      allUsers
+        .filter((u) => u._id !== user._id && u.isActive && (args.targetRole === "all" || u.role === args.targetRole))
+        .map((u) =>
+          ctx.db.insert("notifications", {
+            userId: u._id,
+            title: args.title,
+            body: args.body,
+            type: "announcement",
+            isRead: false,
+            createdAt: now,
+          }),
+        ),
+    );
+
+    return announcementId;
   },
 });
 

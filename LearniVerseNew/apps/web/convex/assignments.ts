@@ -109,6 +109,82 @@ export const listByCourse = query({
   },
 });
 
+/**
+ * All assignments visible to the current user across all their courses.
+ * - student: assignments for courses they are actively enrolled in
+ * - teacher/admin: all assignments for courses they teach / all courses
+ */
+export const listMine = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    const now = Date.now();
+
+    let courseIds: Array<import("./_generated/dataModel").Id<"courses">>;
+
+    if (user.role === "student") {
+      const enrollments = await ctx.db
+        .query("enrollments")
+        .withIndex("by_student", (q) => q.eq("studentUserId", user._id))
+        .filter((q) => q.eq(q.field("status"), "active"))
+        .collect();
+      courseIds = enrollments.map((e) => e.courseId);
+    } else if (user.role === "teacher") {
+      const profile = await ctx.db
+        .query("teacherProfiles")
+        .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+        .first();
+      if (!profile) return [];
+      const courses = await ctx.db
+        .query("courses")
+        .withIndex("by_teacher_profile", (q) => q.eq("teacherProfileId", profile._id))
+        .collect();
+      courseIds = courses.map((c) => c._id);
+    } else {
+      // admin — return everything
+      const courses = await ctx.db.query("courses").collect();
+      courseIds = courses.map((c) => c._id);
+    }
+
+    if (courseIds.length === 0) return [];
+
+    const assignmentArrays = await Promise.all(
+      courseIds.map((cid) =>
+        ctx.db
+          .query("assignments")
+          .withIndex("by_course", (q) => q.eq("courseId", cid))
+          .filter((q) => q.eq(q.field("isPublished"), true))
+          .collect(),
+      ),
+    );
+    const assignments = assignmentArrays.flat();
+
+    // For each assignment fetch course name + student's own submission (if student)
+    return await Promise.all(
+      assignments.map(async (a) => {
+        const course = await ctx.db.get(a.courseId);
+        let mySubmission = null;
+        if (user.role === "student") {
+          mySubmission = await ctx.db
+            .query("submissions")
+            .withIndex("by_assignment_and_student", (q) =>
+              q.eq("assignmentId", a._id).eq("studentUserId", user._id),
+            )
+            .order("desc")
+            .first();
+        }
+        const isOverdue = a.deadline != null && a.deadline < now && !mySubmission;
+        return {
+          ...a,
+          courseName: course?.courseName ?? "Unknown Course",
+          mySubmission,
+          isOverdue,
+        };
+      }),
+    );
+  },
+});
+
 export const create = mutation({
   args: {
     courseId: v.id("courses"),

@@ -10,7 +10,16 @@ export const schedule = mutation({
     endTime: v.number(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("meetings", {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const organizer = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+    if (!organizer) throw new Error("User not found");
+
+    const meetingId = await ctx.db.insert("meetings", {
       title: args.title,
       description: args.description,
       participantIds: args.participantIds,
@@ -20,6 +29,26 @@ export const schedule = mutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+
+    // Notify every participant (excluding the organizer)
+    const dateLabel = new Date(args.startTime).toLocaleString();
+    const now = Date.now();
+    await Promise.all(
+      args.participantIds
+        .filter((id) => id !== organizer._id)
+        .map((id) =>
+          ctx.db.insert("notifications", {
+            userId: id,
+            title: `Meeting Invitation: ${args.title}`,
+            body: `${organizer.fullName ?? organizer.email} has scheduled a meeting on ${dateLabel}.${args.description ? ` ${args.description}` : ""}`,
+            type: "meeting",
+            isRead: false,
+            createdAt: now,
+          }),
+        ),
+    );
+
+    return meetingId;
   },
 });
 

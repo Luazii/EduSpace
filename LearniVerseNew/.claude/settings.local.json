@@ -5,7 +5,8 @@
       "Read(//c/Users/lwazi/LearnerManagement/**)",
       "Bash(cmd /c \"rmdir /s /q C:\\\\Users\\\\lwazi\\\\LearnerManagement\\\\LearniVerseNew\\\\apps\\\\web\\\\node_modules\")",
       "Bash(echo \"EXIT:$?\")",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx convex:*)"
     ]
   }
 }
