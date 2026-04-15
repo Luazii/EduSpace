@@ -149,7 +149,7 @@ export default function SubmittedApplicationPage({
       </div>
 
       {/* ── Payment CTA ── */}
-      {application.status === "approved" && application.paymentStatus !== "paid" && (
+      {(application.status === "approved" || application.status === "pre_approved") && application.paymentStatus !== "paid" && (
         <div className="rounded-3xl border-2 border-primary-container/30 bg-primary-container/10 p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
           <div>
             <p className="font-headline font-bold text-on-surface">Pay Registration Fee</p>

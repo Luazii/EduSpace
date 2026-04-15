@@ -26,7 +26,7 @@ export default function DashboardPage() {
   
   // Find the most relevant application to show (submitted or rejected)
   const activeApplication = applications.find(
-    app => app.status === "submitted" || app.status === "rejected"
+    app => ["submitted", "pre_approved", "approved", "rejected"].includes(app.status)
   );
 
   return (

@@ -81,6 +81,7 @@ export default function EnrollmentReviewPage() {
             </h1>
             <span className={`rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-widest ${
               application.status === "submitted" ? "bg-sky-50 text-sky-700" :
+              application.status === "pre_approved" ? "bg-amber-50 text-amber-700" :
               application.status === "approved" ? "bg-emerald-50 text-emerald-700" :
               "bg-rose-50 text-rose-700"
             }`}>
@@ -89,7 +90,7 @@ export default function EnrollmentReviewPage() {
           </div>
         </div>
 
-        {application.status === "submitted" && (
+        {(application.status === "submitted" || application.status === "pre_approved") && (
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setShowRejectModal(true)}

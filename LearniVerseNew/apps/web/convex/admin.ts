@@ -36,7 +36,12 @@ export const getDashboardStats = query({
     
     const pendingAdmissions = await ctx.db
       .query("enrollmentApplications")
-      .withIndex("by_status", (q) => q.eq("status", "submitted"))
+      .filter((q) => 
+        q.or(
+          q.eq(q.field("status"), "submitted"),
+          q.eq(q.field("status"), "pre_approved")
+        )
+      )
       .collect();
 
     // Group payments by date for 7-day trend

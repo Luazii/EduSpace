@@ -28,7 +28,7 @@ function checkAutoApproval(currentMarks?: Array<{ subject: string; mark: number 
   if (!currentMarks || currentMarks.length === 0) return false;
   const sum = currentMarks.reduce((acc, curr) => acc + curr.mark, 0);
   const avg = sum / currentMarks.length;
-  return avg >= 60;
+  return avg >= 90;
 }
 
 async function enrichApplication(
@@ -444,7 +444,7 @@ export const submitApplication = mutation({
     const initialStatus = isAutoApproved ? "pre_approved" : "submitted";
     let finalNotes = args.notes;
     if (isAutoApproved) {
-      finalNotes = finalNotes ? finalNotes + "\n\n[Auto-Approved: Average score >= 60%, awaiting admin manual verification for fraud check]" : "[Auto-Approved: Average score >= 60%, awaiting admin manual verification for fraud check]";
+      finalNotes = finalNotes ? finalNotes + "\n\n[Auto-Approved: Average score >= 90%, awaiting admin manual verification for fraud check]" : "[Auto-Approved: Average score >= 90%, awaiting admin manual verification for fraud check]";
     }
 
     const studentEmail = args.studentEmail.trim().toLowerCase();

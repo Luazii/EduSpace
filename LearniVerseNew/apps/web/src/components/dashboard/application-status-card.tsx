@@ -15,6 +15,7 @@ type ApplicationStatusCardProps = {
 
 export function ApplicationStatusCard({ application }: ApplicationStatusCardProps) {
   const isPending = application.status === "submitted";
+  const isPreApproved = application.status === "pre_approved" || application.status === "approved";
   const isRejected = application.status === "rejected";
   const isUnpaid = application.paymentStatus !== "paid";
 
@@ -24,10 +25,10 @@ export function ApplicationStatusCard({ application }: ApplicationStatusCardProp
         <div className="flex items-start gap-6">
           <div className={`mt-1 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${
             isRejected ? "bg-rose-50 text-rose-600" : 
-            isPending ? "bg-sky-50 text-sky-600" : "bg-emerald-50 text-emerald-600"
+            isPreApproved ? "bg-emerald-50 text-emerald-600" : "bg-sky-50 text-sky-600"
           }`}>
             {isRejected ? <AlertCircle className="h-7 w-7" /> : 
-             isPending ? <Clock className="h-7 w-7" /> : <CheckCircle2 className="h-7 w-7" />}
+             isPreApproved ? <CheckCircle2 className="h-7 w-7" /> : <Clock className="h-7 w-7" />}
           </div>
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
@@ -35,10 +36,12 @@ export function ApplicationStatusCard({ application }: ApplicationStatusCardProp
             </p>
             <h3 className="text-2xl font-black text-slate-950">
               {isRejected ? "Application Requires Action" : 
+               isPreApproved && isUnpaid ? "Enrollment Approved — Payment Pending" : 
                isUnpaid ? "Awaiting Institutional Fees" : "Institutional Review in Progress"}
             </h3>
             <p className="mt-3 text-sm text-slate-500 leading-relaxed max-w-xl">
               {isRejected ? `Feedback from Registrar: "${application.notes || "Please contact the admissions office for more details."}"` :
+               isPreApproved && isUnpaid ? "Great news! Your application meets our requirements. Please settle the enrollment fees to officially reserve the student's place." :
                isUnpaid ? "Your application has been received, but the administrative fee is still outstanding. Please settle this to trigger the formal review." :
                "The Office of the Registrar is currently reviewing your academic documentation. You will be notified once a decision has been finalized."}
             </p>
