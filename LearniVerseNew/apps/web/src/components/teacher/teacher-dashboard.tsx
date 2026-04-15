@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { format } from "date-fns";
-import { CalendarDays, Clock, Video, MapPin, Megaphone, X, Bell } from "lucide-react";
+import { CalendarDays, Clock, Video, MapPin, Megaphone, X, Bell, Users, GraduationCap, Search, ChevronRight, Mail, User } from "lucide-react";
 
 import { api } from "../../../convex/_generated/api";
 import { CourseSettingsPanel } from "./course-settings-panel";
@@ -18,8 +18,12 @@ export function TeacherDashboard() {
   const bookingRequests = useQuery(api.teacherBookings.listIncomingRequests);
   const announcements = useQuery(api.parentServices.listAnnouncements, { role: "teacher" }) ?? [];
   const createAnnouncement = useMutation(api.parentServices.createAnnouncement);
+  const classroomData = useQuery(api.teachers.listMyClassroom);
 
+  const [activeTab, setActiveTab] = useState<"overview" | "classrooms">("overview");
   const [activeSettingsId, setActiveSettingsId] = useState<string | null>(null);
+  const [selectedLearner, setSelectedLearner] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [showAnnModal, setShowAnnModal] = useState(false);
   const [annTitle, setAnnTitle] = useState("");
   const [annBody, setAnnBody] = useState("");
@@ -117,7 +121,34 @@ export function TeacherDashboard() {
         </div>
       </section>
 
-      <div className="grid gap-10 lg:grid-cols-[1.3fr_0.7fr]">
+      {/* Tab Switcher */}
+      <div className="flex items-center gap-1 self-start rounded-3xl bg-slate-100 p-1.5 shadow-inner">
+        <button
+          onClick={() => setActiveTab("overview") }
+          className={`flex items-center gap-2 rounded-2xl px-6 py-3 text-[11px] font-black uppercase tracking-widest transition-all ${
+            activeTab === "overview"
+              ? "bg-white text-slate-950 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          <GraduationCap className="h-4 w-4" />
+          Hub Overview
+        </button>
+        <button
+          onClick={() => setActiveTab("classrooms") }
+          className={`flex items-center gap-2 rounded-2xl px-6 py-3 text-[11px] font-black uppercase tracking-widest transition-all ${
+            activeTab === "classrooms"
+              ? "bg-white text-slate-950 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          My Classrooms
+        </button>
+      </div>
+
+      {activeTab === "overview" ? (
+        <div className="grid gap-10 lg:grid-cols-[1.3fr_0.7fr] animate-in fade-in slide-in-from-bottom-4 duration-500">
         {/* Left Column: Course Overview */}
         <div className="space-y-6">
           <header className="flex items-center justify-between">
@@ -453,6 +484,168 @@ export function TeacherDashboard() {
           </div>
         </aside>
       </div>
+      ) : (
+        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <header className="flex flex-wrap items-center justify-between gap-6">
+            <div className="space-y-1">
+              <h2 className="text-4xl font-black tracking-tight text-slate-950">Student Management</h2>
+              <p className="text-sm text-slate-500">Grade-level enrollment breakdown and learner directory.</p>
+            </div>
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search learners by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-11 py-3.5 text-sm font-bold text-slate-950 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
+              />
+            </div>
+          </header>
+
+          {classroomData === undefined ? (
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map(i => <div key={i} className="h-64 animate-pulse rounded-4xl bg-slate-100" />)}
+            </div>
+          ) : classroomData.grades.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-4xl border border-dashed border-slate-300 bg-white p-20 text-center">
+              <Users className="h-12 w-12 text-slate-200 mb-4" />
+              <p className="text-sm text-slate-500 max-w-xs">You haven't been assigned any classrooms yet. Contact administration for setup.</p>
+            </div>
+          ) : (
+            <div className="space-y-20">
+              {classroomData.grades.map((grade: any) => (
+                <div key={grade.gradeName} className="space-y-8">
+                  <div className="flex items-center gap-4">
+                    <div className="h-px flex-1 bg-slate-200" />
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">{grade.gradeName}</h3>
+                    <div className="h-px flex-1 bg-slate-200" />
+                  </div>
+
+                  <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                    {grade.subjects.map((subject: any) => (
+                      <div key={subject._id} className="overflow-hidden rounded-4xl border border-slate-200 bg-white/70 backdrop-blur-xl transition hover:shadow-xl group">
+                        <header className="border-b border-slate-100 bg-slate-50/50 p-6 px-8 flex items-center justify-between">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-sky-700 mb-1">{subject.courseCode}</p>
+                            <h4 className="text-xl font-bold text-slate-950">{subject.courseName}</h4>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Learners</p>
+                            <p className="text-2xl font-black text-slate-950">{subject.learnerCount}</p>
+                          </div>
+                        </header>
+                        <div className="p-8">
+                           <div className="grid gap-2">
+                            {subject.learners
+                              .filter((l: any) => l.fullName.toLowerCase().includes(searchQuery.toLowerCase()))
+                              .map((learner: any) => (
+                                <button
+                                  key={learner._id}
+                                  onClick={() => setSelectedLearner({ ...learner, subjectName: subject.courseName, gradeName: grade.gradeName, courseId: subject._id })}
+                                  className="flex items-center justify-between rounded-2xl border border-transparent bg-white px-5 py-4 transition hover:border-sky-200 hover:bg-sky-50/50 hover:shadow-sm"
+                                >
+                                  <div className="flex items-center gap-4">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 font-black text-xs uppercase">
+                                      {learner.fullName.split(" ").map((n: string) => n[0]).join("")}
+                                    </div>
+                                    <div className="text-left">
+                                      <p className="text-sm font-bold text-slate-950">{learner.fullName}</p>
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{learner.email}</p>
+                                    </div>
+                                  </div>
+                                  <ChevronRight className="h-4 w-4 text-slate-300 transition group-hover:text-sky-600" />
+                                </button>
+                              ))}
+                            {subject.learnerCount > 0 && subject.learners.filter((l: any) => l.fullName.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                              <p className="text-center py-4 text-xs text-slate-500 italic">No matches for your search.</p>
+                            )}
+                            {subject.learnerCount === 0 && (
+                              <p className="text-center py-4 text-xs text-slate-500 italic">No learners enrolled yet.</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Student Detail Modal */}
+      {selectedLearner && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/20 backdrop-blur-sm p-6">
+          <div className="w-full max-w-lg overflow-hidden rounded-4xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+            <header className="relative h-32 bg-slate-950 p-8">
+              <button
+                onClick={() => setSelectedLearner(null)}
+                className="absolute right-6 top-6 rounded-full bg-white/10 p-2 text-white/50 backdrop-blur-md transition hover:bg-white/20 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="absolute -bottom-10 left-8 h-20 w-20 rounded-3xl border-4 border-white bg-sky-500 p-0.5 shadow-xl">
+                 <div className="flex h-full w-full items-center justify-center rounded-[1.25rem] bg-white text-sky-600 font-black text-2xl">
+                    {selectedLearner.fullName.split(" ").map((n: string) => n[0]).join("")}
+                 </div>
+              </div>
+            </header>
+
+            <div className="p-10 pt-16">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-950">{selectedLearner.fullName}</h3>
+                  <p className="text-sm text-slate-500">{selectedLearner.email}</p>
+                </div>
+
+                <div className="grid gap-4 rounded-3xl bg-slate-50 p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 text-slate-400">
+                      <GraduationCap className="h-4 w-4" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Enrolled In</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-900">{selectedLearner.subjectName}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 text-slate-400">
+                      <User className="h-4 w-4" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Grade Level</span>
+                    </div>
+                    <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full">{selectedLearner.gradeName}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 text-slate-400">
+                      <CalendarDays className="h-4 w-4" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Enrollment Date</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-900">{format(selectedLearner.enrolledAt, "PPP")}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Link
+                    href={`/messages?userId=${selectedLearner._id}`}
+                    onClick={() => setSelectedLearner(null)}
+                    className="flex items-center justify-center gap-2 rounded-2xl bg-slate-950 py-4 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-slate-800"
+                  >
+                    <Mail className="h-4 w-4" />
+                    Send Message
+                  </Link>
+                  <Link
+                    href={`/teacher/reports/${selectedLearner.courseId}`}
+                    onClick={() => setSelectedLearner(null)}
+                    className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 py-4 text-[10px] font-black uppercase tracking-widest text-slate-600 transition hover:border-slate-950 hover:text-slate-950"
+                  >
+                    View Report
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Announcement Modal */}
       {showAnnModal && (
