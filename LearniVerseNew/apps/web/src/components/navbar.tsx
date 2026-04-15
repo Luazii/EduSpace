@@ -41,8 +41,8 @@ export function Navbar() {
       label: isAdmin ? "Applications" : "Apply",
       show: isAdmin || isParent,
     },
-    // Classroom catalogue — students see their enrolled courses, not the apply page
-    { href: "/courses", label: "Classroom", show: isStudent || isTeacher },
+    // Classroom / Subjects — students see their enrolled subjects, teachers see classroom
+    { href: "/courses", label: isStudent ? "My Subjects" : "Classroom", show: isStudent || isTeacher },
     // Dashboard — role-aware
     {
       href: dashboardHref,

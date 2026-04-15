@@ -121,6 +121,10 @@ export const listMine = query({
  * Matches their email against paid applications and creates enrollment records
  * if they were missed during the initial upsertFromClerk call (e.g. Google sign-in
  * timing, or sign-in before payment was completed).
+ *
+ * For high school applications, selectedCourseIds is typically empty and subjects
+ * are stored in selectedSubjectNames. In this case, we auto-create courses for
+ * each subject under the application's grade.
  */
 export const claimMyEnrollments = mutation({
   args: {},
@@ -191,11 +195,52 @@ export const claimMyEnrollments = mutation({
         });
       }
 
-      // Create enrollment records for each course
-      for (const courseId of app.selectedCourseIds) {
-        const course = await ctx.db.get(courseId);
-        if (!course) continue;
+      // ── Resolve course IDs to enrol in ──
+      // For high school apps, selectedCourseIds is [] — subjects are in selectedSubjectNames.
+      // We auto-create/find a course record for each subject so the student can be enrolled.
+      let courseIdsToEnroll: Id<"courses">[] = [];
 
+      if (app.selectedCourseIds.length > 0) {
+        // University-style: courses already exist
+        courseIdsToEnroll = app.selectedCourseIds;
+      } else if (app.selectedSubjectNames && app.selectedSubjectNames.length > 0) {
+        // High school: create or find a course for each subject
+        const grade = app.gradeLabel ?? "High School";
+        for (const subjectName of app.selectedSubjectNames) {
+          const courseCode = `${grade.replace(/\s+/g, "").toUpperCase()}-${subjectName.replace(/[^a-zA-Z0-9]/g, "").substring(0, 8).toUpperCase()}`;
+
+          // Check if this subject-course already exists
+          let existingCourse = await ctx.db
+            .query("courses")
+            .withIndex("by_course_code", (q) => q.eq("courseCode", courseCode))
+            .first();
+
+          if (!existingCourse) {
+            const courseId = await ctx.db.insert("courses", {
+              courseCode,
+              courseName: subjectName,
+              description: `${subjectName} — ${grade}`,
+              department: grade,
+              isPublished: true,
+              qualificationId: app.qualificationId,
+              createdAt: now,
+              updatedAt: now,
+            });
+            courseIdsToEnroll.push(courseId);
+          } else {
+            courseIdsToEnroll.push(existingCourse._id);
+          }
+        }
+
+        // Update the application to reference the course IDs
+        await ctx.db.patch(app._id, {
+          selectedCourseIds: courseIdsToEnroll,
+          updatedAt: now,
+        });
+      }
+
+      // Create enrollment records
+      for (const courseId of courseIdsToEnroll) {
         await ctx.db.insert("enrollments", {
           studentUserId: user._id,
           courseId,
@@ -211,11 +256,13 @@ export const claimMyEnrollments = mutation({
         updatedAt: now,
       });
 
+      const subjectCount = courseIdsToEnroll.length;
+
       // Notify the parent
       await ctx.db.insert("notifications", {
         userId: app.studentUserId,
         title: "Learner Account Activated",
-        body: `${user.fullName ?? user.email} has signed in and is now enrolled in ${app.gradeLabel ?? "High School"}. They can access their courses immediately.`,
+        body: `${user.fullName ?? user.email} has signed in and is now enrolled in ${app.gradeLabel ?? "High School"} with ${subjectCount} subject${subjectCount !== 1 ? "s" : ""}. They can start learning immediately.`,
         type: "enrollment",
         isRead: false,
         createdAt: now,
@@ -225,7 +272,7 @@ export const claimMyEnrollments = mutation({
       await ctx.db.insert("notifications", {
         userId: user._id,
         title: `Welcome to ${app.gradeLabel ?? "High School"}!`,
-        body: `Your account is active and you are enrolled in ${app.selectedCourseIds.length} course${app.selectedCourseIds.length !== 1 ? "s" : ""}. Head to your dashboard to start learning!`,
+        body: `Your account is active and you are enrolled in ${subjectCount} subject${subjectCount !== 1 ? "s" : ""}. Head to your dashboard to start learning!`,
         type: "enrollment",
         isRead: false,
         createdAt: now,

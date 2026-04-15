@@ -35,16 +35,16 @@ export function ActiveCoursesGrid() {
         >
           <div className="flex flex-1 flex-col">
             <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-sky-700">
-              {course.courseCode}
+              {course.department ?? course.courseCode}
             </p>
             <h3 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 group-hover:text-sky-900">
               {course.courseName}
             </h3>
             <p className="mt-2 text-sm text-slate-500">
-              {course.qualification?.name ?? "Independent Course"}
+              {course.department ?? "Subject"}
             </p>
             <p className="mt-4 line-clamp-2 text-sm leading-7 text-slate-600">
-              {course.description ?? "No description available for this course."}
+              {course.description ?? "No description available for this subject."}
             </p>
           </div>
           <div className="mt-8 flex items-center justify-between border-t border-slate-100 pt-6">

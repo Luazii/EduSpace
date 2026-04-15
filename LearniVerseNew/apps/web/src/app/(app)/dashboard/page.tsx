@@ -50,11 +50,11 @@ export default function DashboardPage() {
             <div className="space-y-10">
               <div className="flex flex-col gap-3">
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-sky-700">
-                  Academic Progress Hub
-                </p>
-                <h2 className="text-4xl font-black tracking-tight text-slate-950">
-                  Welcome back! Your academic schedule is active.
-                </h2>
+                My Subjects
+              </p>
+              <h2 className="text-4xl font-black tracking-tight text-slate-950">
+                Welcome back! Your subjects are ready.
+              </h2>
               </div>
               <ActiveCoursesGrid />
             </div>
@@ -110,8 +110,8 @@ export default function DashboardPage() {
                   <AlertCircle className="h-5 w-5" />
                   <h3 className="font-bold text-[10px] uppercase tracking-widest">Academic Status</h3>
                 </div>
-                <p className="text-xs font-bold text-slate-900">Registered · Level 1</p>
-                <p className="mt-1 text-xs text-slate-500">All documentation certified & verified.</p>
+                <p className="text-xs font-bold text-slate-900">Enrolled · Active</p>
+                <p className="mt-1 text-xs text-slate-500">All documentation verified.</p>
               </div>
             </aside>
           </div>

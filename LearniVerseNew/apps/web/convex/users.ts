@@ -187,14 +187,49 @@ export const upsertFromClerk = mutation({
           });
         }
 
-        // ── Create course enrollment records for the STUDENT (not the parent) ──
-        for (const courseId of app.selectedCourseIds) {
-          const course = await ctx.db.get(courseId);
-          if (!course) continue;
+        // ── Resolve course IDs — handle high school subjects ──
+        let courseIdsToEnroll: typeof app.selectedCourseIds = [];
 
+        if (app.selectedCourseIds.length > 0) {
+          courseIdsToEnroll = app.selectedCourseIds;
+        } else if (app.selectedSubjectNames && app.selectedSubjectNames.length > 0) {
+          const grade = app.gradeLabel ?? "High School";
+          for (const subjectName of app.selectedSubjectNames) {
+            const courseCode = `${grade.replace(/\s+/g, "").toUpperCase()}-${subjectName.replace(/[^a-zA-Z0-9]/g, "").substring(0, 8).toUpperCase()}`;
+
+            let existingCourse = await ctx.db
+              .query("courses")
+              .withIndex("by_course_code", (q) => q.eq("courseCode", courseCode))
+              .first();
+
+            if (!existingCourse) {
+              const courseId = await ctx.db.insert("courses", {
+                courseCode,
+                courseName: subjectName,
+                description: `${subjectName} — ${grade}`,
+                department: grade,
+                isPublished: true,
+                qualificationId: app.qualificationId,
+                createdAt: now,
+                updatedAt: now,
+              });
+              courseIdsToEnroll.push(courseId);
+            } else {
+              courseIdsToEnroll.push(existingCourse._id);
+            }
+          }
+
+          await ctx.db.patch(app._id, {
+            selectedCourseIds: courseIdsToEnroll,
+            updatedAt: now,
+          });
+        }
+
+        // Create enrollment records for the STUDENT
+        for (const courseId of courseIdsToEnroll) {
           await ctx.db.insert("enrollments", {
             studentUserId: userId as any,
-            courseId: courseId,
+            courseId,
             applicationId: app._id,
             enrolledAt: now,
             status: "active",
@@ -209,12 +244,13 @@ export const upsertFromClerk = mutation({
 
         const studentDisplayName = args.firstName ?? args.email;
         const grade = app.gradeLabel ?? "High School";
+        const subjectCount = courseIdsToEnroll.length;
 
         // Notify the parent that their child is now active
         await ctx.db.insert("notifications", {
           userId: app.studentUserId,
           title: "Learner Account Activated",
-          body: `${studentDisplayName} has signed in and is now enrolled in ${grade}. They can access their courses immediately.`,
+          body: `${studentDisplayName} has signed in and is now enrolled in ${grade} with ${subjectCount} subject${subjectCount !== 1 ? "s" : ""}. They can start learning immediately.`,
           type: "enrollment",
           isRead: false,
           createdAt: now,
@@ -224,7 +260,7 @@ export const upsertFromClerk = mutation({
         await ctx.db.insert("notifications", {
           userId: userId as any,
           title: `Welcome to ${grade}!`,
-          body: `Your account is active and you are enrolled in ${app.selectedCourseIds.length} course${app.selectedCourseIds.length !== 1 ? "s" : ""}. Head to your dashboard to start learning!`,
+          body: `Your account is active and you are enrolled in ${subjectCount} subject${subjectCount !== 1 ? "s" : ""}. Head to your dashboard to start learning!`,
           type: "enrollment",
           isRead: false,
           createdAt: now,
