@@ -132,38 +132,48 @@ export const upsertFromClerk = mutation({
       });
     }
 
-    // ── Auto-provision learner if this email matches a paid + approved application ──
+    // ── Auto-provision learner if this email matches a paid + approved/pre_approved application ──
     const matchingApps = await ctx.db
       .query("enrollmentApplications")
       .withIndex("by_student_email", (q) => q.eq("studentEmail", normalizedEmail))
       .filter((q) =>
         q.and(
-          q.eq(q.field("status"), "approved"),
+          q.or(
+            q.eq(q.field("status"), "approved"),
+            q.eq(q.field("status"), "pre_approved"),
+          ),
           q.eq(q.field("paymentStatus"), "paid"),
         ),
       )
       .collect();
 
     for (const app of matchingApps) {
-      // Skip if student profile already exists (idempotent)
-      const existingProfile = await ctx.db
-        .query("studentProfiles")
-        .withIndex("by_user_id", (q) => q.eq("userId", userId as any))
+      // Skip if enrollments already exist for this application (idempotent)
+      const existingEnrollment = await ctx.db
+        .query("enrollments")
+        .withIndex("by_application", (q) => q.eq("applicationId", app._id))
         .first();
 
-      if (!existingProfile) {
-        // Create student profile with the grade from the application
-        await ctx.db.insert("studentProfiles", {
-          userId: userId as any,
-          qualificationId: app.gradeLabel,
-          createdAt: now,
-          updatedAt: now,
-        });
+      if (!existingEnrollment) {
+        // Create student profile if it doesn't exist
+        const existingProfile = await ctx.db
+          .query("studentProfiles")
+          .withIndex("by_user_id", (q) => q.eq("userId", userId as any))
+          .first();
+
+        if (!existingProfile) {
+          await ctx.db.insert("studentProfiles", {
+            userId: userId as any,
+            qualificationId: app.gradeLabel,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
 
         // Ensure role is "student"
         await ctx.db.patch(userId as any, { role: "student", updatedAt: now });
 
-        // Create parent–student link
+        // Create parent–student link (parentId = app.studentUserId, the parent who applied)
         const existingLink = await ctx.db
           .query("parentStudentLinks")
           .withIndex("by_student", (q) => q.eq("studentId", userId as any))
@@ -177,6 +187,26 @@ export const upsertFromClerk = mutation({
           });
         }
 
+        // ── Create course enrollment records for the STUDENT (not the parent) ──
+        for (const courseId of app.selectedCourseIds) {
+          const course = await ctx.db.get(courseId);
+          if (!course) continue;
+
+          await ctx.db.insert("enrollments", {
+            studentUserId: userId as any,
+            courseId: courseId,
+            applicationId: app._id,
+            enrolledAt: now,
+            status: "active",
+          });
+        }
+
+        // Mark the application as fully approved now that enrollment is complete
+        await ctx.db.patch(app._id, {
+          status: "approved",
+          updatedAt: now,
+        });
+
         const studentDisplayName = args.firstName ?? args.email;
         const grade = app.gradeLabel ?? "High School";
 
@@ -184,7 +214,17 @@ export const upsertFromClerk = mutation({
         await ctx.db.insert("notifications", {
           userId: app.studentUserId,
           title: "Learner Account Activated",
-          body: `${studentDisplayName} has signed in and is now enrolled in ${grade}. They can access the platform immediately.`,
+          body: `${studentDisplayName} has signed in and is now enrolled in ${grade}. They can access their courses immediately.`,
+          type: "enrollment",
+          isRead: false,
+          createdAt: now,
+        });
+
+        // Also notify the student
+        await ctx.db.insert("notifications", {
+          userId: userId as any,
+          title: `Welcome to ${grade}!`,
+          body: `Your account is active and you are enrolled in ${app.selectedCourseIds.length} course${app.selectedCourseIds.length !== 1 ? "s" : ""}. Head to your dashboard to start learning!`,
           type: "enrollment",
           isRead: false,
           createdAt: now,
