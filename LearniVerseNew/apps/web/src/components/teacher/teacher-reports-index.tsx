@@ -37,10 +37,10 @@ export function TeacherReportsIndex() {
                 Teacher reports
               </p>
               <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
-                Final marks and course performance
+                Final marks and subject performance
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-                Review course-level assessment health, spot at-risk learners, and open a
+                Review subject-level assessment health, spot at-risk learners, and open a
                 detailed report to save or publish final marks.
               </p>
             </div>
@@ -53,7 +53,7 @@ export function TeacherReportsIndex() {
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Courses" value={totals ? String(totals.courses) : "..."} />
+            <StatCard label="Subjects" value={totals ? String(totals.courses) : "..."} />
             <StatCard label="Learners" value={totals ? String(totals.students) : "..."} />
             <StatCard
               label="Published marks"
@@ -70,7 +70,7 @@ export function TeacherReportsIndex() {
             </div>
           ) : courses.length === 0 ? (
             <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-white/70 px-6 py-8 text-sm leading-7 text-slate-500 md:col-span-2">
-              No courses are ready for reporting yet.
+              No subjects are ready for reporting yet.
             </div>
           ) : (
             courses.map((course) => (
@@ -109,7 +109,7 @@ export function TeacherReportsIndex() {
                     href={`/courses/${course._id}`}
                     className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-950"
                   >
-                    Open classroom
+                    Open subject
                   </Link>
                 </div>
               </article>

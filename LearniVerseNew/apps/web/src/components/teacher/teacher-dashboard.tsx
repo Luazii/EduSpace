@@ -75,7 +75,7 @@ export function TeacherDashboard() {
                 Welcome back, {currentUser?.fullName?.split(" ")[0] ?? "Teacher"}.
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
-                Assess student performance, manage curriculum materials, and oversee your assigned classrooms from one central hub.
+                Assess student performance, manage curriculum materials, and oversee your assigned subjects from one central hub.
               </p>
             </div>
             <button
@@ -89,7 +89,7 @@ export function TeacherDashboard() {
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Assigned Courses"
+              label="Assigned Subjects"
               value={totals ? String(totals.courses) : "..."}
               icon={<CourseIcon />}
             />
@@ -143,7 +143,7 @@ export function TeacherDashboard() {
           }`}
         >
           <Users className="h-4 w-4" />
-          My Classrooms
+          My Subjects
         </button>
       </div>
 
@@ -152,7 +152,7 @@ export function TeacherDashboard() {
         {/* Left Column: Course Overview */}
         <div className="space-y-6">
           <header className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-950">My Classrooms</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-950">My Subjects</h2>
             <Link href="/teacher/reports" className="text-sm font-semibold text-sky-700 hover:text-sky-900 transition">
               View Academic Reports &rarr;
             </Link>
@@ -163,7 +163,7 @@ export function TeacherDashboard() {
               <div className="h-64 animate-pulse rounded-4xl bg-slate-100" />
             ) : courseOverview.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-4xl border border-dashed border-slate-300 bg-white/50 p-20 text-center">
-                <p className="text-sm text-slate-500">No courses assigned to you yet.</p>
+                <p className="text-sm text-slate-500">No subjects assigned to you yet.</p>
               </div>
             ) : (
               courseOverview.map((course) => (
@@ -202,7 +202,7 @@ export function TeacherDashboard() {
                           className="rounded-full bg-slate-950 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-white transition hover:bg-slate-700"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          Open Classroom
+                          Open Subject
                         </Link>
                         <Link
                           href={`/courses/${course._id}?tab=resources`}
@@ -230,7 +230,7 @@ export function TeacherDashboard() {
                           className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-[11px] font-black uppercase tracking-widest text-emerald-700 transition hover:bg-emerald-100"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          Live Classes
+                          Live Sessions
                         </Link>
                       </div>
 
@@ -239,7 +239,7 @@ export function TeacherDashboard() {
                           href={`/courses/${course._id}`}
                           className="flex-1 rounded-2xl bg-slate-950 px-6 py-4 text-center text-[10px] font-black uppercase tracking-[0.2em] text-white transition hover:bg-sky-700 shadow-lg shadow-slate-950/10"
                         >
-                          Explore Classroom
+                          Explore Subject
                         </Link>
                         <button
                           onClick={() => setActiveSettingsId(activeSettingsId === course._id ? null : course._id)}
@@ -510,7 +510,7 @@ export function TeacherDashboard() {
           ) : !classroomData || classroomData.grades.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-4xl border border-dashed border-slate-300 bg-white p-20 text-center">
               <Users className="h-12 w-12 text-slate-200 mb-4" />
-              <p className="text-sm text-slate-500 max-w-xs">You haven't been assigned any classrooms yet. Contact administration for setup.</p>
+              <p className="text-sm text-slate-500 max-w-xs">You haven't been assigned any subjects yet. Contact administration for setup.</p>
             </div>
           ) : (
             <div className="space-y-20">
