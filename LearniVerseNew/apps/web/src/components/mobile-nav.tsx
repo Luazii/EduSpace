@@ -50,9 +50,9 @@ export function MobileNav() {
       show: isAdmin || isTeacher || isParent || (isStudent && isEnrolled),
     },
     {
-      href: "/courses",
-      label: "Classroom",
-      icon: <BookOpen className="h-3.5 w-3.5" />,
+      href: isParent ? "/apply" : "/courses",
+      label: isParent ? "Apply" : "Classroom",
+      icon: isParent ? <GraduationCap className="h-3.5 w-3.5" /> : <BookOpen className="h-3.5 w-3.5" />,
       show: true,
     },
     {
