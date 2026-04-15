@@ -50,10 +50,10 @@ export default function GradebookPage() {
             <span className="text-slate-900">Reports</span>
           </nav>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-700">
-            Academic Achievement Monitoring
+            School Performance Monitoring
           </p>
           <h1 className="mt-3 text-4xl font-bold tracking-tight text-slate-950">
-            Institutional Master Gradebook
+            School Master Markbook
           </h1>
         </div>
 
@@ -62,7 +62,7 @@ export default function GradebookPage() {
             <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Filter by course..."
+              placeholder="Filter by subject..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-2xl border border-slate-200 bg-white/80 py-3 pl-12 pr-4 text-sm shadow-sm transition focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/10"
@@ -119,7 +119,7 @@ export default function GradebookPage() {
                         <th className="px-8 py-4 text-center">Assignments</th>
                         <th className="px-8 py-4 text-center">Quizzes</th>
                         <th className="px-8 py-4 text-center">Current Total</th>
-                        <th className="px-8 py-4 text-right">Academic Standing</th>
+                        <th className="px-8 py-4 text-right">Result Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -167,7 +167,7 @@ export default function GradebookPage() {
         {(!gradebook || gradebook.length === 0) && (
           <div className="flex flex-col items-center justify-center rounded-4xl bg-slate-50 p-20 text-center border-2 border-dashed border-slate-200">
             <FileBarChart2 className="h-16 w-16 text-slate-300 mb-6" />
-            <h3 className="text-xl font-bold text-slate-900">No Gradebook Data</h3>
+            <h3 className="text-xl font-bold text-slate-900">No Markbook Data</h3>
             <p className="mt-2 text-slate-500 max-w-sm">
               Enrolled students and their marks will appear here once assignments and quizzes are graded.
             </p>

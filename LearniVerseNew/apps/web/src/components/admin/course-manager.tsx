@@ -100,23 +100,23 @@ export function CourseManager() {
       <form onSubmit={onSubmit} className="h-fit sticky top-10 rounded-4xl border border-slate-200 bg-white p-8 shadow-sm">
         <header className="mb-8 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-[#7c4dff] mb-2">{editingId ? "Academic Record Update" : "Curriculum Configuration"}</p>
-            <h2 className="text-2xl font-black text-slate-950">{editingId ? "Edit Course" : "New Course Listing"}</h2>
+            <p className="text-[10px] font-black uppercase tracking-widest text-[#7c4dff] mb-2">{editingId ? "Subject Record Update" : "Subject Design"}</p>
+            <h2 className="text-2xl font-black text-slate-950">{editingId ? "Edit Subject" : "New Subject Listing"}</h2>
           </div>
           {editingId && <button type="button" onClick={resetForm} className="rounded-xl p-2 hover:bg-slate-50 transition"><X className="h-5 w-5 text-slate-400" /></button>}
         </header>
 
         <div className="grid gap-6">
           <div className="grid gap-4 sm:grid-cols-3">
-            <label className="sm:col-span-1 text-xs font-black uppercase tracking-widest text-slate-500">Code
-              <input value={courseCode} onChange={e => setCourseCode(e.target.value)} className="w-full mt-2 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" placeholder="IT101" />
+            <label className="sm:col-span-1 text-xs font-black uppercase tracking-widest text-slate-500">Subject Code
+              <input value={courseCode} onChange={e => setCourseCode(e.target.value)} className="w-full mt-2 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" placeholder="MAT10" />
             </label>
-            <label className="sm:col-span-2 text-xs font-black uppercase tracking-widest text-slate-500">Name
-              <input value={courseName} onChange={e => setCourseName(e.target.value)} className="w-full mt-2 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" placeholder="Software Engineering II" />
+            <label className="sm:col-span-2 text-xs font-black uppercase tracking-widest text-slate-500">Subject Name
+              <input value={courseName} onChange={e => setCourseName(e.target.value)} className="w-full mt-2 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" placeholder="Mathematics Grade 10" />
             </label>
           </div>
 
-          <label className="text-xs font-black uppercase tracking-widest text-slate-500">Lead Instructor
+          <label className="text-xs font-black uppercase tracking-widest text-slate-500">Subject Teacher
             <div className="relative mt-2">
               <select value={teacherProfileId} onChange={e => setTeacherProfileId(e.target.value)} className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold outline-none appearance-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10">
                 <option value="">Unassigned</option>
@@ -131,12 +131,12 @@ export function CourseManager() {
           </label>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="text-xs font-black uppercase tracking-widest text-slate-500">Department
+            <label className="text-xs font-black uppercase tracking-widest text-slate-500">Grade Level
               <input value={department} onChange={e => setDepartment(e.target.value)} className="w-full mt-2 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10" placeholder="Information Tech" />
             </label>
             <label className="text-xs font-black uppercase tracking-widest text-slate-500">Qualification
               <select value={qualificationId} onChange={e => setQualificationId(e.target.value)} className="w-full mt-2 rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-bold outline-none appearance-none transition focus:border-sky-500">
-                <option value="">General Enrollment</option>
+                <option value="">General Curriculum</option>
                 {qualifications.map(q => <option key={q._id} value={q._id}>{q.name}</option>)}
               </select>
             </label>
@@ -147,7 +147,7 @@ export function CourseManager() {
           </label>
 
           <button disabled={isSaving} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-4 text-sm font-black uppercase tracking-widest text-white transition hover:bg-slate-800 disabled:opacity-50">
-            {isSaving ? "Synchronizing..." : (editingId ? "Update Academic Record" : "Add to Catalog")}
+            {isSaving ? "Saving..." : (editingId ? "Update Subject Record" : "Add to Registry")}
             {!isSaving && <Check className="h-4 w-4" />}
           </button>
         </div>
@@ -157,8 +157,8 @@ export function CourseManager() {
       <div className="space-y-8">
         <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-[#7c4dff] mb-2">Curriculum Inventory</p>
-            <h1 className="text-3xl font-black tracking-tight text-slate-950 italic">Course Registry</h1>
+            <p className="text-[10px] font-black uppercase tracking-widest text-[#7c4dff] mb-2">Academic Inventory</p>
+            <h1 className="text-3xl font-black tracking-tight text-slate-950 italic">Subject Registry</h1>
           </div>
           <div className="flex flex-wrap gap-3">
             <div className="relative">
@@ -166,7 +166,7 @@ export function CourseManager() {
               <input 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search courses..."
+                placeholder="Search subjects..."
                 className="rounded-xl border border-slate-200 px-4 py-2 pl-12 text-xs font-bold outline-none transition focus:border-sky-500"
               />
             </div>
@@ -175,7 +175,7 @@ export function CourseManager() {
               onChange={e => setFilterDept(e.target.value)}
               className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 outline-none hover:bg-slate-50 transition"
             >
-              <option value="">All Depts</option>
+              <option value="">All Grades</option>
               {departments.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
@@ -184,7 +184,7 @@ export function CourseManager() {
         <div className="grid gap-4">
           {filteredCourses.length === 0 ? (
             <div className="rounded-4xl border-2 border-dashed border-slate-100 py-24 text-center">
-              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No courses found matching criteria</p>
+              <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No subjects found matching criteria</p>
             </div>
           ) : (
             filteredCourses.map(course => (
@@ -210,7 +210,7 @@ export function CourseManager() {
                         </div>
                       )}
                       <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        <Award className="h-3 w-3" /> {course.qualification?.name || "General"}
+                        <Award className="h-3 w-3" /> {q.curriculum?.name || "General"}
                       </div>
                     </div>
                   </div>
@@ -220,7 +220,7 @@ export function CourseManager() {
                     </button>
                     <button 
                       onClick={() => {
-                        if(confirm("Permanently archive this course?")) {
+                        if(confirm("Permanently archive this subject?")) {
                           removeCourse({ id: course._id });
                         }
                       }}

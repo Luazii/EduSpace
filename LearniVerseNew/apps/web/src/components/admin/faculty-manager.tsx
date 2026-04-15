@@ -34,7 +34,7 @@ export function FacultyManager() {
   };
 
   const handleDelete = async (id: Id<"faculties">) => {
-    if (!confirm("Are you sure? Deleting this faculty may affect linked qualifications and courses.")) return;
+    if (!confirm("Are you sure? Deleting this grade may affect linked curriculums and subjects.")) return;
     await removeFaculty({ id });
   };
 
@@ -74,10 +74,10 @@ export function FacultyManager() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-600 mb-2">
-              {editingId ? "Academic Standard Update" : "Curriculum Definition"}
+              {editingId ? "Grade Standard Update" : "Grade Definition"}
             </p>
             <h2 className="text-2xl font-black text-slate-950">
-              {editingId ? "Edit Faculty" : "Add Faculty"}
+              {editingId ? "Edit Grade" : "Add Grade"}
             </h2>
           </div>
           {editingId && (
@@ -93,20 +93,20 @@ export function FacultyManager() {
 
         <div className="grid gap-6">
           <label className="grid gap-2 text-sm font-bold text-slate-900">
-            Faculty Name
+            Grade Name
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Faculty of Engineering & Built Environment"
+              placeholder="Grade 10"
               className="rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
             />
           </label>
           <label className="grid gap-2 text-sm font-bold text-slate-900">
-            Faculty Code
+            Grade Code
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="ENG"
+              placeholder="GR10"
               className="rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
             />
           </label>
@@ -125,7 +125,7 @@ export function FacultyManager() {
             disabled={isSaving}
             className="flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-50"
           >
-            {isSaving ? "Saving..." : editingId ? "Update Faculty Record" : "Create Faculty"}
+            {isSaving ? "Saving..." : editingId ? "Update Grade Record" : "Create Grade"}
             {!isSaving && (editingId ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />)}
           </button>
         </div>
@@ -134,9 +134,9 @@ export function FacultyManager() {
       {/* Registry List */}
       <div className="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm">
         <header className="mb-8">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-600 mb-2">Faculty Records</p>
-          <h2 className="text-2xl font-black text-slate-950">Faculty Registry</h2>
-          <p className="mt-2 text-sm text-slate-500">{faculties.length} departments currently on-boarded.</p>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-sky-600 mb-2">Grade Records</p>
+          <h2 className="text-2xl font-black text-slate-950">Grade Registry</h2>
+          <p className="mt-2 text-sm text-slate-500">{faculties.length} grade levels currently on-boarded.</p>
         </header>
 
         <div className="grid gap-4">
@@ -154,8 +154,8 @@ export function FacultyManager() {
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                        <span className="rounded-lg bg-sky-50 px-2 py-1 text-[10px] font-black text-sky-700 uppercase">{faculty.code || "N/A"}</span>
-                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{faculty.qualificationCount || 0} Quals</span>
-                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{faculty.courseCount || 0} Courses</span>
+                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{faculty.qualificationCount || 0} Curriculums</span>
+                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{faculty.courseCount || 0} Subjects</span>
                     </div>
                     <h3 className="text-lg font-bold text-slate-950">{faculty.name}</h3>
                   </div>

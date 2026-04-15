@@ -34,7 +34,7 @@ export default function EnrollmentReviewPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
 
   const handleApprove = async () => {
-    if (!confirm("Are you sure you want to approve this student? This will officially enroll them in their selected courses.")) return;
+    if (!confirm("Are you sure you want to approve this student? This will officially enroll them in their selected subjects.")) return;
     setIsProcessing(true);
     try {
       await approve({ applicationId });
@@ -73,7 +73,7 @@ export default function EnrollmentReviewPage() {
             className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Admissions Queue
+            Back to Admissions Center
           </Link>
           <div className="flex items-center gap-4">
             <h1 className="text-4xl font-black tracking-tight text-slate-950">
@@ -132,11 +132,11 @@ export default function EnrollmentReviewPage() {
 
             <div className="mt-8 grid gap-8 sm:grid-cols-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Target Faculty</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Grade Level</p>
                 <p className="text-sm font-bold text-slate-900">{application.faculty?.name || "N/A"}</p>
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Qualification</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Curriculum</p>
                 <p className="text-sm font-bold text-slate-900">{application.qualification?.name || "N/A"}</p>
               </div>
               <div>
@@ -193,11 +193,10 @@ export default function EnrollmentReviewPage() {
             </div>
           </section>
 
-          {/* Planned Courses */}
           <section className="rounded-4xl border border-slate-200 bg-white p-10 shadow-sm">
             <div className="mb-8 flex items-center gap-3">
               <BookOpen className="h-6 w-6 text-emerald-600" />
-              <h3 className="text-xl font-bold text-slate-950">Enrollment Selection</h3>
+              <h3 className="text-xl font-bold text-slate-950">Subject Selection</h3>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {application.courses.map((course: any) => (
@@ -207,7 +206,7 @@ export default function EnrollmentReviewPage() {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-900 line-clamp-1">{course.courseName}</p>
-                    <p className="text-[10px] text-slate-400">Semester {course.semester}</p>
+                    <p className="text-[10px] text-slate-400">Term {course.semester}</p>
                   </div>
                 </div>
               ))}

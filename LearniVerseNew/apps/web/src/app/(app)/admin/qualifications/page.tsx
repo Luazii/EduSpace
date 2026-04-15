@@ -8,8 +8,8 @@ export default function AdminQualificationsPage() {
       <div className="grid w-full gap-6">
         <AdminHeader
           eyebrow="Admin setup"
-          title="Qualifications"
-          body="Qualifications now join live faculty data and are ready to feed admissions and course mapping."
+          title="Curriculums & Standards"
+          body="Curriculum records now join live grade data and are ready to feed admissions and subject mapping."
         />
         <QualificationManager />
       </div>
@@ -43,13 +43,13 @@ function AdminHeader({
             href="/admin/faculties"
             className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-950"
           >
-            Faculties
+            Grades
           </Link>
           <Link
             href="/admin/courses"
             className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-950"
           >
-            Courses
+            Subjects
           </Link>
         </div>
       </div>

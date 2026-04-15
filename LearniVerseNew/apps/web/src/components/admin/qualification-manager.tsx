@@ -38,7 +38,7 @@ export function QualificationManager() {
   };
 
   const handleDelete = async (id: Id<"qualifications">) => {
-    if (!confirm("Are you sure? This will affect all courses linked to this qualification.")) return;
+    if (!confirm("Are you sure? This will affect all subjects linked to this curriculum.")) return;
     await removeQualification({ id });
   };
 
@@ -80,10 +80,10 @@ export function QualificationManager() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-600 mb-2">
-              {editingId ? "Academic Standard Update" : "Curriculum Definition"}
+              {editingId ? "Curriculum Standard Update" : "Curriculum Definition"}
             </p>
             <h2 className="text-2xl font-black text-slate-950">
-              {editingId ? "Edit Qualification" : "Add Qualification"}
+              {editingId ? "Edit Curriculum" : "Add Curriculum"}
             </h2>
           </div>
           {editingId && (
@@ -99,33 +99,33 @@ export function QualificationManager() {
 
         <div className="grid gap-6">
           <label className="grid gap-2 text-sm font-bold text-slate-900">
-            Institutional Department
+            Grade Level
             <select
               value={facultyId}
               onChange={(e) => setFacultyId(e.target.value)}
               className="rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 appearance-none"
             >
-              <option value="">Select Institutional Department</option>
+              <option value="">Select Grade Level</option>
               {faculties.map((f) => (
                 <option key={f._id} value={f._id}>{f.name}</option>
               ))}
             </select>
           </label>
           <label className="grid gap-2 text-sm font-bold text-slate-900">
-            Qualification Name
+            Curriculum Name
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Bachelor of Science in Information Technology"
+              placeholder="National Senior Certificate (NSC)"
               className="rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
             />
           </label>
           <label className="grid gap-2 text-sm font-bold text-slate-900">
-            Qualification Code
+            Curriculum Code
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="BSc IT"
+              placeholder="NSC"
               className="rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
             />
           </label>
@@ -144,7 +144,7 @@ export function QualificationManager() {
             disabled={isSaving}
             className="flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:opacity-50"
           >
-            {isSaving ? "Saving..." : editingId ? "Update Academic Record" : "Register Qualification"}
+            {isSaving ? "Saving..." : editingId ? "Update Curriculum Record" : "Register Curriculum"}
             {!isSaving && (editingId ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />)}
           </button>
         </div>
@@ -153,8 +153,8 @@ export function QualificationManager() {
       {/* Registry List */}
       <div className="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm">
         <header className="mb-8">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-600 mb-2">Curriculum Standards</p>
-          <h2 className="text-2xl font-black text-slate-950">Qualification Registry</h2>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-600 mb-2">Academic Standards</p>
+          <h2 className="text-2xl font-black text-slate-950">Curriculum Registry</h2>
           <p className="mt-2 text-sm text-slate-500">{qualifications.length} standards currently approved for enrollment.</p>
         </header>
 
@@ -173,7 +173,7 @@ export function QualificationManager() {
                   <div>
                     <div className="flex items-center gap-3 mb-2">
                       <span className="rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700 uppercase">{q.code || "N/A"}</span>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{q.courseCount || 0} Courses</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{q.courseCount || 0} Subjects</span>
                       {q.faculty && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{q.faculty.name}</span>}
                     </div>
                     <h3 className="text-lg font-bold text-slate-950">{q.name}</h3>

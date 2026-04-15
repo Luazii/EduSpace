@@ -8,8 +8,8 @@ export default function AdminCoursesPage() {
       <div className="grid w-full gap-6">
         <AdminHeader
           eyebrow="Admin setup"
-          title="Courses"
-          body="The course catalog is now connected end to end: admin setup on one side and a live student-facing list on the other."
+          title="Subjects"
+          body="The subject registry is now connected end to end: admin setup on one side and a live student-facing list on the other."
         />
         <CourseManager />
       </div>
@@ -43,13 +43,13 @@ function AdminHeader({
             href="/admin/faculties"
             className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-950"
           >
-            Faculties
+            Grades
           </Link>
           <Link
             href="/admin/qualifications"
             className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-950"
           >
-            Qualifications
+            Curriculums
           </Link>
         </div>
       </div>

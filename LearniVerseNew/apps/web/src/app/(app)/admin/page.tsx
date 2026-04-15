@@ -29,43 +29,43 @@ export default function AdminPage() {
   const menuItems = [
     {
       href: "/admin/enrollments",
-      title: "Admissions Queue",
+      title: "Admissions Center",
       body: "Review incoming applications and approve students.",
       icon: UserPlus,
       color: "bg-emerald-50 text-emerald-600"
     },
     {
       href: "/admin/users",
-      title: "Member Directory",
-      body: "Manage user roles and institutional staff profiles.",
+      title: "Directory",
+      body: "Manage student, parent, and staff profiles.",
       icon: Users,
       color: "bg-sky-50 text-sky-600"
     },
     {
       href: "/admin/courses",
-      title: "Course Catalog",
-      body: "Build the course listing for student enrollment.",
+      title: "Subject Catalog",
+      body: "Manage the list of subjects available for enrollment.",
       icon: BookOpen,
       color: "bg-indigo-50 text-indigo-600"
     },
     {
       href: "/admin/faculties",
-      title: "Faculties",
-      body: "Manage high-level institutional departments.",
+      title: "Grades & Levels",
+      body: "Manage school grades and academic levels.",
       icon: Landmark,
       color: "bg-violet-50 text-violet-600"
     },
     {
       href: "/admin/reports",
-      title: "Performance",
-      body: "System-wide tracking of academic results.",
+      title: "Results & Analytics",
+      body: "School-wide tracking of academic performance.",
       icon: BarChart3,
       color: "bg-rose-50 text-rose-600"
     },
     {
       href: "/admin/communications",
-      title: "Communications",
-      body: "Broadcast announcements and schedule meetings.",
+      title: "Notice Board",
+      body: "Send announcements and manage communications.",
       icon: Bell,
       color: "bg-amber-50 text-amber-600"
     }
@@ -80,11 +80,11 @@ export default function AdminPage() {
             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">v2.1.0-next</span>
           </div>
           <h1 className="text-5xl font-black tracking-tight text-slate-950">
-            Academic Administration
+            School Administration
           </h1>
           <p className="mt-4 text-slate-500 max-w-2xl text-sm font-medium leading-relaxed">
-            Central oversight of EduSpace academic operations. Manage Faculty structure, 
-            monitor student enrollment finance, and process undergraduate applications.
+            Central oversight of EduSpace school operations. Manage grade structures, 
+            monitor enrollment finance, and process student applications.
           </p>
         </div>
 
@@ -111,7 +111,7 @@ export default function AdminPage() {
           color="text-emerald-600"
         />
         <StatCard 
-          title="Faculty Personnel" 
+          title="Teaching Staff" 
           value={stats?.teacherCount ?? "..."} 
           trend="Fully Verified"
           icon={ShieldCheck}
@@ -125,9 +125,9 @@ export default function AdminPage() {
           color="text-indigo-600"
         />
         <StatCard 
-          title="Curriculum Coverage" 
+          title="Curriculum Overview" 
           value={stats?.courseCount ?? "..."} 
-          trend={`${stats?.facultyCount ?? 0} Departments`}
+          trend={`${stats?.facultyCount ?? 0} Grades`}
           icon={BookOpen}
           color="text-violet-600"
         />
@@ -139,7 +139,7 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-3 text-xl font-black text-slate-950">
               <Activity className="h-5 w-5 text-sky-600" />
-              Academic Portals
+              School Portals
             </h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

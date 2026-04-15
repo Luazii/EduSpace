@@ -8,8 +8,8 @@ export default function AdminFacultiesPage() {
       <div className="grid w-full gap-6">
         <AdminHeader
           eyebrow="Admin setup"
-          title="Faculties"
-          body="This is the first live management screen in the new academic stack."
+          title="Grades & Levels"
+          body="Manage school grades and academic levels across the platform."
         />
         <FacultyManager />
       </div>
@@ -43,13 +43,13 @@ function AdminHeader({
             href="/admin/qualifications"
             className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-950"
           >
-            Qualifications
+            Curriculums
           </Link>
           <Link
             href="/admin/courses"
             className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-950"
           >
-            Courses
+            Subjects
           </Link>
         </div>
       </div>

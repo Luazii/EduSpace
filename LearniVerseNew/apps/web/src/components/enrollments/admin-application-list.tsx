@@ -50,7 +50,7 @@ export function AdminApplicationList() {
               </div>
             </div>
             <p className="mt-3 text-sm text-slate-600">
-              Courses: {application.courses.map((course) => course?.courseName).join(", ")}
+              Subjects: {application.courses.map((course) => course?.courseName).join(", ")}
             </p>
           </article>
         ))

@@ -89,13 +89,13 @@ export default function UserManagementPage() {
             Back to Admin Center
           </Link>
           <p className="text-sm font-black uppercase tracking-[0.24em] text-sky-700">
-            Institutional Registry
+            School Registry
           </p>
           <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950">
-            Member Management
+            Directory Management
           </h1>
           <p className="mt-4 text-slate-500 max-w-2xl text-sm leading-relaxed">
-            Monitor all institutional members, assign roles, and manage formal teacher credentials.
+            Monitor all school members, assign roles, and manage teaching staff profiles.
           </p>
         </div>
 
@@ -188,8 +188,8 @@ export default function UserManagementPage() {
           <div className="w-full max-w-lg rounded-4xl border border-slate-200 bg-white p-8 shadow-2xl">
             <header className="mb-8 flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#7c4dff] mb-2">Formal Profile Management</p>
-                <h3 className="text-xl font-black text-slate-950">Academic Credentials</h3>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#7c4dff] mb-2">Staff Profile Management</p>
+                <h3 className="text-xl font-black text-slate-950">Teaching Credentials</h3>
               </div>
               <button 
                 onClick={() => setEditingTeacherId(null)}
@@ -211,11 +211,11 @@ export default function UserManagementPage() {
               </label>
 
               <label className="grid gap-2 text-xs font-black uppercase tracking-widest text-slate-500">
-                Academic Qualifications
+                Staff Qualifications
                 <textarea 
                   value={teacherQuals}
                   onChange={(e) => setTeacherQuals(e.target.value)}
-                  placeholder="MSc in Computer Science, 10+ years industry experience..."
+                  placeholder="B.Ed Mathematics, 5 years teaching experience..."
                   rows={4}
                   className="rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-950 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
                 />

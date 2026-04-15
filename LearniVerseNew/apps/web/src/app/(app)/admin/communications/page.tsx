@@ -95,10 +95,10 @@ export default function AdminCommunicationsPage() {
           Back to Admin Center
         </Link>
         <p className="text-sm font-black uppercase tracking-[0.24em] text-sky-700">
-          Institutional Engagement
+          School Engagement
         </p>
         <h1 className="mt-3 text-4xl font-black tracking-tight text-slate-950">
-          Communications & Logistics
+          Notices & Communication
         </h1>
         <p className="mt-4 text-slate-500 max-w-2xl text-sm leading-relaxed">
           Broadcast official school notices and coordinate formal parent-teacher engagements from a unified operations center.
