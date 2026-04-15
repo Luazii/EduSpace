@@ -507,7 +507,7 @@ export function TeacherDashboard() {
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3].map(i => <div key={i} className="h-64 animate-pulse rounded-4xl bg-slate-100" />)}
             </div>
-          ) : classroomData.grades.length === 0 ? (
+          ) : !classroomData || classroomData.grades.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-4xl border border-dashed border-slate-300 bg-white p-20 text-center">
               <Users className="h-12 w-12 text-slate-200 mb-4" />
               <p className="text-sm text-slate-500 max-w-xs">You haven't been assigned any classrooms yet. Contact administration for setup.</p>
