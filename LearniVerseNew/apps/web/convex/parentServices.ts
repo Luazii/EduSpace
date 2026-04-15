@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 // Parent-Student Linking
 export const linkStudent = mutation({
@@ -72,7 +73,7 @@ export const createAnnouncement = mutation({
         .first();
 
       if (teacherProfile?.facultyId) {
-        const faculty = await ctx.db.get(teacherProfile.facultyId as any);
+        const faculty = await ctx.db.get(teacherProfile.facultyId as Id<"faculties">);
         if (faculty) {
           gradeId = faculty._id;
           gradeName = faculty.name;
