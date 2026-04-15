@@ -35,14 +35,14 @@ export function Navbar() {
     : "/dashboard";
 
   const links = [
-    // Apply / Applications
+    // Apply / Applications — admin sees enrollment queue, parents apply for children
     {
       href: isAdmin ? "/admin/enrollments" : "/apply",
       label: isAdmin ? "Applications" : "Apply",
-      show: !isTeacher && !isParent,
+      show: isAdmin || isParent,
     },
-    // Classroom catalogue — everyone sees this, but parents see it as "Apply"
-    { href: isParent ? "/apply" : "/courses", label: isParent ? "Apply" : "Classroom", show: true },
+    // Classroom catalogue — students see their enrolled courses, not the apply page
+    { href: "/courses", label: "Classroom", show: isStudent || isTeacher },
     // Dashboard — role-aware
     {
       href: dashboardHref,

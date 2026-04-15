@@ -116,6 +116,129 @@ export const listMine = query({
   },
 });
 
+/**
+ * Self-service enrollment claim — runs when a student loads their dashboard.
+ * Matches their email against paid applications and creates enrollment records
+ * if they were missed during the initial upsertFromClerk call (e.g. Google sign-in
+ * timing, or sign-in before payment was completed).
+ */
+export const claimMyEnrollments = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getOptionalUser(ctx);
+    if (!user) return { claimed: 0 };
+
+    const normalizedEmail = user.email.trim().toLowerCase();
+    const now = Date.now();
+
+    // Find paid applications matching this user's email that don't have enrollments yet
+    const matchingApps = await ctx.db
+      .query("enrollmentApplications")
+      .withIndex("by_student_email", (q) => q.eq("studentEmail", normalizedEmail))
+      .filter((q) =>
+        q.and(
+          q.or(
+            q.eq(q.field("status"), "approved"),
+            q.eq(q.field("status"), "pre_approved"),
+          ),
+          q.eq(q.field("paymentStatus"), "paid"),
+        ),
+      )
+      .collect();
+
+    let claimed = 0;
+
+    for (const app of matchingApps) {
+      // Skip if enrollment records already exist for this application
+      const existingEnrollment = await ctx.db
+        .query("enrollments")
+        .withIndex("by_application", (q) => q.eq("applicationId", app._id))
+        .first();
+
+      if (existingEnrollment) continue;
+
+      // Create student profile if missing
+      const existingProfile = await ctx.db
+        .query("studentProfiles")
+        .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+        .first();
+
+      if (!existingProfile) {
+        await ctx.db.insert("studentProfiles", {
+          userId: user._id,
+          qualificationId: app.gradeLabel,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      // Ensure role is "student"
+      if (user.role !== "student") {
+        await ctx.db.patch(user._id, { role: "student", updatedAt: now });
+      }
+
+      // Create parent–student link
+      const existingLink = await ctx.db
+        .query("parentStudentLinks")
+        .withIndex("by_student", (q) => q.eq("studentId", user._id))
+        .first();
+
+      if (!existingLink) {
+        await ctx.db.insert("parentStudentLinks", {
+          parentId: app.studentUserId,
+          studentId: user._id,
+          createdAt: now,
+        });
+      }
+
+      // Create enrollment records for each course
+      for (const courseId of app.selectedCourseIds) {
+        const course = await ctx.db.get(courseId);
+        if (!course) continue;
+
+        await ctx.db.insert("enrollments", {
+          studentUserId: user._id,
+          courseId,
+          applicationId: app._id,
+          enrolledAt: now,
+          status: "active",
+        });
+      }
+
+      // Mark application as fully approved
+      await ctx.db.patch(app._id, {
+        status: "approved",
+        updatedAt: now,
+      });
+
+      // Notify the parent
+      await ctx.db.insert("notifications", {
+        userId: app.studentUserId,
+        title: "Learner Account Activated",
+        body: `${user.fullName ?? user.email} has signed in and is now enrolled in ${app.gradeLabel ?? "High School"}. They can access their courses immediately.`,
+        type: "enrollment",
+        isRead: false,
+        createdAt: now,
+      });
+
+      // Notify the student
+      await ctx.db.insert("notifications", {
+        userId: user._id,
+        title: `Welcome to ${app.gradeLabel ?? "High School"}!`,
+        body: `Your account is active and you are enrolled in ${app.selectedCourseIds.length} course${app.selectedCourseIds.length !== 1 ? "s" : ""}. Head to your dashboard to start learning!`,
+        type: "enrollment",
+        isRead: false,
+        createdAt: now,
+      });
+
+      claimed++;
+    }
+
+    return { claimed };
+  },
+});
+
+
 export const listMyActiveCourses = query({
   args: {},
   handler: async (ctx) => {

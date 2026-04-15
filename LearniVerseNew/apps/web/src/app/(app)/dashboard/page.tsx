@@ -1,6 +1,7 @@
 "use client";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 
 
 import { FeatureGrid } from "@/components/feature-grid";
@@ -17,6 +18,16 @@ export default function DashboardPage() {
   const applications = useQuery(api.enrollments.listMine) ?? [];
   const deadlines = useQuery(api.enrollments.listAllMyDeadlines) ?? [];
   const liveSessions = useQuery(api.enrollments.listAllMyLiveSessions) ?? [];
+  const claimEnrollments = useMutation(api.enrollments.claimMyEnrollments);
+  const claimedRef = useRef(false);
+
+  // Auto-claim pending enrollments on first load (handles Google sign-in bypass)
+  useEffect(() => {
+    if (!user || claimedRef.current) return;
+    if (user.role === "teacher" || user.role === "admin") return;
+    claimedRef.current = true;
+    void claimEnrollments();
+  }, [user, claimEnrollments]);
   
   if (user?.role === "teacher") {
     return <TeacherDashboard />;
