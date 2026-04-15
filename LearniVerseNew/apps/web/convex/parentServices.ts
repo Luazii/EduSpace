@@ -247,7 +247,7 @@ export const listAnnouncements = query({
         .withIndex("by_user_id", (q) => q.eq("userId", user._id))
         .first();
       if (profile?.facultyId) {
-        const faculty = await ctx.db.get(profile.facultyId as any);
+        const faculty = await ctx.db.get(profile.facultyId as Id<"faculties">);
         if (faculty) userGradeNames.add(faculty.name);
       }
     }
