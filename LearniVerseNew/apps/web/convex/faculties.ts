@@ -83,41 +83,35 @@ export const seedAcademicLedger = mutation({
     const existingCourses = await ctx.db.query("courses").collect();
     for (const c of existingCourses) await ctx.db.delete(c._id);
 
-    // 2. Seed Faculties
-    const engineeringId = await ctx.db.insert("faculties", { 
-      name: "Faculty of Engineering & Built Environment", code: "FEBE", isActive: true 
+    // 2. Seed Departments
+    const sciencesId = await ctx.db.insert("faculties", { 
+      name: "Sciences Department", code: "SCI", isActive: true 
     });
-    const scienceId = await ctx.db.insert("faculties", { 
-      name: "Faculty of Science", code: "FS", isActive: true 
-    });
-    const managementId = await ctx.db.insert("faculties", { 
-      name: "Faculty of Management & Commerce", code: "FMC", isActive: true 
+    const commerceId = await ctx.db.insert("faculties", { 
+      name: "Commerce Department", code: "COM", isActive: true 
     });
     const humanitiesId = await ctx.db.insert("faculties", { 
-      name: "Faculty of Humanities", code: "FH", isActive: true 
+      name: "Humanities Department", code: "HUM", isActive: true 
     });
 
-    // 3. Seed Qualifications
-    const compSciId = await ctx.db.insert("qualifications", {
-      facultyId: scienceId, name: "B.Sc Computer Science", code: "BSC01", isActive: true
+    // 3. Seed Grades & Streams
+    const grade10SciId = await ctx.db.insert("qualifications", {
+      facultyId: sciencesId, name: "Grade 10 Sciences", code: "G10-SCI", isActive: true
     });
-    const accountingId = await ctx.db.insert("qualifications", {
-      facultyId: managementId, name: "Bachelor of Commerce in Accounting", code: "BCOM02", isActive: true
+    const grade11ComId = await ctx.db.insert("qualifications", {
+      facultyId: commerceId, name: "Grade 11 Commerce", code: "G11-COM", isActive: true
     });
-    const civilEngId = await ctx.db.insert("qualifications", {
-      facultyId: engineeringId, name: "Bachelor of Engineering (Civil)", code: "BENG03", isActive: true
-    });
-    const psychologyId = await ctx.db.insert("qualifications", {
-      facultyId: humanitiesId, name: "Bachelor of Arts in Psychology", code: "BA04", isActive: true
+    const grade12HumId = await ctx.db.insert("qualifications", {
+      facultyId: humanitiesId, name: "Grade 12 Humanities", code: "G12-HUM", isActive: true
     });
 
-    // 4. Seed Courses
+    // 4. Seed Subjects
     const courses = [
-      { code: "CSC101", name: "Programming Foundations", dept: "Science", qid: compSciId, price: 1200 },
-      { code: "CSC102", name: "Data Structures & Algorithms", dept: "Science", qid: compSciId, price: 1500 },
-      { code: "ACC101", name: "Financial Accounting I", dept: "Management", qid: accountingId, price: 2200 },
-      { code: "STR101", name: "Structural Theory", dept: "Engineering", qid: civilEngId, price: 3000 },
-      { code: "PSY101", name: "Intro to Social Psychology", dept: "Humanities", qid: psychologyId, price: 1100 },
+      { code: "MTH10", name: "Mathematics", dept: "Grade 10", qid: grade10SciId, price: 1200 },
+      { code: "PHS10", name: "Physical Sciences", dept: "Grade 10", qid: grade10SciId, price: 1500 },
+      { code: "ACC11", name: "Accounting", dept: "Grade 11", qid: grade11ComId, price: 2200 },
+      { code: "ENG12", name: "English Home Language", dept: "Grade 12", qid: grade12HumId, price: 3000 },
+      { code: "HST12", name: "History", dept: "Grade 12", qid: grade12HumId, price: 1100 },
     ];
 
     for (const c of courses) {
@@ -133,6 +127,6 @@ export const seedAcademicLedger = mutation({
       });
     }
 
-    return { success: true, seeded: { faculties: 4, quals: 4, courses: 5 } };
+    return { success: true, seeded: { departments: 3, grades: 3, subjects: 5 } };
   },
 });
