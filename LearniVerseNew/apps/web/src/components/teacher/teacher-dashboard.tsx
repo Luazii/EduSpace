@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { format } from "date-fns";
-import { CalendarDays, Clock, Video, MapPin } from "lucide-react";
+import { CalendarDays, Clock, Video, MapPin, Megaphone, X, Bell } from "lucide-react";
 
 import { api } from "../../../convex/_generated/api";
 import { CourseSettingsPanel } from "./course-settings-panel";
@@ -16,8 +16,35 @@ export function TeacherDashboard() {
   const meetings = useQuery(api.meetings.listMyMeetings) ?? [];
   const confirmAttendance = useMutation(api.meetings.confirmAttendance);
   const bookingRequests = useQuery(api.teacherBookings.listIncomingRequests);
+  const announcements = useQuery(api.parentServices.listAnnouncements, { role: "teacher" }) ?? [];
+  const createAnnouncement = useMutation(api.parentServices.createAnnouncement);
 
   const [activeSettingsId, setActiveSettingsId] = useState<string | null>(null);
+  const [showAnnModal, setShowAnnModal] = useState(false);
+  const [annTitle, setAnnTitle] = useState("");
+  const [annBody, setAnnBody] = useState("");
+  const [annRole, setAnnRole] = useState<"student" | "parent" | "parent_student">("parent_student");
+  const [annImportance, setAnnImportance] = useState<"normal" | "high">("normal");
+  const [isSending, setIsSending] = useState(false);
+
+  const handleCreateAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSending(true);
+    try {
+      await createAnnouncement({
+        title: annTitle,
+        body: annBody,
+        targetRole: annRole,
+        importance: annImportance,
+      });
+      setShowAnnModal(false);
+      setAnnTitle("");
+      setAnnBody("");
+      setAnnImportance("normal");
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const pendingBookings = bookingRequests?.filter(
     (b) => b.status === "pending" || b.status === "reschedule_proposed",
@@ -36,14 +63,25 @@ export function TeacherDashboard() {
       <section className="relative overflow-hidden rounded-4xl border border-slate-200 bg-white/70 p-10 shadow-[0_22px_70px_rgba(15,23,42,0.04)] backdrop-blur-xl">
         <div className="relative z-10 space-y-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-sky-700">
-            Faculty Workspace
+            Teaching Workspace
           </p>
-          <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-950 md:text-5xl">
-            Welcome back, {currentUser?.fullName?.split(" ")[0] ?? "Teacher"}.
-          </h1>
-          <p className="max-w-2xl text-sm leading-7 text-slate-600">
-            Assess student performance, manage curriculum materials, and oversee your assigned classrooms from one central hub.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-950 md:text-5xl">
+                Welcome back, {currentUser?.fullName?.split(" ")[0] ?? "Teacher"}.
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-600">
+                Assess student performance, manage curriculum materials, and oversee your assigned classrooms from one central hub.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowAnnModal(true)}
+              className="flex items-center gap-2 rounded-2xl bg-slate-950 px-6 py-3.5 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-slate-950/10 transition hover:bg-slate-800"
+            >
+              <Megaphone className="h-4 w-4" />
+              Broadcast Notice
+            </button>
+          </div>
 
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
@@ -362,8 +400,137 @@ export function TeacherDashboard() {
               )}
             </div>
           </div>
+
+          {/* My Announcements Section */}
+          <div className="space-y-6">
+            <header className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-slate-950">My Notices</h2>
+                <p className="mt-1 text-sm text-slate-500">Announcements you've broadcast.</p>
+              </div>
+              <button
+                onClick={() => setShowAnnModal(true)}
+                className="text-sm font-semibold text-sky-700 hover:text-sky-900 transition"
+              >
+                New Notice →
+              </button>
+            </header>
+
+            <div className="grid gap-3">
+              {announcements.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+                  No announcements yet. Broadcast your first notice!
+                </div>
+              ) : (
+                announcements.slice(0, 5).map((ann) => (
+                  <div
+                    key={ann._id}
+                    className="rounded-3xl border border-slate-100 bg-white/60 p-5"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h4 className="font-semibold text-slate-950 text-sm leading-tight">{ann.title}</h4>
+                      <div className="flex items-center gap-1.5">
+                        {ann.targetGradeName && (
+                          <span className="shrink-0 rounded-full bg-sky-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-sky-700">
+                            {ann.targetGradeName}
+                          </span>
+                        )}
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${
+                          ann.importance === "high" ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-600"
+                        }`}>
+                          {ann.targetRole === "parent_student" ? "Both" : ann.targetRole}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400 mb-1">
+                      {format(ann.createdAt, "PPP")}
+                    </p>
+                    <p className="text-xs text-slate-500 line-clamp-2">{ann.body}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </aside>
       </div>
+
+      {/* Announcement Modal */}
+      {showAnnModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 backdrop-blur-sm p-6">
+          <div className="w-full max-w-xl rounded-4xl border border-slate-200 bg-white p-10 shadow-2xl">
+            <header className="mb-10 flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-black text-slate-950">Broadcast Notice</h3>
+                <p className="mt-2 text-sm text-slate-500">Your announcement will be sent to your grade's students and/or parents.</p>
+              </div>
+              <button
+                onClick={() => setShowAnnModal(false)}
+                className="rounded-xl p-2 text-slate-400 hover:bg-slate-50 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+
+            <form onSubmit={handleCreateAnnouncement} className="grid gap-6">
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-500">Audience</label>
+                <select
+                  value={annRole}
+                  onChange={(e) => setAnnRole(e.target.value as any)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-950 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
+                >
+                  <option value="parent_student">Students & Parents</option>
+                  <option value="student">Students Only</option>
+                  <option value="parent">Parents Only</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-500">Priority</label>
+                <select
+                  value={annImportance}
+                  onChange={(e) => setAnnImportance(e.target.value as any)}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-950 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
+                >
+                  <option value="normal">Normal</option>
+                  <option value="high">Urgent</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-500">Notice Title</label>
+                <input
+                  required
+                  value={annTitle}
+                  onChange={(e) => setAnnTitle(e.target.value)}
+                  placeholder="e.g., Upcoming Science Test — Grade 9"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-950 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-500">Message Content</label>
+                <textarea
+                  required
+                  value={annBody}
+                  onChange={(e) => setAnnBody(e.target.value)}
+                  placeholder="Type your announcement here..."
+                  rows={4}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50/50 px-5 py-4 text-sm font-bold text-slate-950 outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSending}
+                className="h-16 w-full rounded-3xl bg-slate-950 text-sm font-black uppercase tracking-widest text-white transition hover:bg-slate-800 disabled:opacity-50"
+              >
+                {isSending ? "Sending..." : "Publish Announcement"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

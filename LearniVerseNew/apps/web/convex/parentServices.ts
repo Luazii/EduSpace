@@ -42,7 +42,8 @@ export const listLinkedStudents = query({
 // Announcements
 export const createAnnouncement = mutation({
   args: {
-    targetRole: v.union(v.literal("all"), v.literal("parent"), v.literal("student"), v.literal("teacher")),
+    targetRole: v.union(v.literal("all"), v.literal("parent"), v.literal("student"), v.literal("teacher"), v.literal("parent_student")),
+    targetGradeId: v.optional(v.id("faculties")),
     title: v.string(),
     body: v.string(),
     importance: v.union(v.literal("normal"), v.literal("high")),
@@ -59,31 +60,129 @@ export const createAnnouncement = mutation({
     if (!user) throw new Error("User not found");
     if (user.role !== "admin" && user.role !== "teacher") throw new Error("Only admins and teachers can create announcements.");
 
+    // ── Resolve grade for teachers ──
+    let gradeId = args.targetGradeId;
+    let gradeName: string | undefined;
+
+    if (user.role === "teacher") {
+      // Teachers MUST announce to a grade — auto-resolve from their profile
+      const teacherProfile = await ctx.db
+        .query("teacherProfiles")
+        .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+        .first();
+
+      if (teacherProfile?.facultyId) {
+        const faculty = await ctx.db.get(teacherProfile.facultyId as any);
+        if (faculty) {
+          gradeId = faculty._id;
+          gradeName = faculty.name;
+        }
+      }
+
+      // If teacher has no grade assignment, try using the provided gradeId
+      if (!gradeId && args.targetGradeId) {
+        const faculty = await ctx.db.get(args.targetGradeId);
+        if (faculty) {
+          gradeId = faculty._id;
+          gradeName = faculty.name;
+        }
+      }
+    } else if (args.targetGradeId) {
+      // Admin can optionally scope to a grade
+      const faculty = await ctx.db.get(args.targetGradeId);
+      if (faculty) {
+        gradeId = faculty._id;
+        gradeName = faculty.name;
+      }
+    }
+
     const announcementId = await ctx.db.insert("announcements", {
       senderId: user._id,
+      senderName: user.fullName ?? user.email,
       targetRole: args.targetRole,
+      targetGradeId: gradeId,
+      targetGradeName: gradeName,
       title: args.title,
       body: args.body,
       importance: args.importance,
       createdAt: Date.now(),
     });
 
-    // Send in-app notification to every matching user
+    // ── Send in-app notifications ──
     const allUsers = await ctx.db.query("users").collect();
     const now = Date.now();
+
+    // Determine which users to notify
+    const usersToNotify = [];
+
+    for (const u of allUsers) {
+      if (u._id === user._id || !u.isActive) continue;
+
+      // Role check
+      const roleMatch =
+        args.targetRole === "all" ||
+        u.role === args.targetRole ||
+        (args.targetRole === "parent_student" && (u.role === "parent" || u.role === "student"));
+
+      if (!roleMatch) continue;
+
+      // Grade check — if announcement is grade-scoped
+      if (gradeId) {
+        if (u.role === "student") {
+          // Check if student is enrolled in any course under this grade
+          const enrollments = await ctx.db
+            .query("enrollments")
+            .withIndex("by_student", (q) => q.eq("studentUserId", u._id))
+            .collect();
+          const courseIds = enrollments.map((e) => e.courseId);
+          let inGrade = false;
+          for (const cid of courseIds) {
+            const course = await ctx.db.get(cid);
+            if (course && course.department === gradeName) {
+              inGrade = true;
+              break;
+            }
+          }
+          if (!inGrade) continue;
+        } else if (u.role === "parent") {
+          // Check if any linked student is in this grade
+          const links = await ctx.db
+            .query("parentStudentLinks")
+            .withIndex("by_parent", (q) => q.eq("parentId", u._id))
+            .collect();
+          let hasChildInGrade = false;
+          for (const link of links) {
+            const studentEnrollments = await ctx.db
+              .query("enrollments")
+              .withIndex("by_student", (q) => q.eq("studentUserId", link.studentId))
+              .collect();
+            for (const e of studentEnrollments) {
+              const course = await ctx.db.get(e.courseId);
+              if (course && course.department === gradeName) {
+                hasChildInGrade = true;
+                break;
+              }
+            }
+            if (hasChildInGrade) break;
+          }
+          if (!hasChildInGrade) continue;
+        }
+      }
+
+      usersToNotify.push(u);
+    }
+
     await Promise.all(
-      allUsers
-        .filter((u) => u._id !== user._id && u.isActive && (args.targetRole === "all" || u.role === args.targetRole))
-        .map((u) =>
-          ctx.db.insert("notifications", {
-            userId: u._id,
-            title: args.title,
-            body: args.body,
-            type: "announcement",
-            isRead: false,
-            createdAt: now,
-          }),
-        ),
+      usersToNotify.map((u) =>
+        ctx.db.insert("notifications", {
+          userId: u._id,
+          title: args.title,
+          body: args.body,
+          type: "announcement",
+          isRead: false,
+          createdAt: now,
+        }),
+      ),
     );
 
     return announcementId;
@@ -93,10 +192,86 @@ export const createAnnouncement = mutation({
 export const listAnnouncements = query({
   args: { role: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
     const all = await ctx.db.query("announcements").collect();
-    // Filter for "all" or specific role
+
+    // If no authenticated user, return all school-wide
+    if (!identity) {
+      return all
+        .filter((a) => !a.targetGradeId && (a.targetRole === "all" || a.targetRole === args.role))
+        .sort((a, b) => b.createdAt - a.createdAt);
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+
+    if (!user) {
+      return all
+        .filter((a) => !a.targetGradeId && (a.targetRole === "all" || a.targetRole === args.role))
+        .sort((a, b) => b.createdAt - a.createdAt);
+    }
+
+    // Resolve the user's grade(s)
+    const userGradeNames = new Set<string>();
+
+    if (user.role === "student") {
+      const enrollments = await ctx.db
+        .query("enrollments")
+        .withIndex("by_student", (q) => q.eq("studentUserId", user._id))
+        .collect();
+      for (const e of enrollments) {
+        const course = await ctx.db.get(e.courseId);
+        if (course?.department) userGradeNames.add(course.department);
+      }
+    } else if (user.role === "parent") {
+      const links = await ctx.db
+        .query("parentStudentLinks")
+        .withIndex("by_parent", (q) => q.eq("parentId", user._id))
+        .collect();
+      for (const link of links) {
+        const enrollments = await ctx.db
+          .query("enrollments")
+          .withIndex("by_student", (q) => q.eq("studentUserId", link.studentId))
+          .collect();
+        for (const e of enrollments) {
+          const course = await ctx.db.get(e.courseId);
+          if (course?.department) userGradeNames.add(course.department);
+        }
+      }
+    } else if (user.role === "teacher") {
+      const profile = await ctx.db
+        .query("teacherProfiles")
+        .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+        .first();
+      if (profile?.facultyId) {
+        const faculty = await ctx.db.get(profile.facultyId as any);
+        if (faculty) userGradeNames.add(faculty.name);
+      }
+    }
+
     return all
-      .filter((a) => a.targetRole === "all" || a.targetRole === args.role)
+      .filter((a) => {
+        // Role match
+        const roleMatch =
+          a.targetRole === "all" ||
+          a.targetRole === user.role ||
+          (a.targetRole === "parent_student" && (user.role === "parent" || user.role === "student"));
+
+        if (!roleMatch && user.role !== "admin" && user.role !== "teacher") return false;
+        // Admin and teachers who sent announcements can always see them
+        if (user.role === "admin") return true;
+        if (a.senderId === user._id) return true;
+        if (!roleMatch) return false;
+
+        // Grade match (if scoped)
+        if (a.targetGradeName) {
+          return userGradeNames.has(a.targetGradeName);
+        }
+
+        return true;
+      })
       .sort((a, b) => b.createdAt - a.createdAt);
   },
 });

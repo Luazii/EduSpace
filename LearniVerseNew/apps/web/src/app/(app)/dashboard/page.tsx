@@ -9,7 +9,7 @@ import { ActiveCoursesGrid } from "@/components/dashboard/active-courses-grid";
 import { ApplicationStatusCard } from "@/components/dashboard/application-status-card";
 import { TeacherDashboard } from "@/components/teacher/teacher-dashboard";
 import { api } from "../../../../convex/_generated/api";
-import { Clock, Bell, Calendar, PlayCircle, AlertCircle } from "lucide-react";
+import { Clock, Bell, Calendar, PlayCircle, AlertCircle, Megaphone, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 
 export default function DashboardPage() {
@@ -18,6 +18,10 @@ export default function DashboardPage() {
   const applications = useQuery(api.enrollments.listMine) ?? [];
   const deadlines = useQuery(api.enrollments.listAllMyDeadlines) ?? [];
   const liveSessions = useQuery(api.enrollments.listAllMyLiveSessions) ?? [];
+  const announcements = useQuery(
+    api.parentServices.listAnnouncements,
+    user ? { role: user.role } : "skip",
+  ) ?? [];
   const claimEnrollments = useMutation(api.enrollments.claimMyEnrollments);
   const claimedRef = useRef(false);
 
@@ -113,6 +117,42 @@ export default function DashboardPage() {
                 <p className="text-xs font-bold text-slate-900">Enrolled · Active</p>
                 <p className="mt-1 text-xs text-slate-500">All documentation verified.</p>
               </div>
+
+              {/* School Notices Widget */}
+              {announcements.length > 0 && (
+                <div className="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <Megaphone className="h-5 w-5 text-rose-500" />
+                      <h3 className="font-bold text-sm uppercase tracking-widest text-slate-950">School Notices</h3>
+                    </div>
+                    <Link href="/announcements" className="text-[10px] font-bold text-sky-600 hover:text-sky-800 transition">
+                      View All
+                    </Link>
+                  </div>
+                  <div className="space-y-4">
+                    {announcements.slice(0, 3).map(ann => (
+                      <Link key={ann._id} href="/announcements" className="block group">
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
+                            ann.importance === "high" ? "bg-rose-500" : "bg-sky-500"
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-sm text-slate-900 leading-tight group-hover:text-sky-700 transition line-clamp-1">{ann.title}</h4>
+                            <p className="text-[10px] text-slate-400 mt-1">
+                              {ann.senderName ? `${ann.senderName} · ` : ""}
+                              {format(ann.createdAt, "MMM d")}
+                              {ann.targetGradeName ? ` · ${ann.targetGradeName}` : ""}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1 line-clamp-2">{ann.body}</p>
+                          </div>
+                          <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 group-hover:text-sky-600 transition" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </aside>
           </div>
         ) : activeApplication ? (

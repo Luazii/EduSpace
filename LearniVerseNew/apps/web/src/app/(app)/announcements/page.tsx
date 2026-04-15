@@ -80,9 +80,15 @@ export default function AnnouncementsPage() {
                     <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-rose-200/20" />
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <div className="mb-3 flex items-center gap-3">
+                        <div className="mb-3 flex flex-wrap items-center gap-3">
                           {importanceBadge(ann.importance)}
+                          {ann.targetGradeName && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-emerald-600 border border-emerald-100">
+                              {ann.targetGradeName}
+                            </span>
+                          )}
                           <span className="text-[11px] font-medium text-slate-400">
+                            {ann.senderName ? `${ann.senderName} · ` : ""}
                             {format(ann.createdAt, "MMMM d, yyyy")}
                           </span>
                         </div>
@@ -113,9 +119,15 @@ export default function AnnouncementsPage() {
                   <article key={ann._id} className="group p-6 hover:bg-slate-50 transition-colors">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <div className="mb-2 flex items-center gap-3">
+                        <div className="mb-2 flex flex-wrap items-center gap-3">
                           {importanceBadge(ann.importance)}
+                          {ann.targetGradeName && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-emerald-600 border border-emerald-100">
+                              {ann.targetGradeName}
+                            </span>
+                          )}
                           <span className="text-[11px] font-medium text-slate-400">
+                            {ann.senderName ? `${ann.senderName} · ` : ""}
                             {format(ann.createdAt, "MMMM d, yyyy")}
                           </span>
                         </div>

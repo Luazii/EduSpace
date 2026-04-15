@@ -309,12 +309,17 @@ export default defineSchema({
 
   announcements: defineTable({
     senderId: v.id("users"),
-    targetRole: v.union(v.literal("all"), v.literal("parent"), v.literal("student"), v.literal("teacher")),
+    senderName: v.optional(v.string()),
+    targetRole: v.union(v.literal("all"), v.literal("parent"), v.literal("student"), v.literal("teacher"), v.literal("parent_student")),
+    targetGradeId: v.optional(v.id("faculties")),
+    targetGradeName: v.optional(v.string()),
     title: v.string(),
     body: v.string(),
     importance: v.union(v.literal("normal"), v.literal("high")),
     createdAt: v.number(),
-  }).index("by_target", ["targetRole"]),
+  })
+    .index("by_target", ["targetRole"])
+    .index("by_grade", ["targetGradeId"]),
 
   meetings: defineTable({
     title: v.string(),
