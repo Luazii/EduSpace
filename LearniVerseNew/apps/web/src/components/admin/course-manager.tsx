@@ -210,7 +210,7 @@ export function CourseManager() {
                         </div>
                       )}
                       <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        <Award className="h-3 w-3" /> {q.curriculum?.name || "General"}
+                        <Award className="h-3 w-3" /> {course.qualification?.name || "General"}
                       </div>
                     </div>
                   </div>
