@@ -196,7 +196,7 @@ export default defineSchema({
   }).index("by_student", ["studentUserId"]),
 
   enrollmentApplications: defineTable({
-    // parentUserId — the Convex user who submitted (always the parent)
+    // studentUserId — the Convex user who submitted the application (e.g., Parent or Student themselves)
     studentUserId: v.id("users"),
     // The actual learner being enrolled
     studentEmail: v.optional(v.string()),

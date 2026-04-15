@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAction } from "convex/react";
+import { useAction, useConvexAuth } from "convex/react";
 import type { Id } from "../../../convex/_generated/dataModel";
 
 import { api } from "../../../convex/_generated/api";
@@ -16,6 +16,7 @@ export function VerifyPaymentClient({
   applicationId,
   reference,
 }: VerifyPaymentClientProps) {
+  const { isLoading, isAuthenticated } = useConvexAuth();
   const verifyTransaction = useAction(api.payments.verifyTransaction);
   const [status, setStatus] = useState<"verifying" | "success" | "failed">(
     "verifying",
@@ -23,6 +24,15 @@ export function VerifyPaymentClient({
   const [message, setMessage] = useState("Verifying your payment...");
 
   useEffect(() => {
+    // Wait for auth to be ready
+    if (isLoading) return;
+
+    if (!isAuthenticated) {
+      setStatus("failed");
+      setMessage("Session expired or you are not signed in. Please log in to verify your payment.");
+      return;
+    }
+
     let cancelled = false;
 
     async function verify() {
@@ -60,7 +70,7 @@ export function VerifyPaymentClient({
     return () => {
       cancelled = true;
     };
-  }, [applicationId, reference, verifyTransaction]);
+  }, [applicationId, reference, verifyTransaction, isLoading, isAuthenticated]);
 
   return (
     <section className="rounded-[1.75rem] border border-slate-200 bg-white/80 p-8 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur-md">
