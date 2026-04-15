@@ -12,6 +12,7 @@ const BOOTSTRAP_TEACHER_EMAILS = new Set<string>([
 const BOOTSTRAP_PARENT_EMAILS = new Set<string>([
   "lgumbi2169+parent@gmail.com",
   "njabulomorris0@gmail.com",
+  "intradelis@gmail.com",
 ]);
 
 export const current = query({
