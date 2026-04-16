@@ -19,6 +19,7 @@ import type * as liveSessions from "../liveSessions.js";
 import type * as meetings from "../meetings.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
+import type * as nuke from "../nuke.js";
 import type * as parentServices from "../parentServices.js";
 import type * as payments from "../payments.js";
 import type * as progress from "../progress.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   meetings: typeof meetings;
   messages: typeof messages;
   notifications: typeof notifications;
+  nuke: typeof nuke;
   parentServices: typeof parentServices;
   payments: typeof payments;
   progress: typeof progress;
