@@ -215,6 +215,29 @@ export const getDetail = query({
   },
 });
 
+export const deleteQuestion = mutation({
+  args: { questionId: v.id("questions") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (user.role !== "teacher" && user.role !== "admin") {
+      throw new Error("Only teachers and admins can delete quiz questions.");
+    }
+    const question = await ctx.db.get(args.questionId);
+    if (!question) throw new Error("Question not found.");
+    await ctx.db.delete(args.questionId);
+    // Resequence remaining questions
+    const remaining = (
+      await ctx.db
+        .query("questions")
+        .withIndex("by_quiz", (q) => q.eq("quizId", question.quizId))
+        .collect()
+    ).sort((a, b) => a.position - b.position);
+    for (let i = 0; i < remaining.length; i++) {
+      await ctx.db.patch(remaining[i]._id, { position: i + 1 });
+    }
+  },
+});
+
 export const submitAttempt = mutation({
   args: {
     quizId: v.id("quizzes"),

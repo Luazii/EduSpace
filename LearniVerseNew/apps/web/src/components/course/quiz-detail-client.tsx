@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { api } from "../../../convex/_generated/api";
-import { Play, RotateCcw, Clock, Shield, Activity } from "lucide-react";
+import { Play, RotateCcw, Clock, Shield, Activity, PencilLine } from "lucide-react";
 
 type QuizDetailClientProps = {
   courseId: string;
@@ -21,16 +21,11 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
   const activeSession = useQuery(api.quizSessions.getActiveSessionForQuiz, {
     quizId: typedQuizId,
   });
-  const addQuestion = useMutation(api.quizzes.addQuestion);
   const startSession = useMutation(api.quizSessions.startSession);
 
-  const [prompt, setPrompt] = useState("");
-  const [options, setOptions] = useState(["", "", "", ""]);
-  const [correctAnswer, setCorrectAnswer] = useState("");
-  const [weighting, setWeighting] = useState("1");
-  const [isSavingQuestion, setIsSavingQuestion] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+
 
   const canTakeQuiz = useMemo(() => {
     if (!quiz) return false;
@@ -52,28 +47,6 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
     } catch (err) {
       setStartError(err instanceof Error ? err.message : "Failed to start quiz.");
       setIsStarting(false);
-    }
-  }
-
-  async function onAddQuestion(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const cleanedOptions = options.map((o) => o.trim()).filter(Boolean);
-    if (!prompt.trim() || cleanedOptions.length < 2 || !correctAnswer.trim()) return;
-    setIsSavingQuestion(true);
-    try {
-      await addQuestion({
-        quizId: typedQuizId,
-        prompt: prompt.trim(),
-        options: cleanedOptions,
-        correctAnswer: correctAnswer.trim(),
-        weighting: Math.max(Number(weighting || "1"), 1),
-      });
-      setPrompt("");
-      setOptions(["", "", "", ""]);
-      setCorrectAnswer("");
-      setWeighting("1");
-    } finally {
-      setIsSavingQuestion(false);
     }
   }
 
@@ -277,75 +250,25 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
             {/* ── Question authoring ── */}
             <div className="rounded-[1.75rem] border border-slate-200 bg-white/80 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">
-                Question authoring
+                Questions
               </p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-                Add questions
+                {quiz.questions.length} question{quiz.questions.length !== 1 ? "s" : ""}
               </h2>
-              <p className="mt-2 text-sm leading-7 text-slate-600">
-                {quiz.canManage
-                  ? "Correct answers are never sent to students in their session payload."
-                  : "Question authoring is available to teachers and admins."}
+              <p className="mt-2 text-sm leading-7 text-slate-500">
+                Total marks: {quiz.questions.reduce((s, q) => s + q.weighting, 0)}
               </p>
 
               {quiz.canManage ? (
-                <form onSubmit={onAddQuestion} className="mt-6 grid gap-4">
-                  <label className="grid gap-2 text-sm font-medium text-slate-700">
-                    Prompt
-                    <textarea
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      rows={3}
-                      placeholder="What does HTTP stand for?"
-                      className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-950"
-                    />
-                  </label>
-                  {options.map((option, index) => (
-                    <label key={index} className="grid gap-2 text-sm font-medium text-slate-700">
-                      Option {index + 1}
-                      <input
-                        value={option}
-                        onChange={(e) =>
-                          setOptions((cur) =>
-                            cur.map((item, i) => (i === index ? e.target.value : item)),
-                          )
-                        }
-                        placeholder={`Choice ${index + 1}`}
-                        className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-950"
-                      />
-                    </label>
-                  ))}
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="grid gap-2 text-sm font-medium text-slate-700">
-                      Correct answer
-                      <input
-                        value={correctAnswer}
-                        onChange={(e) => setCorrectAnswer(e.target.value)}
-                        placeholder="Exact text of the correct option"
-                        className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-950"
-                      />
-                    </label>
-                    <label className="grid gap-2 text-sm font-medium text-slate-700">
-                      Weighting
-                      <input
-                        type="number"
-                        min="1"
-                        value={weighting}
-                        onChange={(e) => setWeighting(e.target.value)}
-                        className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-950"
-                      />
-                    </label>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={isSavingQuestion || !prompt.trim()}
-                    className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-                  >
-                    {isSavingQuestion ? "Saving…" : "Add question"}
-                  </button>
-                </form>
+                <Link
+                  href={`/courses/${courseId}/quizzes/${quizId}/build`}
+                  className="mt-5 flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800"
+                >
+                  <PencilLine className="h-4 w-4" />
+                  {quiz.questions.length === 0 ? "Add questions" : "Edit questions"}
+                </Link>
               ) : (
-                <div className="mt-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                <div className="mt-5 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
                   <Shield className="h-4 w-4 shrink-0" />
                   Sign in with a teacher or admin account to manage questions.
                 </div>

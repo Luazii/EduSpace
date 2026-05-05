@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 import type { Id } from "../../../convex/_generated/dataModel";
 
 import { api } from "../../../convex/_generated/api";
@@ -13,6 +14,7 @@ type QuizzesPanelProps = {
 
 export function QuizzesPanel({ courseId }: QuizzesPanelProps) {
   const typedCourseId = courseId as Id<"courses">;
+  const router = useRouter();
   const currentUser = useQuery(api.users.current);
   const quizzes = useQuery(api.quizzes.listByCourse, { courseId: typedCourseId }) ?? [];
   const createQuiz = useMutation(api.quizzes.create);
@@ -40,7 +42,7 @@ export function QuizzesPanel({ courseId }: QuizzesPanelProps) {
     setIsCreating(true);
 
     try {
-      await createQuiz({
+      const quizId = await createQuiz({
         courseId: typedCourseId,
         title: title.trim(),
         description: description.trim() || undefined,
@@ -51,13 +53,8 @@ export function QuizzesPanel({ courseId }: QuizzesPanelProps) {
         status,
       });
 
-      setTitle("");
-      setDescription("");
-      setStartsAt("");
-      setEndsAt("");
-      setDurationMinutes("");
-      setMaxAttempts("1");
-      setStatus("published");
+      // Navigate straight to the question builder
+      router.push(`/courses/${courseId}/quizzes/${quizId}/build`);
     } finally {
       setIsCreating(false);
     }
@@ -106,12 +103,22 @@ export function QuizzesPanel({ courseId }: QuizzesPanelProps) {
                       </div>
                     </div>
                   </div>
-                  <Link
-                    href={`/courses/${courseId}/quizzes/${quiz._id}`}
-                    className="inline-flex h-10 items-center rounded-full bg-slate-950 px-5 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-slate-800"
-                  >
-                    {quiz.availability.available ? "Start Quiz" : "View Results"}
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    {canManage && (
+                      <Link
+                        href={`/courses/${courseId}/quizzes/${quiz._id}/build`}
+                        className="inline-flex h-10 items-center rounded-full border border-slate-300 px-4 text-xs font-bold uppercase tracking-widest text-slate-700 transition hover:border-slate-950"
+                      >
+                        Build
+                      </Link>
+                    )}
+                    <Link
+                      href={`/courses/${courseId}/quizzes/${quiz._id}`}
+                      className="inline-flex h-10 items-center rounded-full bg-slate-950 px-5 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-slate-800"
+                    >
+                      {quiz.availability.available && !canManage ? "Start Quiz" : "View"}
+                    </Link>
+                  </div>
                 </div>
                 
                 {quiz.description && (
