@@ -761,3 +761,61 @@ export const seedAcademicData = mutation({
     };
   },
 });
+
+/**
+ * Reassigns the Grade 8 and Grade 9 English + Maths courses to the
+ * lgumbi2169+teacher@gmail.com account (Alex Dlamini).
+ * Creates a teacher profile for that account if one doesn't exist yet.
+ * Safe to run multiple times.
+ */
+export const assignAlexToGrade8And9 = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+
+    const teacher = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", "lgumbi2169+teacher@gmail.com"))
+      .first();
+
+    if (!teacher) {
+      throw new Error("Teacher account lgumbi2169+teacher@gmail.com not found. Run seedTestUsers first.");
+    }
+
+    let profile = await ctx.db
+      .query("teacherProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", teacher._id))
+      .first();
+
+    if (!profile) {
+      const pid = await ctx.db.insert("teacherProfiles", {
+        userId: teacher._id,
+        employeeNumber: "EMP-001",
+        qualificationText: "B.Ed (Hons)",
+        createdAt: now,
+        updatedAt: now,
+      });
+      profile = (await ctx.db.get(pid))!;
+    }
+
+    const targetCodes = ["ENG-G8", "ENG-G9", "MATH-G8", "MATH-G9"];
+    const updated: string[] = [];
+
+    for (const code of targetCodes) {
+      const course = await ctx.db
+        .query("courses")
+        .withIndex("by_course_code", (q) => q.eq("courseCode", code))
+        .first();
+
+      if (!course) {
+        updated.push(`${code}: not found (run seedAcademicData first)`);
+        continue;
+      }
+
+      await ctx.db.patch(course._id, { teacherProfileId: profile._id, updatedAt: now });
+      updated.push(`${code}: assigned to ${teacher.fullName ?? teacher.email}`);
+    }
+
+    return { message: "✅ Done", updated };
+  },
+});
