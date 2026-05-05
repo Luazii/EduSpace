@@ -406,44 +406,76 @@ export const getStudentFinalMarks = query({
       .withIndex("by_student", (q) => q.eq("studentUserId", args.studentUserId))
       .collect();
 
+    const allSubmissions = await ctx.db
+      .query("submissions")
+      .withIndex("by_student", (q) => q.eq("studentUserId", args.studentUserId))
+      .collect();
+
+    const allAttempts = await ctx.db
+      .query("quizAttempts")
+      .withIndex("by_student", (q) => q.eq("studentUserId", args.studentUserId))
+      .collect();
+
     return await Promise.all(
       finalMarks.map(async (mark) => {
         const course = await ctx.db.get(mark.courseId);
-        
-        // Calculate dynamic percentages if not snapshot yet
-        // For simplicity we use the stored computedFinalMark from the Mark record
-        // but we can also fetch recent assignment/quiz averages here.
-        
+
         const courseAssignments = await ctx.db
           .query("assignments")
           .withIndex("by_course", (q) => q.eq("courseId", mark.courseId))
           .collect();
-          
-        const submissions = await ctx.db
-          .query("submissions")
-          .withIndex("by_student", (q) => q.eq("studentUserId", args.studentUserId))
+
+        const courseQuizzes = await ctx.db
+          .query("quizzes")
+          .withIndex("by_course", (q) => q.eq("courseId", mark.courseId))
           .collect();
 
-        const courseSubmissions = submissions.filter(s => 
-          courseAssignments.some(a => a._id === s.assignmentId) && typeof s.mark === "number"
+        // Assignment percent: average across latest graded submissions
+        const courseSubmissions = allSubmissions.filter(
+          (s) => courseAssignments.some((a) => a._id === s.assignmentId) && typeof s.mark === "number",
         );
+        const computedAssignmentPercent =
+          courseSubmissions.length > 0
+            ? Math.round(
+                courseSubmissions.reduce((sum, s) => {
+                  const assignment = courseAssignments.find((a) => a._id === s.assignmentId);
+                  return sum + ((s.mark ?? 0) / (assignment?.maxMark || 1)) * 100;
+                }, 0) / courseSubmissions.length,
+              )
+            : 0;
 
-        const computedAssignmentPercent = courseSubmissions.length > 0
-          ? Math.round(courseSubmissions.reduce((sum, s) => {
-              const assignment = courseAssignments.find(a => a._id === s.assignmentId);
-              return sum + ((s.mark ?? 0) / (assignment?.maxMark || 1)) * 100;
-            }, 0) / courseSubmissions.length)
-          : 0;
+        // Quiz percent: best attempt per quiz, then average
+        const courseAttempts = allAttempts.filter((a) =>
+          courseQuizzes.some((q) => q._id === a.quizId),
+        );
+        const bestByQuiz = new Map<string, (typeof courseAttempts)[0]>();
+        for (const attempt of [...courseAttempts].sort(
+          (a, b) => b.score - a.score || b.submittedAt - a.submittedAt,
+        )) {
+          if (!bestByQuiz.has(String(attempt.quizId))) {
+            bestByQuiz.set(String(attempt.quizId), attempt);
+          }
+        }
+        const bestAttempts = [...bestByQuiz.values()];
+        const computedQuizPercent =
+          bestAttempts.length > 0
+            ? Math.round(
+                bestAttempts.reduce(
+                  (sum, a) => sum + (a.score / (a.maxScore || 1)) * 100,
+                  0,
+                ) / bestAttempts.length,
+              )
+            : 0;
 
         return {
           ...mark,
-          courseName: course?.courseName || "Unknown Course",
-          courseCode: course?.courseCode || "???",
-          semester: course?.semester,
+          courseName: course?.courseName ?? "Unknown Course",
+          courseCode: course?.courseCode ?? "???",
+          semester: course?.semester ?? null,
           computedAssignmentPercent,
-          computedQuizPercent: 0, // Placeholder
+          computedQuizPercent,
         };
-      })
+      }),
     );
   },
 });

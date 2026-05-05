@@ -56,6 +56,30 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user_id", ["userId"]),
 
+  classes: defineTable({
+    name: v.string(),
+    gradeName: v.string(),
+    academicYear: v.string(),
+    capacity: v.number(),
+    classTeacherUserId: v.optional(v.id("users")),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_grade_name", ["gradeName"])
+    .index("by_academic_year", ["academicYear"]),
+
+  classAssignments: defineTable({
+    classId: v.id("classes"),
+    studentUserId: v.id("users"),
+    assignedAt: v.number(),
+    assignedByUserId: v.id("users"),
+    status: v.union(v.literal("active"), v.literal("removed")),
+  })
+    .index("by_class", ["classId"])
+    .index("by_student", ["studentUserId"])
+    .index("by_class_and_student", ["classId", "studentUserId"]),
+
   faculties: defineTable({
     name: v.string(),
     code: v.optional(v.string()),
@@ -127,8 +151,8 @@ export default defineSchema({
   submissions: defineTable({
     assignmentId: v.id("assignments"),
     studentUserId: v.id("users"),
-    storageId: v.id("_storage"),
-    fileName: v.string(),
+    storageId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()),
     mimeType: v.optional(v.string()),
     size: v.optional(v.number()),
     submittedAt: v.number(),
@@ -136,6 +160,8 @@ export default defineSchema({
     feedback: v.optional(v.string()),
     gradedAt: v.optional(v.number()),
     gradedByUserId: v.optional(v.id("users")),
+    // undefined/true = immediately visible to student; false = held until releaseGrade is called
+    isReleased: v.optional(v.boolean()),
   })
     .index("by_assignment", ["assignmentId"])
     .index("by_student", ["studentUserId"])
@@ -307,6 +333,95 @@ export default defineSchema({
     .index("by_reference", ["reference"])
     .index("by_status", ["status"]),
 
+  feeStructures: defineTable({
+    name: v.string(),
+    gradeName: v.string(),
+    academicYear: v.string(),
+    tuitionAmount: v.number(),
+    registrationAmount: v.number(),
+    otherAmount: v.number(),
+    notes: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_grade_name", ["gradeName"])
+    .index("by_grade_name_and_academic_year", ["gradeName", "academicYear"]),
+
+  feeInvoices: defineTable({
+    studentUserId: v.id("users"),
+    classId: v.optional(v.id("classes")),
+    feeStructureId: v.id("feeStructures"),
+    invoiceNumber: v.string(),
+    academicYear: v.string(),
+    lineItems: v.array(
+      v.object({
+        label: v.string(),
+        amount: v.number(),
+      }),
+    ),
+    totalAmount: v.number(),
+    amountPaid: v.number(),
+    balance: v.number(),
+    dueDate: v.optional(v.number()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("issued"),
+      v.literal("partially_paid"),
+      v.literal("paid"),
+      v.literal("overdue"),
+    ),
+    issuedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_student", ["studentUserId"])
+    .index("by_invoice_number", ["invoiceNumber"])
+    .index("by_status", ["status"]),
+
+  feeReceipts: defineTable({
+    invoiceId: v.id("feeInvoices"),
+    studentUserId: v.id("users"),
+    receiptNumber: v.string(),
+    amount: v.number(),
+    paymentMethod: v.union(
+      v.literal("cash"),
+      v.literal("eft"),
+      v.literal("card"),
+      v.literal("paystack"),
+    ),
+    reference: v.optional(v.string()),
+    receivedByUserId: v.id("users"),
+    receivedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_invoice", ["invoiceId"])
+    .index("by_student", ["studentUserId"])
+    .index("by_receipt_number", ["receiptNumber"]),
+
+  manualMarks: defineTable({
+    studentUserId: v.id("users"),
+    courseId: v.id("courses"),
+    enteredByUserId: v.id("users"),
+    assessmentName: v.string(),
+    assessmentType: v.union(
+      v.literal("test"),
+      v.literal("exam"),
+      v.literal("assignment"),
+      v.literal("classwork"),
+      v.literal("project"),
+    ),
+    termLabel: v.optional(v.string()),
+    maxMark: v.number(),
+    mark: v.number(),
+    comment: v.optional(v.string()),
+    capturedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_student", ["studentUserId"])
+    .index("by_course", ["courseId"])
+    .index("by_course_and_student", ["courseId", "studentUserId"]),
+
   announcements: defineTable({
     senderId: v.id("users"),
     senderName: v.optional(v.string()),
@@ -444,4 +559,62 @@ export default defineSchema({
     body: v.string(),
     createdAt: v.number(),
   }).index("by_conversation", ["conversationId"]),
+
+  // Real-time quiz sessions — one per student attempt, the authoritative working copy
+  quizSessions: defineTable({
+    quizId: v.id("quizzes"),
+    studentUserId: v.id("users"),
+    startedAt: v.number(),
+    endsAt: v.optional(v.number()),
+    answers: v.array(
+      v.object({
+        questionId: v.id("questions"),
+        answer: v.string(),
+        answeredAt: v.number(),
+      }),
+    ),
+    currentQuestionIndex: v.number(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("submitted"),
+      v.literal("locked"),
+    ),
+    // Written when session is finalized
+    attemptId: v.optional(v.id("quizAttempts")),
+    // Stored so we can cancel the auto-lock job on early submission
+    schedulerJobId: v.optional(v.id("_scheduled_functions")),
+  })
+    .index("by_quiz", ["quizId"])
+    .index("by_student", ["studentUserId"])
+    .index("by_quiz_and_student", ["quizId", "studentUserId"])
+    .index("by_quiz_and_status", ["quizId", "status"]),
+
+  // Threaded feedback on assignment submissions
+  submissionComments: defineTable({
+    submissionId: v.id("submissions"),
+    authorId: v.id("users"),
+    body: v.string(),
+    lineRef: v.optional(v.string()),
+    parentCommentId: v.optional(v.id("submissionComments")),
+    isEdited: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_submission", ["submissionId"])
+    .index("by_parent", ["parentCommentId"]),
+
+  // Peer review assignments
+  peerReviews: defineTable({
+    submissionId: v.id("submissions"),
+    reviewerUserId: v.id("users"),
+    assignedByUserId: v.id("users"),
+    isAnonymous: v.boolean(),
+    feedback: v.optional(v.string()),
+    mark: v.optional(v.number()),
+    status: v.union(v.literal("pending"), v.literal("submitted")),
+    submittedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_submission", ["submissionId"])
+    .index("by_reviewer", ["reviewerUserId"]),
 });

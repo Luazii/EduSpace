@@ -48,8 +48,29 @@ export const create = mutation({
     }
 
     const metadata = await ctx.db.system.get("_storage", args.storageId);
+    const assignment = await ctx.db.get(args.assignmentId);
+    if (!assignment) {
+      throw new Error("Assignment not found.");
+    }
+    if (!assignment.isPublished) {
+      throw new Error("This assignment is not available for submissions yet.");
+    }
+    if (assignment.deadline && Date.now() > assignment.deadline) {
+      throw new Error("The submission deadline has passed.");
+    }
 
-    return await ctx.db.insert("submissions", {
+    const enrollment = await ctx.db
+      .query("enrollments")
+      .withIndex("by_student", (q) => q.eq("studentUserId", user._id))
+      .collect();
+    const isEnrolled = enrollment.some(
+      (entry) => entry.courseId === assignment.courseId && entry.status === "active",
+    );
+    if (!isEnrolled && user.role !== "admin") {
+      throw new Error("You are not enrolled in this subject.");
+    }
+
+    const submissionId = await ctx.db.insert("submissions", {
       assignmentId: args.assignmentId,
       studentUserId: user._id,
       storageId: args.storageId,
@@ -58,6 +79,31 @@ export const create = mutation({
       size: metadata?.size,
       submittedAt: Date.now(),
     });
+
+    // Notify the course teacher that a new submission arrived
+    if (assignment) {
+      const course = await ctx.db.get(assignment.courseId);
+      const teacherProfile = course?.teacherProfileId
+        ? await ctx.db.get(course.teacherProfileId)
+        : null;
+      const teacherUser = teacherProfile
+        ? await ctx.db.get(teacherProfile.userId)
+        : null;
+
+      if (teacherUser) {
+        await ctx.db.insert("notifications", {
+          userId: teacherUser._id,
+          title: "New submission received",
+          body: `${user.fullName ?? user.email} submitted "${assignment.title}"`,
+          type: "grade",
+          link: `/assignments`,
+          isRead: false,
+          createdAt: Date.now(),
+        });
+      }
+    }
+
+    return submissionId;
   },
 });
 
@@ -104,7 +150,121 @@ export const grade = mutation({
       gradedByUserId: user._id,
     });
 
+    // Notify the student that their work has been graded
+    const pct = assignment.maxMark
+      ? ` (${Math.round((args.mark / assignment.maxMark) * 100)}%)`
+      : "";
+    await ctx.db.insert("notifications", {
+      userId: submission.studentUserId,
+      title: "Assignment graded",
+      body: `"${assignment.title}" was graded: ${args.mark}${assignment.maxMark ? `/${assignment.maxMark}` : ""}${pct}`,
+      type: "grade",
+      link: `/assignments`,
+      isRead: false,
+      createdAt: Date.now(),
+    });
+
     return await ctx.db.get(submission._id);
+  },
+});
+
+// Flip isReleased = true so the student's dashboard reveals the mark instantly
+export const releaseGrade = mutation({
+  args: {
+    submissionId: v.id("submissions"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+
+    if (user.role !== "teacher" && user.role !== "admin") {
+      throw new Error("Only teachers and admins can release grades.");
+    }
+
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) throw new Error("Submission not found.");
+    if (typeof submission.mark !== "number") {
+      throw new Error("Cannot release a grade that has not been set yet.");
+    }
+
+    await ctx.db.patch(args.submissionId, { isReleased: true });
+
+    // Notify the student their grade is now visible
+    const assignment = await ctx.db.get(submission.assignmentId);
+    const pct = assignment?.maxMark
+      ? ` (${Math.round((submission.mark / assignment.maxMark) * 100)}%)`
+      : "";
+
+    await ctx.db.insert("notifications", {
+      userId: submission.studentUserId,
+      title: "Grade released",
+      body: `Your grade for "${assignment?.title ?? "assignment"}" is now available: ${submission.mark}${assignment?.maxMark ? `/${assignment.maxMark}` : ""}${pct}`,
+      type: "grade",
+      link: `/assignments`,
+      isRead: false,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const listForAssignment = query({
+  args: { assignmentId: v.id("assignments") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (user.role !== "teacher" && user.role !== "admin") {
+      throw new Error("Only teachers and admins can view all submissions for an assignment.");
+    }
+
+    const assignment = await ctx.db.get(args.assignmentId);
+    if (!assignment) throw new Error("Assignment not found.");
+
+    const course = await ctx.db.get(assignment.courseId);
+
+    const enrollments = await ctx.db
+      .query("enrollments")
+      .withIndex("by_course", (q) => q.eq("courseId", assignment.courseId))
+      .collect();
+
+    const allSubmissions = await ctx.db
+      .query("submissions")
+      .withIndex("by_assignment", (q) => q.eq("assignmentId", args.assignmentId))
+      .collect();
+
+    const latestByStudent = new Map<string, (typeof allSubmissions)[number]>();
+    for (const sub of [...allSubmissions].sort((a, b) => b.submittedAt - a.submittedAt)) {
+      if (!latestByStudent.has(String(sub.studentUserId))) {
+        latestByStudent.set(String(sub.studentUserId), sub);
+      }
+    }
+
+    const rows = await Promise.all(
+      enrollments.map(async (enrollment) => {
+        const student = await ctx.db.get(enrollment.studentUserId);
+        const submission = latestByStudent.get(String(enrollment.studentUserId)) ?? null;
+        const url = submission?.storageId ? await ctx.storage.getUrl(submission.storageId) : null;
+        return {
+          studentUserId: enrollment.studentUserId,
+          studentName: student?.fullName ?? null,
+          studentEmail: student?.email ?? "",
+          submission: submission ? { ...submission, url } : null,
+          isGraded: typeof submission?.mark === "number",
+        };
+      }),
+    );
+
+    return {
+      assignment: {
+        ...assignment,
+        course: course
+          ? { _id: course._id, courseName: course.courseName, courseCode: course.courseCode }
+          : null,
+      },
+      rows: rows.sort((a, b) => {
+        if (a.isGraded !== b.isGraded) return a.isGraded ? 1 : -1;
+        return (a.studentName ?? a.studentEmail).localeCompare(b.studentName ?? b.studentEmail);
+      }),
+      gradedCount: rows.filter((r) => r.isGraded).length,
+      totalCount: rows.length,
+    };
   },
 });
 
@@ -117,35 +277,75 @@ export const listNeedsGrading = query({
       throw new Error("Only teachers and admins can view the grading queue.");
     }
 
-    const submissions = await ctx.db.query("submissions").collect();
-    const assignments = await ctx.db.query("assignments").collect();
-    const courses = await ctx.db.query("courses").collect();
-    const latestByAssignmentAndStudent = new Map<string, (typeof submissions)[number]>();
+    // Resolve the courses this user is responsible for
+    let courseIds: Set<string>;
 
-    for (const submission of [...submissions].sort(
-      (a, b) => b.submittedAt - a.submittedAt,
-    )) {
-      const key = `${submission.assignmentId}:${submission.studentUserId}`;
+    if (user.role === "teacher") {
+      const profile = await ctx.db
+        .query("teacherProfiles")
+        .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+        .first();
 
-      if (!latestByAssignmentAndStudent.has(key)) {
-        latestByAssignmentAndStudent.set(key, submission);
-      }
+      if (!profile) return [];
+
+      const teacherCourses = await ctx.db
+        .query("courses")
+        .withIndex("by_teacher_profile", (q) =>
+          q.eq("teacherProfileId", profile._id),
+        )
+        .collect();
+
+      courseIds = new Set(teacherCourses.map((c) => String(c._id)));
+    } else {
+      // Admin sees everything — build the full course id set
+      const allCourses = await ctx.db.query("courses").take(500);
+      courseIds = new Set(allCourses.map((c) => String(c._id)));
     }
 
-    const latestPendingSubmissions = [...latestByAssignmentAndStudent.values()].filter(
-      (submission) => typeof submission.mark !== "number",
+    if (courseIds.size === 0) return [];
+
+    // Fetch assignments only for the resolved courses
+    const allAssignments = await ctx.db.query("assignments").collect();
+    const relevantAssignments = allAssignments.filter((a) =>
+      courseIds.has(String(a.courseId)),
+    );
+
+    if (relevantAssignments.length === 0) return [];
+
+    const assignmentIdSet = new Set(relevantAssignments.map((a) => String(a._id)));
+    const courseMap = new Map(
+      (await ctx.db.query("courses").take(500)).map((c) => [String(c._id), c]),
+    );
+
+    // Collect only submissions for relevant assignments
+    const allSubmissions = await ctx.db.query("submissions").collect();
+    const relevantSubmissions = allSubmissions.filter((s) =>
+      assignmentIdSet.has(String(s.assignmentId)),
+    );
+
+    // Keep the latest submission per (assignment, student) pair
+    const latestByKey = new Map<string, (typeof relevantSubmissions)[number]>();
+    for (const sub of [...relevantSubmissions].sort(
+      (a, b) => b.submittedAt - a.submittedAt,
+    )) {
+      const key = `${sub.assignmentId}:${sub.studentUserId}`;
+      if (!latestByKey.has(key)) latestByKey.set(key, sub);
+    }
+
+    const pendingSubmissions = [...latestByKey.values()].filter(
+      (s) => typeof s.mark !== "number",
     );
 
     const queue = await Promise.all(
-      latestPendingSubmissions.map(async (submission) => {
-        const assignment = assignments.find(
-          (entry) => entry._id === submission.assignmentId,
+      pendingSubmissions.map(async (submission) => {
+        const assignment = relevantAssignments.find(
+          (a) => String(a._id) === String(submission.assignmentId),
         );
         const course = assignment
-          ? courses.find((entry) => entry._id === assignment.courseId)
+          ? courseMap.get(String(assignment.courseId)) ?? null
           : null;
         const student = await ctx.db.get(submission.studentUserId);
-        const url = await ctx.storage.getUrl(submission.storageId);
+        const url = submission.storageId ? await ctx.storage.getUrl(submission.storageId) : null;
 
         return {
           ...submission,
@@ -180,10 +380,7 @@ export const listNeedsGrading = query({
       const aDeadline = a.assignment?.deadline ?? Number.MAX_SAFE_INTEGER;
       const bDeadline = b.assignment?.deadline ?? Number.MAX_SAFE_INTEGER;
 
-      if (aDeadline !== bDeadline) {
-        return aDeadline - bDeadline;
-      }
-
+      if (aDeadline !== bDeadline) return aDeadline - bDeadline;
       return b.submittedAt - a.submittedAt;
     });
   },

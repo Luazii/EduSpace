@@ -1,10 +1,12 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { formatDistanceToNow } from "date-fns";
 
 import { api } from "../../../convex/_generated/api";
+import { SubmissionComments } from "./submission-comments";
 
 type AssignmentsPanelProps = {
   courseId: string;
@@ -35,6 +37,12 @@ export function AssignmentsPanel({ courseId }: AssignmentsPanelProps) {
   const [gradingSubmissionId, setGradingSubmissionId] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<Record<string, File | null>>({});
   const [gradeDrafts, setGradeDrafts] = useState<Record<string, GradeDraft>>({});
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const canCreateAssignments = useMemo(
     () => currentUser?.role === "teacher" || currentUser?.role === "admin",
@@ -153,6 +161,12 @@ export function AssignmentsPanel({ courseId }: AssignmentsPanelProps) {
         ) : (
           <div className="grid gap-6">
             {assignments.map((assignment) => (
+              (() => {
+                const deadlinePassed = assignment.deadline ? now > assignment.deadline : false;
+                const countdown = assignment.deadline
+                  ? formatDistanceToNow(assignment.deadline, { addSuffix: true })
+                  : null;
+                return (
               <article
                 key={assignment._id}
                 className="group relative rounded-4xl border border-slate-200 bg-white/60 p-8 transition hover:bg-white hover:shadow-[0_15px_40px_rgba(15,23,42,0.04)]"
@@ -171,6 +185,14 @@ export function AssignmentsPanel({ courseId }: AssignmentsPanelProps) {
                             </svg>
                             Due {new Date(assignment.deadline).toLocaleString()}
                           </span>
+                        )}
+                        {countdown && (
+                          <>
+                            <span>&bull;</span>
+                            <span className={deadlinePassed ? "text-rose-600" : "text-sky-600"}>
+                              {deadlinePassed ? "Closed" : "Time left"} {countdown}
+                            </span>
+                          </>
                         )}
                         <span>&bull;</span>
                         <span>{assignment.maxMark} Marks</span>
@@ -214,10 +236,14 @@ export function AssignmentsPanel({ courseId }: AssignmentsPanelProps) {
                           </label>
                           <button
                             onClick={() => void submitAssignment(assignment._id)}
-                            disabled={submittingAssignmentId === assignment._id || !selectedFiles[assignment._id]}
+                            disabled={deadlinePassed || submittingAssignmentId === assignment._id || !selectedFiles[assignment._id]}
                             className="rounded-full bg-slate-950 px-6 py-2 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-slate-800 disabled:bg-slate-300"
                           >
-                            {submittingAssignmentId === assignment._id ? "Uploading..." : "Submit"}
+                            {deadlinePassed
+                              ? "Closed"
+                              : submittingAssignmentId === assignment._id
+                              ? "Uploading..."
+                              : "Submit"}
                           </button>
                         </div>
                       </div>
@@ -226,40 +252,51 @@ export function AssignmentsPanel({ courseId }: AssignmentsPanelProps) {
 
                   {/* Existing Submission status */}
                   {assignment.myLatestSubmission && (
-                    <div className="mt-4 flex items-center justify-between rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-emerald-950">Work Submitted</p>
-                          <p className="text-xs text-emerald-700">
-                            {assignment.myLatestSubmission.fileName} &bull; {new Date(assignment.myLatestSubmission.submittedAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {typeof assignment.myLatestSubmission.mark === "number" ? (
-                          <div className="text-right">
-                            <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">Grade</p>
-                            <p className="text-xl font-bold text-emerald-950">{assignment.myLatestSubmission.mark} / {assignment.maxMark}</p>
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center justify-between rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6">
+                        <div className="flex items-center gap-4">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
                           </div>
-                        ) : (
-                          <span className="text-xs font-bold uppercase tracking-widest text-emerald-600">Awaiting Grade</span>
-                        )}
-                        {assignment.myLatestSubmission.url && (
-                          <a
-                            href={assignment.myLatestSubmission.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-widest text-emerald-950"
-                          >
-                            View
-                          </a>
-                        )}
+                          <div>
+                            <p className="text-sm font-bold text-emerald-950">Work Submitted</p>
+                            <p className="text-xs text-emerald-700">
+                              {assignment.myLatestSubmission.fileName} &bull; {new Date(assignment.myLatestSubmission.submittedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {typeof assignment.myLatestSubmission.mark === "number" ? (
+                            <div className="text-right">
+                              <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">Grade</p>
+                              <p className="text-xl font-bold text-emerald-950">{assignment.myLatestSubmission.mark} / {assignment.maxMark}</p>
+                            </div>
+                          ) : (
+                            <span className="text-xs font-bold uppercase tracking-widest text-emerald-600">Awaiting Grade</span>
+                          )}
+                          {assignment.myLatestSubmission.url && (
+                            <a
+                              href={assignment.myLatestSubmission.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full border border-emerald-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-widest text-emerald-950"
+                            >
+                              View
+                            </a>
+                          )}
+                        </div>
                       </div>
+                      {/* Teacher written feedback */}
+                      {assignment.myLatestSubmission.feedback && (
+                        <div className="rounded-2xl border border-sky-100 bg-sky-50 px-5 py-4">
+                          <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-sky-600">Teacher Feedback</p>
+                          <p className="text-sm leading-7 text-slate-700">{assignment.myLatestSubmission.feedback}</p>
+                        </div>
+                      )}
+                      {/* Feedback thread */}
+                      <SubmissionComments submissionId={assignment.myLatestSubmission._id as Id<"submissions">} />
                     </div>
                   )}
 
@@ -268,49 +305,83 @@ export function AssignmentsPanel({ courseId }: AssignmentsPanelProps) {
                     <div className="mt-6 space-y-4">
                       <h4 className="text-sm font-bold uppercase tracking-widest text-slate-400">Review Submissions</h4>
                       <div className="grid gap-3">
-                        {assignment.latestStudentSubmissions.map((submission) => (
-                          <div key={submission._id} className="rounded-2xl border border-slate-100 bg-white p-4">
-                            <div className="flex flex-wrap items-center justify-between gap-4">
-                              <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
-                                  {submission.student?.fullName?.[0] ?? "S"}
+                        {assignment.latestStudentSubmissions.map((submission) => {
+                          const currentMark = gradeDrafts[submission._id]?.mark ?? (typeof submission.mark === "number" ? String(submission.mark) : "");
+                          const currentFeedback = gradeDrafts[submission._id]?.feedback ?? submission.feedback ?? "";
+                          const isGraded = typeof submission.mark === "number";
+
+                          return (
+                            <div key={submission._id} className="rounded-2xl border border-slate-100 bg-white p-4 space-y-3">
+                              {/* Student info + file */}
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                                    {submission.student?.fullName?.[0] ?? "S"}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-semibold text-slate-900">{submission.student?.fullName}</p>
+                                    {isGraded && (
+                                      <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">
+                                        Graded: {submission.mark}{assignment.maxMark ? `/${assignment.maxMark}` : ""}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
-                                <span className="text-sm font-semibold text-slate-900">{submission.student?.fullName}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  placeholder="Mark"
-                                  className="w-20 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-slate-950"
-                                  value={gradeDrafts[submission._id]?.mark ?? (typeof submission.mark === "number" ? String(submission.mark) : "")}
-                                  onChange={(e) => setGradeDrafts(prev => ({
-                                    ...prev,
-                                    [submission._id]: { mark: e.target.value, feedback: gradeDrafts[submission._id]?.feedback ?? submission.feedback ?? "" }
-                                  }))}
-                                />
-                                <button
-                                  onClick={() => void saveGrade(submission._id)}
-                                  disabled={gradingSubmissionId === submission._id}
-                                  className="rounded-full bg-slate-950 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white transition hover:bg-slate-800 disabled:bg-slate-300"
-                                >
-                                  {gradingSubmissionId === submission._id ? "..." : "Save"}
-                                </button>
                                 {submission.url && (
-                                  <a href={submission.url} target="_blank" rel="noreferrer" className="rounded-full border border-slate-200 p-1.5 text-slate-500 hover:text-slate-950">
-                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <a href={submission.url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition">
+                                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
                                     </svg>
+                                    View File
                                   </a>
                                 )}
                               </div>
+                              {/* Mark + feedback inputs */}
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    placeholder={`Mark${assignment.maxMark ? ` / ${assignment.maxMark}` : ""}`}
+                                    min={0}
+                                    max={assignment.maxMark ?? undefined}
+                                    className="w-28 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none focus:border-slate-950"
+                                    value={currentMark}
+                                    onChange={(e) => setGradeDrafts(prev => ({
+                                      ...prev,
+                                      [submission._id]: { mark: e.target.value, feedback: currentFeedback }
+                                    }))}
+                                  />
+                                  <button
+                                    onClick={() => void saveGrade(submission._id, submission.mark, submission.feedback)}
+                                    disabled={gradingSubmissionId === submission._id || !currentMark.trim()}
+                                    className="rounded-xl bg-slate-950 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white transition hover:bg-slate-800 disabled:bg-slate-300"
+                                  >
+                                    {gradingSubmissionId === submission._id ? "Saving..." : isGraded ? "Update" : "Save Grade"}
+                                  </button>
+                                </div>
+                                <textarea
+                                  rows={2}
+                                  placeholder="Written feedback (optional)"
+                                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-slate-950 resize-none"
+                                  value={currentFeedback}
+                                  onChange={(e) => setGradeDrafts(prev => ({
+                                    ...prev,
+                                    [submission._id]: { mark: currentMark, feedback: e.target.value }
+                                  }))}
+                                />
+                              </div>
+                              {/* Threaded feedback */}
+                              <SubmissionComments submissionId={submission._id as Id<"submissions">} />
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
                 </div>
               </article>
+                );
+              })()
             ))}
           </div>
         )}

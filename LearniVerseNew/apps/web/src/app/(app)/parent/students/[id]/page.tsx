@@ -2,43 +2,67 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
-import { Id } from "../../../../../../convex/_generated/dataModel";
-import { useParams, useRouter } from "next/navigation";
+import type { Id } from "../../../../../../convex/_generated/dataModel";
+import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   BookOpen,
   MessageSquare,
   Send,
   CheckCircle2,
-  AlertCircle,
   FileText,
-  User,
-  Calendar
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+  ClipboardList,
+  HelpCircle,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { format } from "date-fns";
 
+/* ── NSC level helper ─────────────────────────────────────────── */
+function nscLevel(pct: number | null | undefined) {
+  if (pct == null) return { level: 0, label: "Pending", short: "—", bg: "bg-slate-100", text: "text-slate-400", bar: "bg-slate-200" };
+  if (pct >= 80) return { level: 7, label: "Outstanding", short: "L7", bg: "bg-emerald-100", text: "text-emerald-800", bar: "bg-emerald-500" };
+  if (pct >= 70) return { level: 6, label: "Meritorious", short: "L6", bg: "bg-sky-100", text: "text-sky-800", bar: "bg-sky-500" };
+  if (pct >= 60) return { level: 5, label: "Substantial", short: "L5", bg: "bg-blue-100", text: "text-blue-800", bar: "bg-blue-500" };
+  if (pct >= 50) return { level: 4, label: "Adequate", short: "L4", bg: "bg-violet-100", text: "text-violet-800", bar: "bg-violet-500" };
+  if (pct >= 40) return { level: 3, label: "Moderate", short: "L3", bg: "bg-amber-100", text: "text-amber-800", bar: "bg-amber-400" };
+  if (pct >= 30) return { level: 2, label: "Elementary", short: "L2", bg: "bg-orange-100", text: "text-orange-800", bar: "bg-orange-400" };
+  return { level: 1, label: "Not Achieved", short: "L1", bg: "bg-rose-100", text: "text-rose-800", bar: "bg-rose-500" };
+}
+
+function ProgressBar({ value, barClass }: { value: number; barClass: string }) {
+  return (
+    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+      <div
+        className={`h-2 rounded-full transition-all ${barClass}`}
+        style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }}
+      />
+    </div>
+  );
+}
+
 export default function ParentStudentReportPage() {
   const params = useParams();
   const studentId = params.id as Id<"users">;
-  
-  const student = useQuery(api.users.getById, { userId: studentId });
-  const marks = useQuery(api.courses.getStudentFinalMarks, { studentUserId: studentId }) ?? [];
+
+  const report = useQuery(api.marks.getStudentFullReport, { studentUserId: studentId });
   const addComment = useMutation(api.parentServices.addReportComment);
-  
+
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeMarkId, setActiveMarkId] = useState<Id<"finalMarks"> | null>(null);
+  const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
 
   const handleComment = async () => {
     if (!activeMarkId || !commentText.trim()) return;
     setIsSubmitting(true);
     try {
-      await addComment({
-        finalMarkId: activeMarkId,
-        comment: commentText.trim(),
-      });
+      await addComment({ finalMarkId: activeMarkId, comment: commentText.trim() });
       setCommentText("");
       setActiveMarkId(null);
     } finally {
@@ -46,13 +70,32 @@ export default function ParentStudentReportPage() {
     }
   };
 
-  if (student === undefined) return <div className="h-screen animate-pulse bg-slate-50" />;
+  if (report === undefined)
+    return <div className="h-screen animate-pulse bg-slate-50" />;
+
+  const student = report.student;
+  const courses = report.courses ?? [];
+
+  const overallAvg =
+    courses.filter((c) => c?.summary.weightedFinal != null).length > 0
+      ? Math.round(
+          courses
+            .filter((c) => c?.summary.weightedFinal != null)
+            .reduce((s, c) => s + (c?.summary.weightedFinal ?? 0), 0) /
+            courses.filter((c) => c?.summary.weightedFinal != null).length,
+        )
+      : null;
+
+  const atRiskCount = courses.filter(
+    (c) => typeof c?.summary.weightedFinal === "number" && c.summary.weightedFinal < 50,
+  ).length;
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-6 py-14 sm:px-10">
+      {/* Header */}
       <header className="mb-10 flex flex-wrap items-end justify-between gap-6">
         <div>
-          <Link 
+          <Link
             href="/parent/dashboard"
             className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition"
           >
@@ -61,169 +104,442 @@ export default function ParentStudentReportPage() {
           </Link>
           <div className="flex items-center gap-6">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-950 text-xl font-black text-white">
-              {student?.fullName?.[0] || "?"}
+              {student?.fullName?.[0] ?? "?"}
             </div>
             <div>
               <h1 className="text-3xl font-black text-slate-950">{student?.fullName}</h1>
-              <p className="text-sm font-medium text-slate-500">Student Achievement Report • {format(Date.now(), "MMMM yyyy")}</p>
+              <p className="text-sm font-medium text-slate-500">
+                Student Achievement Report · {format(Date.now(), "MMMM yyyy")}
+              </p>
             </div>
           </div>
         </div>
       </header>
 
       <div className="grid gap-8 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-8">
-           <h2 className="text-xl font-bold text-slate-950 flex items-center gap-2 mb-6">
+        {/* Main content */}
+        <div className="lg:col-span-2 space-y-6">
+          <h2 className="text-xl font-bold text-slate-950 flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-sky-600" />
-            Active Course Performance
+            Subject Performance
           </h2>
 
-          <div className="grid gap-6">
-            {marks.map((mark: any) => (
-              <section 
-                key={mark._id}
-                className="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm transition hover:shadow-xl hover:shadow-slate-200/20"
+          {courses.length === 0 && (
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-12 text-center text-sm text-slate-400">
+              No active subject enrolments found.
+            </div>
+          )}
+
+          {courses.map((course) => {
+            if (!course) return null;
+            const isExpanded = expandedCourse === course.courseId;
+            const final = course.finalMark?.effectiveMark ?? course.summary.weightedFinal;
+            const level = nscLevel(final);
+            const isAtRisk = typeof final === "number" && final < 50;
+            const isCritical = typeof final === "number" && final < 40;
+
+            return (
+              <section
+                key={course.courseId}
+                className={`rounded-3xl border bg-white shadow-sm overflow-hidden ${
+                  isCritical
+                    ? "border-rose-200"
+                    : isAtRisk
+                    ? "border-amber-200"
+                    : "border-slate-200"
+                }`}
               >
-                <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <h3 className="text-xl font-black text-slate-950">{mark.courseName}</h3>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{mark.courseCode} • Semester {mark.semester}</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Final Weighted Mark</p>
-                      <p className="text-3xl font-black text-slate-950">
-                        {mark.computedFinalMark !== undefined ? `${mark.computedFinalMark}%` : "Pending"}
+                {/* Course header */}
+                <div className="p-7">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <h3 className="text-xl font-black text-slate-950">{course.courseName}</h3>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        {course.courseCode}
+                        {course.semester ? ` · Semester ${course.semester}` : ""}
+                      </p>
+                      <p className="mt-1 text-[10px] text-slate-400">
+                        Assignments {course.assignmentWeight}% ·
+                        Quizzes/Tests {course.quizWeight}%
                       </p>
                     </div>
-                  </div>
-                </header>
 
-                <div className="grid gap-8 border-t border-slate-50 pt-6 sm:grid-cols-2">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-500">Assignments (Computed)</span>
-                      <span className="text-xs font-black text-slate-950">{mark.computedAssignmentPercent}%</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-500">Quizzes (Computed)</span>
-                      <span className="text-xs font-black text-slate-950">{mark.computedQuizPercent}%</span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {final != null && (
+                        <span className={`rounded-full px-3 py-1 text-xs font-black ${level.bg} ${level.text}`}>
+                          {level.short} · {level.label}
+                        </span>
+                      )}
+                      <div className="text-right">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          {course.finalMark ? "Final Mark" : "Current Mark"}
+                        </p>
+                        <p
+                          className={`text-3xl font-black ${
+                            isCritical
+                              ? "text-rose-700"
+                              : isAtRisk
+                              ? "text-amber-700"
+                              : final != null
+                              ? "text-slate-950"
+                              : "text-slate-300"
+                          }`}
+                        >
+                          {final != null ? `${final}%` : "—"}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Teacher Observation</p>
-                     <p className="text-xs text-slate-600 leading-relaxed italic">
-                       "{mark.notes || "No teacher summary provided for this period."}"
-                     </p>
+
+                  {/* Progress bar for final mark */}
+                  {final != null && (
+                    <div className="mt-4">
+                      <ProgressBar value={final} barClass={level.bar} />
+                    </div>
+                  )}
+
+                  {/* At-risk warning */}
+                  {isAtRisk && (
+                    <div
+                      className={`mt-4 flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-bold ${
+                        isCritical
+                          ? "border-rose-200 bg-rose-50 text-rose-800"
+                          : "border-amber-200 bg-amber-50 text-amber-800"
+                      }`}
+                    >
+                      <TrendingDown className="h-4 w-4 shrink-0" />
+                      {isCritical
+                        ? "Critical: Student is at serious risk of not passing this subject."
+                        : "At risk: Current mark is below the 50% pass requirement."}
+                    </div>
+                  )}
+
+                  {/* Summary stats row */}
+                  <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <MiniStat
+                      label="Assignments"
+                      value={
+                        course.summary.avgAssignmentPct != null
+                          ? `${course.summary.avgAssignmentPct}%`
+                          : "—"
+                      }
+                    />
+                    <MiniStat
+                      label="Quizzes"
+                      value={
+                        course.summary.avgQuizPct != null
+                          ? `${course.summary.avgQuizPct}%`
+                          : "—"
+                      }
+                    />
+                    <MiniStat label="Assignments" value={`${course.assignments.length} set`} />
+                    <MiniStat label="Quizzes" value={`${course.quizzes.length} set`} />
                   </div>
+
+                  {course.manualMarks && course.manualMarks.length > 0 && (
+                    <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        Manual assessment record
+                      </p>
+                      <div className="mt-3 grid gap-2 text-sm text-slate-600">
+                        <p>
+                          Captured assessments: <span className="font-bold text-slate-900">{course.manualMarks.length}</span>
+                        </p>
+                        <p>
+                          Average:{" "}
+                          <span className="font-bold text-slate-900">
+                            {typeof course.summary.manualAverage === "number"
+                              ? `${course.summary.manualAverage}%`
+                              : "Pending"}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Teacher observation */}
+                  {course.finalMark?.notes && (
+                    <div className="mt-5 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-sky-600 mb-1">
+                        Teacher Observation
+                      </p>
+                      <p className="text-xs text-slate-600 leading-relaxed italic">
+                        "{course.finalMark.notes}"
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Expand/collapse toggle */}
+                  <button
+                    onClick={() =>
+                      setExpandedCourse(isExpanded ? null : course.courseId)
+                    }
+                    className="mt-5 flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-800 transition"
+                  >
+                    {isExpanded ? (
+                      <>
+                        <ChevronUp className="h-4 w-4" />
+                        Hide detailed breakdown
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4" />
+                        View detailed breakdown
+                      </>
+                    )}
+                  </button>
                 </div>
 
-                {/* Parent Comments Section */}
-                <div className="mt-8 border-t border-slate-50 pt-6">
-                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-[#7c4dff] flex items-center gap-2">
-                      <MessageSquare className="h-3 w-3" />
-                      Parental Commentary
-                    </h4>
-                    <button 
-                      onClick={() => setActiveMarkId(mark._id)}
-                      className="text-[10px] font-black uppercase tracking-widest text-sky-600 hover:text-sky-800 transition"
-                    >
-                      + Leave Comment
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {mark.parentComments?.map((c: any, i: number) => (
-                      <div key={i} className="rounded-2xl bg-slate-50 p-4">
-                        <p className="text-xs text-slate-600 leading-relaxed italic">"{c.comment}"</p>
-                        <p className="mt-2 text-[10px] font-bold text-slate-400 uppercase">{format(c.createdAt, "PPP")}</p>
+                {/* ── Detailed breakdown (expandable) ── */}
+                {isExpanded && (
+                  <div className="border-t border-slate-100 bg-slate-50/50 p-7 space-y-6">
+                    {/* Assignments */}
+                    {course.assignments.length > 0 && (
+                      <div>
+                        <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                          <ClipboardList className="h-3.5 w-3.5" />
+                          Assignments ({course.assignmentWeight}% weight)
+                        </h4>
+                        <div className="space-y-2">
+                          {course.assignments.map((a) => {
+                            const aLevel = nscLevel(a.percent);
+                            return (
+                              <div
+                                key={String(a._id)}
+                                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-bold text-slate-900">
+                                    {a.title}
+                                  </p>
+                                  <div className="mt-0.5 flex flex-wrap gap-2 text-[10px] text-slate-400">
+                                    {a.deadline && (
+                                      <span>Due {new Date(a.deadline).toLocaleDateString()}</span>
+                                    )}
+                                    {a.gradedAt && (
+                                      <span>
+                                        Graded {new Date(a.gradedAt).toLocaleDateString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {a.feedback && (
+                                    <p className="mt-1 text-[11px] italic text-slate-500 leading-relaxed">
+                                      "{a.feedback}"
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="ml-4 shrink-0 text-right">
+                                  {a.mark != null ? (
+                                    <>
+                                      <p className="text-sm font-black text-slate-950">
+                                        {a.mark}
+                                        {a.maxMark ? `/${a.maxMark}` : ""}
+                                      </p>
+                                      <span
+                                        className={`rounded-full px-2 py-0.5 text-[9px] font-black ${aLevel.bg} ${aLevel.text}`}
+                                      >
+                                        {a.percent}%
+                                      </span>
+                                    </>
+                                  ) : a.submittedAt ? (
+                                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black text-amber-700">
+                                      Awaiting grade
+                                    </span>
+                                  ) : (
+                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-400">
+                                      Not submitted
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    ))}
-                    {(!mark.parentComments || mark.parentComments.length === 0) && (
-                      <p className="text-xs text-slate-400 italic">No parent comments recorded.</p>
+                    )}
+
+                    {/* Quizzes */}
+                    {course.quizzes.length > 0 && (
+                      <div>
+                        <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                          <HelpCircle className="h-3.5 w-3.5" />
+                          Quizzes &amp; Tests ({course.quizWeight}% weight)
+                        </h4>
+                        <div className="space-y-2">
+                          {course.quizzes.map((q) => {
+                            const qLevel = nscLevel(q.percent);
+                            return (
+                              <div
+                                key={String(q._id)}
+                                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-bold text-slate-900">
+                                    {q.title}
+                                  </p>
+                                  <p className="mt-0.5 text-[10px] text-slate-400">
+                                    {q.attemptsUsed}/{q.maxAttempts} attempts used
+                                    {q.lastAttemptAt &&
+                                      ` · Last attempt ${new Date(q.lastAttemptAt).toLocaleDateString()}`}
+                                  </p>
+                                </div>
+                                <div className="ml-4 shrink-0 text-right">
+                                  {q.bestScore != null ? (
+                                    <>
+                                      <p className="text-sm font-black text-slate-950">
+                                        {q.bestScore}
+                                        {q.maxScore ? `/${q.maxScore}` : ""}
+                                      </p>
+                                      <span
+                                        className={`rounded-full px-2 py-0.5 text-[9px] font-black ${qLevel.bg} ${qLevel.text}`}
+                                      >
+                                        {q.percent}% best
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-400">
+                                      Not attempted
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
+                )}
               </section>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
-        {/* Sidebar Summary */}
-        <aside className="space-y-8">
-          <section className="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm">
-             <div className="flex items-center gap-4 mb-8">
-               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600">
-                 <FileText className="h-6 w-6" />
-               </div>
-               <h3 className="text-lg font-bold text-slate-950">Academic standing</h3>
-             </div>
-             
-             <div className="space-y-6">
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                  <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Active Enrollment
+        {/* Sidebar */}
+        <aside className="space-y-6">
+          {/* Overall summary */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                <FileText className="h-5 w-5" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-950">Academic Standing</h3>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  Overall average
+                </p>
+                {overallAvg != null ? (
+                  <>
+                    <p className="text-4xl font-black text-slate-950">{overallAvg}%</p>
+                    <span
+                      className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-black ${nscLevel(overallAvg).bg} ${nscLevel(overallAvg).text}`}
+                    >
+                      {nscLevel(overallAvg).label}
+                    </span>
+                    <div className="mt-2">
+                      <ProgressBar
+                        value={overallAvg}
+                        barClass={nscLevel(overallAvg).bar}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-slate-400 font-bold">No marks yet</p>
+                )}
+              </div>
+
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  Subjects enrolled
+                </p>
+                <p className="text-sm font-bold text-slate-900">{courses.length}</p>
+              </div>
+
+              {atRiskCount > 0 && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-rose-600 mb-1">
+                    At risk
+                  </p>
+                  <p className="text-sm font-bold text-rose-800">
+                    {atRiskCount} subject{atRiskCount !== 1 ? "s" : ""} below 50%
+                  </p>
+                  <p className="text-[10px] text-rose-600 mt-1">
+                    Please contact the school to discuss intervention.
                   </p>
                 </div>
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Curriculum</p>
-                  <p className="text-sm font-bold text-slate-900">National Senior Certificate (NSC)</p>
-                </div>
-             </div>
+              )}
+
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  Enrolment status
+                </p>
+                <p className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Active
+                </p>
+              </div>
+            </div>
           </section>
 
-          <div className="rounded-4xl bg-[#7c4dff] p-8 text-white">
+          {/* NSC Level legend */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">
+              Achievement Levels
+            </h4>
+            <div className="space-y-1.5">
+              {[
+                { l: 7, label: "Outstanding", range: "80–100%" },
+                { l: 6, label: "Meritorious", range: "70–79%" },
+                { l: 5, label: "Substantial", range: "60–69%" },
+                { l: 4, label: "Adequate", range: "50–59%" },
+                { l: 3, label: "Moderate", range: "40–49%" },
+                { l: 2, label: "Elementary", range: "30–39%" },
+                { l: 1, label: "Not Achieved", range: "0–29%" },
+              ].map((item) => {
+                const lvl = nscLevel(
+                  item.l === 7 ? 85 : item.l === 6 ? 75 : item.l === 5 ? 65 :
+                  item.l === 4 ? 55 : item.l === 3 ? 45 : item.l === 2 ? 35 : 10,
+                );
+                return (
+                  <div key={item.l} className="flex items-center justify-between text-[10px]">
+                    <span className={`rounded-full px-2 py-0.5 font-black ${lvl.bg} ${lvl.text}`}>
+                      L{item.l}
+                    </span>
+                    <span className="text-slate-500 font-medium">{item.label}</span>
+                    <span className="text-slate-400">{item.range}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Meetings CTA */}
+          <div className="rounded-3xl bg-[#7c4dff] p-7 text-white">
             <Calendar className="h-8 w-8 text-white/60 mb-4" />
-            <h4 className="text-xl font-bold mb-4">Meetings & Engagements</h4>
-            <p className="text-sm text-white/70 leading-relaxed mb-6">
-              Meetings are arranged by the school. View your scheduled meetings and confirm attendance from your dashboard.
+            <h4 className="text-xl font-bold mb-3">Meetings &amp; Engagements</h4>
+            <p className="text-sm text-white/70 leading-relaxed mb-5">
+              View your scheduled parent meetings and confirm attendance.
             </p>
             <Link
               href="/parent/dashboard"
-              className="block w-full rounded-2xl bg-white py-4 text-center text-xs font-black uppercase tracking-widest text-[#7c4dff] transition hover:bg-slate-50"
+              className="block w-full rounded-2xl bg-white py-3.5 text-center text-xs font-black uppercase tracking-widest text-[#7c4dff] transition hover:bg-slate-50"
             >
               View My Meetings
             </Link>
           </div>
         </aside>
       </div>
-
-      {/* Comment Modal */}
-      {activeMarkId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/20 backdrop-blur-sm p-6">
-          <div className="w-full max-w-md rounded-4xl border border-slate-200 bg-white p-10 shadow-2xl">
-            <h3 className="text-2xl font-black text-slate-950">Leave Comment</h3>
-            <p className="mt-4 text-sm text-slate-500 leading-7">
-              Provide feedback or acknowledgment on this academic period. This will be stored as part of the student's formal record.
-            </p>
-            <textarea 
-              className="mt-6 w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm outline-none focus:border-sky-300 focus:ring-4 focus:ring-sky-500/10 transition font-bold"
-              rows={4}
-              placeholder="e.g., We have reviewed the results and discussed the feedback with our child..."
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-            />
-            <div className="mt-8 flex items-center gap-4">
-              <button 
-                onClick={() => setActiveMarkId(null)}
-                className="flex-1 rounded-2xl border border-slate-200 py-4 text-sm font-bold text-slate-500 hover:bg-slate-50 transition"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleComment}
-                disabled={!commentText.trim() || isSubmitting}
-                className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-slate-950 py-4 text-sm font-bold text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800 transition disabled:opacity-50"
-              >
-                <Send className="h-4 w-4" />
-                Submit Comment
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center">
+      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+      <p className="mt-0.5 text-sm font-black text-slate-900">{value}</p>
+    </div>
   );
 }

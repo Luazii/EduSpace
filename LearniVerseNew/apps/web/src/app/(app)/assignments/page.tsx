@@ -1,8 +1,10 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import {
   BookOpen,
   CheckCircle2,
@@ -12,6 +14,7 @@ import {
   ChevronRight,
   Award,
   Upload,
+  X,
 } from "lucide-react";
 import { format, isPast, formatDistanceToNow } from "date-fns";
 import Link from "next/link";
@@ -55,6 +58,156 @@ function submissionBadge(
   );
 }
 
+// ── inline grading panel ───────────────────────────────────────────────────
+
+type GradingQueue = FunctionReturnType<typeof api.submissions.listNeedsGrading>;
+type QueueItem = NonNullable<GradingQueue>[number];
+
+function GradingRow({ sub }: { sub: QueueItem }) {
+  const gradeSubmission = useMutation(api.submissions.grade);
+  const [markText, setMarkText] = useState("");
+  const [feedbackText, setFeedbackText] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function handleGrade() {
+    const mark = Number(markText);
+    if (!markText.trim() || isNaN(mark)) return;
+
+    setSaving(true);
+    try {
+      await gradeSubmission({
+        submissionId: sub._id as Id<"submissions">,
+        mark,
+        feedback: feedbackText.trim() || undefined,
+      });
+      setSaved(true);
+      setMarkText("");
+      setFeedbackText("");
+      setExpanded(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (saved) return null;
+
+  return (
+    <div className="border-b border-slate-100 last:border-0">
+      <div className="flex items-start justify-between gap-4 p-6">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-slate-400">
+            {sub.course?.courseName ?? "Unknown Course"}
+          </p>
+          <h3 className="mt-0.5 font-bold text-slate-950">
+            {sub.assignment?.title ?? "Assignment"}
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            {sub.student?.fullName ?? sub.student?.email}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            Submitted {formatDistanceToNow(sub.submittedAt, { addSuffix: true })}
+            {sub.assignment?.deadline && (
+              <>
+                {" · "}
+                {isPast(sub.assignment.deadline) ? (
+                  <span className="text-rose-500">
+                    Deadline passed{" "}
+                    {formatDistanceToNow(sub.assignment.deadline, { addSuffix: true })}
+                  </span>
+                ) : (
+                  `Due ${format(sub.assignment.deadline, "MMM d")}`
+                )}
+              </>
+            )}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {sub.url && (
+            <a
+              href={sub.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              {sub.fileName}
+            </a>
+          )}
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className={`flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold transition ${
+              expanded
+                ? "bg-slate-950 text-white"
+                : "border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+            }`}
+          >
+            {expanded ? (
+              <>
+                <X className="h-3 w-3" /> Cancel
+              </>
+            ) : (
+              <>
+                <Award className="h-3 w-3" /> Grade
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mx-6 mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
+                Mark{sub.assignment?.maxMark ? ` (out of ${sub.assignment.maxMark})` : ""}
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={sub.assignment?.maxMark ?? undefined}
+                value={markText}
+                onChange={(e) => setMarkText(e.target.value)}
+                placeholder={sub.assignment?.maxMark ? `0 – ${sub.assignment.maxMark}` : "0"}
+                className="w-36 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold outline-none transition focus:border-slate-950"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
+              Feedback (optional)
+            </label>
+            <textarea
+              rows={3}
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              placeholder="Strengths, areas for improvement, next steps..."
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-950 resize-none"
+            />
+          </div>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setExpanded(false)}
+              className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-100"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => void handleGrade()}
+              disabled={saving || !markText.trim()}
+              className="rounded-xl bg-slate-950 px-5 py-2 text-xs font-bold text-white transition hover:bg-slate-800 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Grade"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── main component ──────────────────────────────────────────────────────────
 
 export default function AssignmentsPage() {
@@ -62,8 +215,7 @@ export default function AssignmentsPage() {
   const myAssignments = useQuery(api.assignments.listMine);
   const isTeacherRole = currentUser?.role === "teacher" || currentUser?.role === "admin";
   const gradingQueueRaw = useQuery(api.submissions.listNeedsGrading);
-  const gradingQueue: FunctionReturnType<typeof api.submissions.listNeedsGrading> | undefined =
-    isTeacherRole ? gradingQueueRaw : undefined;
+  const gradingQueue: GradingQueue | undefined = isTeacherRole ? gradingQueueRaw : undefined;
 
   if (myAssignments === undefined || currentUser === undefined || currentUser === null) {
     return (
@@ -75,13 +227,8 @@ export default function AssignmentsPage() {
 
   const isTeacher = isTeacherRole ?? false;
 
-  // For students: split into pending / submitted / graded
-  const pending = (myAssignments ?? []).filter(
-    (a) => !a.mySubmission && !a.isOverdue,
-  );
-  const overdue = (myAssignments ?? []).filter(
-    (a) => !a.mySubmission && a.isOverdue,
-  );
+  const pending = (myAssignments ?? []).filter((a) => !a.mySubmission && !a.isOverdue);
+  const overdue = (myAssignments ?? []).filter((a) => !a.mySubmission && a.isOverdue);
   const submitted = (myAssignments ?? []).filter(
     (a) => a.mySubmission && typeof a.mySubmission.mark !== "number",
   );
@@ -102,8 +249,7 @@ export default function AssignmentsPage() {
             Assignments
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-500">
-            Review submitted work and manage the grading queue across all your
-            courses.
+            Review submitted work and grade directly from the queue across all your courses.
           </p>
         </header>
 
@@ -149,54 +295,9 @@ export default function AssignmentsPage() {
             <h2 className="mb-5 text-sm font-black uppercase tracking-[0.2em] text-slate-400">
               Pending Grading ({gradingQueue.length})
             </h2>
-            <div className="divide-y divide-slate-100 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-              {(gradingQueue ?? []).map((sub) => (
-                <div
-                  key={sub._id}
-                  className="flex items-start justify-between gap-4 p-6"
-                >
-                  <div className="flex-1">
-                    <p className="text-xs font-bold text-slate-400">
-                      {sub.course?.courseName ?? "Unknown Course"}
-                    </p>
-                    <h3 className="mt-0.5 font-bold text-slate-950">
-                      {sub.assignment?.title ?? "Assignment"}
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {sub.student?.fullName ?? sub.student?.email}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Submitted{" "}
-                      {formatDistanceToNow(sub.submittedAt, { addSuffix: true })}
-                      {sub.assignment?.deadline && (
-                        <>
-                          {" · "}
-                          {isPast(sub.assignment.deadline) ? (
-                            <span className="text-rose-500">
-                              Deadline passed{" "}
-                              {formatDistanceToNow(sub.assignment.deadline, {
-                                addSuffix: true,
-                              })}
-                            </span>
-                          ) : (
-                            `Due ${format(sub.assignment.deadline, "MMM d")}`
-                          )}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                  {sub.url && (
-                    <a
-                      href={sub.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100"
-                    >
-                      <FileText className="h-3.5 w-3.5" />
-                      {sub.fileName}
-                    </a>
-                  )}
-                </div>
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+              {gradingQueue.map((sub) => (
+                <GradingRow key={sub._id} sub={sub} />
               ))}
             </div>
           </section>

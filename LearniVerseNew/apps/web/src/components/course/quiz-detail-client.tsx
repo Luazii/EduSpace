@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 import type { Id } from "../../../convex/_generated/dataModel";
-
 import { api } from "../../../convex/_generated/api";
+import { Play, RotateCcw, Clock, Shield, Activity } from "lucide-react";
 
 type QuizDetailClientProps = {
   courseId: string;
@@ -14,28 +15,25 @@ type QuizDetailClientProps = {
 
 export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
   const typedQuizId = quizId as Id<"quizzes">;
+  const router = useRouter();
+
   const quiz = useQuery(api.quizzes.getDetail, { quizId: typedQuizId });
+  const activeSession = useQuery(api.quizSessions.getActiveSessionForQuiz, {
+    quizId: typedQuizId,
+  });
   const addQuestion = useMutation(api.quizzes.addQuestion);
-  const submitAttempt = useMutation(api.quizzes.submitAttempt);
+  const startSession = useMutation(api.quizSessions.startSession);
 
   const [prompt, setPrompt] = useState("");
   const [options, setOptions] = useState(["", "", "", ""]);
   const [correctAnswer, setCorrectAnswer] = useState("");
   const [weighting, setWeighting] = useState("1");
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [submissionResult, setSubmissionResult] = useState<null | {
-    score: number;
-    maxScore: number;
-    attemptsRemaining: number;
-  }>(null);
   const [isSavingQuestion, setIsSavingQuestion] = useState(false);
-  const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
 
   const canTakeQuiz = useMemo(() => {
-    if (!quiz) {
-      return false;
-    }
-
+    if (!quiz) return false;
     return (
       quiz.availability.available &&
       quiz.attemptsRemaining > 0 &&
@@ -43,17 +41,25 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
     );
   }, [quiz]);
 
+  async function handleStartSession() {
+    if (!hasActiveSession && !canTakeQuiz) return;
+    setIsStarting(true);
+    setStartError(null);
+    try {
+      const { sessionId } = await startSession({ quizId: typedQuizId });
+      router.push(`/courses/${courseId}/quizzes/${quizId}/session`);
+      void sessionId; // used server-side; client navigates to session
+    } catch (err) {
+      setStartError(err instanceof Error ? err.message : "Failed to start quiz.");
+      setIsStarting(false);
+    }
+  }
+
   async function onAddQuestion(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    const cleanedOptions = options.map((option) => option.trim()).filter(Boolean);
-
-    if (!prompt.trim() || cleanedOptions.length < 2 || !correctAnswer.trim()) {
-      return;
-    }
-
+    const cleanedOptions = options.map((o) => o.trim()).filter(Boolean);
+    if (!prompt.trim() || cleanedOptions.length < 2 || !correctAnswer.trim()) return;
     setIsSavingQuestion(true);
-
     try {
       await addQuestion({
         quizId: typedQuizId,
@@ -62,7 +68,6 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
         correctAnswer: correctAnswer.trim(),
         weighting: Math.max(Number(weighting || "1"), 1),
       });
-
       setPrompt("");
       setOptions(["", "", "", ""]);
       setCorrectAnswer("");
@@ -72,40 +77,11 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
     }
   }
 
-  async function onSubmitQuiz(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!quiz) {
-      return;
-    }
-
-    setIsSubmittingQuiz(true);
-    setSubmissionResult(null);
-
-    try {
-      const result = await submitAttempt({
-        quizId: typedQuizId,
-        answers: quiz.questions.map((question) => ({
-          questionId: question._id,
-          answer: answers[question._id] ?? "",
-        })),
-      });
-
-      setSubmissionResult({
-        score: result.score,
-        maxScore: result.maxScore,
-        attemptsRemaining: result.attemptsRemaining,
-      });
-    } finally {
-      setIsSubmittingQuiz(false);
-    }
-  }
-
-  if (quiz === undefined) {
+  if (quiz === undefined || activeSession === undefined) {
     return (
       <main className="mx-auto flex w-full max-w-6xl flex-1 px-6 py-14 sm:px-10">
-        <div className="rounded-[1.75rem] border border-slate-200 bg-white/80 p-8 text-sm text-slate-500 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-          Loading quiz...
+        <div className="rounded-[1.75rem] border border-slate-200 bg-white/80 p-8 text-sm text-slate-500">
+          Loading quiz…
         </div>
       </main>
     );
@@ -114,10 +90,8 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
   if (!quiz) {
     return (
       <main className="mx-auto flex w-full max-w-6xl flex-1 px-6 py-14 sm:px-10">
-        <div className="rounded-[1.75rem] border border-slate-200 bg-white/80 p-8 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
-            Quiz not found
-          </h1>
+        <div className="rounded-[1.75rem] border border-slate-200 bg-white/80 p-8">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Quiz not found</h1>
           <Link
             href={`/courses/${courseId}`}
             className="mt-6 inline-flex rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
@@ -129,23 +103,31 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
     );
   }
 
+  const hasActiveSession = !!activeSession;
+  const timeRemaining = activeSession?.endsAt
+    ? Math.max(0, activeSession.endsAt - Date.now())
+    : null;
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 px-6 py-14 sm:px-10">
       <div className="grid w-full gap-6">
+        {/* ── Header card ── */}
         <section className="rounded-[1.75rem] border border-black/10 bg-white/80 p-8 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-700">
-                Quiz
-              </p>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-700">Quiz</p>
               <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950">
                 {quiz.title}
               </h1>
               <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-500">
-                {quiz.course?.courseName ? <span>{quiz.course.courseName}</span> : null}
-                <span>{quiz.maxAttempts} max attempts</span>
+                {quiz.course?.courseName && <span>{quiz.course.courseName}</span>}
+                <span>{quiz.maxAttempts} max attempt{quiz.maxAttempts !== 1 ? "s" : ""}</span>
                 <span>{quiz.attemptsUsed} used</span>
-                {quiz.durationMinutes ? <span>{quiz.durationMinutes} min</span> : null}
+                {quiz.durationMinutes && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" /> {quiz.durationMinutes} min
+                  </span>
+                )}
               </div>
             </div>
             <Link
@@ -155,100 +137,114 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
               Back to classroom
             </Link>
           </div>
-          {quiz.description ? (
-            <p className="mt-5 max-w-4xl text-sm leading-8 text-slate-600">
-              {quiz.description}
-            </p>
-          ) : null}
+          {quiz.description && (
+            <p className="mt-5 max-w-4xl text-sm leading-8 text-slate-600">{quiz.description}</p>
+          )}
           <div className="mt-4 flex flex-wrap gap-3 text-xs uppercase tracking-[0.16em] text-slate-400">
-            {quiz.startsAt ? <span>Opens {new Date(quiz.startsAt).toLocaleString()}</span> : null}
-            {quiz.endsAt ? <span>Closes {new Date(quiz.endsAt).toLocaleString()}</span> : null}
+            {quiz.startsAt && <span>Opens {new Date(quiz.startsAt).toLocaleString()}</span>}
+            {quiz.endsAt && <span>Closes {new Date(quiz.endsAt).toLocaleString()}</span>}
             <span>{quiz.availability.available ? "Available" : quiz.availability.reason}</span>
           </div>
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="rounded-[1.75rem] border border-slate-200 bg-white/80 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+          {/* ── Start / Resume panel ── */}
+          <div className="rounded-[1.75rem] border border-slate-200 bg-white/80 p-8 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">
-              Take quiz
+              {hasActiveSession ? "Session in Progress" : "Take Quiz"}
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
-              Questions
+              {hasActiveSession ? "Resume where you left off" : "Start your attempt"}
             </h2>
-            <p className="mt-2 text-sm leading-7 text-slate-600">
-              Your quiz is marked on the server when you submit it, and attempt limits are enforced there too.
-            </p>
-            {submissionResult ? (
-              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm leading-7 text-emerald-800">
-                Score: {submissionResult.score} / {submissionResult.maxScore}. Attempts remaining:{" "}
-                {submissionResult.attemptsRemaining}.
-              </div>
-            ) : null}
-            <form onSubmit={onSubmitQuiz} className="mt-6 grid gap-5">
-              {quiz.questions.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm leading-7 text-slate-500">
-                  No questions have been added yet.
-                </div>
-              ) : (
-                quiz.questions.map((question) => (
-                  <article
-                    key={question._id}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <h3 className="text-lg font-semibold text-slate-950">
-                        {question.position}. {question.prompt}
-                      </h3>
-                      <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
-                        {question.weighting} marks
-                      </span>
-                    </div>
-                    <div className="mt-4 grid gap-2">
-                      {question.options.map((option) => (
-                        <label
-                          key={option}
-                          className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
-                        >
-                          <input
-                            type="radio"
-                            name={question._id}
-                            value={option}
-                            checked={answers[question._id] === option}
-                            onChange={(event) =>
-                              setAnswers((current) => ({
-                                ...current,
-                                [question._id]: event.target.value,
-                              }))
-                            }
-                          />
-                          <span>{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                    {quiz.canManage && question.correctAnswer ? (
-                      <p className="mt-3 text-xs uppercase tracking-[0.16em] text-slate-400">
-                        Correct answer: {question.correctAnswer}
-                      </p>
-                    ) : null}
-                  </article>
-                ))
-              )}
 
+            {hasActiveSession && timeRemaining !== null && (
+              <div className="mt-4 flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <Clock className="h-4 w-4 text-amber-600" />
+                <p className="text-sm font-bold text-amber-800">
+                  {Math.floor(timeRemaining / 60000)}m {Math.round((timeRemaining % 60000) / 1000)}s remaining
+                </p>
+              </div>
+            )}
+
+            {hasActiveSession && (
+              <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                {activeSession.answers.length} of {quiz.questions.length} questions answered
+              </div>
+            )}
+
+            {quiz.bestAttempt && (
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                Best score: {quiz.bestAttempt.score} / {quiz.bestAttempt.maxScore} (
+                {quiz.bestAttempt.maxScore
+                  ? Math.round((quiz.bestAttempt.score / quiz.bestAttempt.maxScore) * 100)
+                  : 0}
+                %)
+              </div>
+            )}
+
+            {startError && (
+              <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {startError}
+              </div>
+            )}
+
+            {!quiz.canManage && (
               <button
-                type="submit"
-                disabled={!canTakeQuiz || isSubmittingQuiz}
-                className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                onClick={() => void handleStartSession()}
+                disabled={(!canTakeQuiz && !hasActiveSession) || isStarting}
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-4 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
-                {isSubmittingQuiz ? "Submitting..." : "Submit quiz"}
+                {isStarting ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : hasActiveSession ? (
+                  <>
+                    <RotateCcw className="h-4 w-4" /> Resume Session
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4" /> Start Quiz
+                  </>
+                )}
               </button>
-            </form>
+            )}
+
+            {!canTakeQuiz && !hasActiveSession && !quiz.canManage && (
+              <p className="mt-4 text-center text-xs text-slate-400">
+                {!quiz.availability.available
+                  ? quiz.availability.reason
+                  : quiz.attemptsRemaining === 0
+                  ? "No attempts remaining."
+                  : "No questions available yet."}
+              </p>
+            )}
+
+            {/* Attempt history */}
+            {quiz.canManage && quiz.attempts.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  All attempts
+                </p>
+                {quiz.attempts.slice(0, 5).map((attempt) => (
+                  <div
+                    key={attempt._id}
+                    className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm"
+                  >
+                    <span className="text-slate-600">
+                      {new Date(attempt.submittedAt).toLocaleString()}
+                    </span>
+                    <span className="font-semibold text-slate-950">
+                      {attempt.score} / {attempt.maxScore}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="grid gap-6">
+            {/* ── Attempt summary ── */}
             <div className="rounded-[1.75rem] border border-slate-200 bg-white/80 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">
-                Progress
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">Progress</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
                 Attempt summary
               </h2>
@@ -260,11 +256,25 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
                   Attempts remaining: {quiz.attemptsRemaining}
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                  Best score: {quiz.bestAttempt ? `${quiz.bestAttempt.score} / ${quiz.bestAttempt.maxScore}` : "No attempts yet"}
+                  Best score:{" "}
+                  {quiz.bestAttempt
+                    ? `${quiz.bestAttempt.score} / ${quiz.bestAttempt.maxScore}`
+                    : "No attempts yet"}
                 </div>
               </div>
+
+              {/* Link to live proctoring for teachers */}
+              {quiz.canManage && (
+                <Link
+                  href={`/teacher/proctor/${quiz.courseId}`}
+                  className="mt-4 flex items-center gap-2 rounded-2xl border border-[#7c4dff]/20 bg-[#7c4dff]/5 px-4 py-3 text-sm font-bold text-[#7c4dff] hover:bg-[#7c4dff]/10 transition"
+                >
+                  <Activity className="h-4 w-4" /> Open Live Proctor View
+                </Link>
+              )}
             </div>
 
+            {/* ── Question authoring ── */}
             <div className="rounded-[1.75rem] border border-slate-200 bg-white/80 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-700">
                 Question authoring
@@ -274,16 +284,17 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
               </h2>
               <p className="mt-2 text-sm leading-7 text-slate-600">
                 {quiz.canManage
-                  ? "Teachers and admins can add questions here. Students won't receive correct answers in their quiz payload."
-                  : "Question authoring is available to teacher and admin roles."}
+                  ? "Correct answers are never sent to students in their session payload."
+                  : "Question authoring is available to teachers and admins."}
               </p>
+
               {quiz.canManage ? (
                 <form onSubmit={onAddQuestion} className="mt-6 grid gap-4">
                   <label className="grid gap-2 text-sm font-medium text-slate-700">
                     Prompt
                     <textarea
                       value={prompt}
-                      onChange={(event) => setPrompt(event.target.value)}
+                      onChange={(e) => setPrompt(e.target.value)}
                       rows={3}
                       placeholder="What does HTTP stand for?"
                       className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-950"
@@ -294,11 +305,9 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
                       Option {index + 1}
                       <input
                         value={option}
-                        onChange={(event) =>
-                          setOptions((current) =>
-                            current.map((item, itemIndex) =>
-                              itemIndex === index ? event.target.value : item,
-                            ),
+                        onChange={(e) =>
+                          setOptions((cur) =>
+                            cur.map((item, i) => (i === index ? e.target.value : item)),
                           )
                         }
                         placeholder={`Choice ${index + 1}`}
@@ -311,8 +320,8 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
                       Correct answer
                       <input
                         value={correctAnswer}
-                        onChange={(event) => setCorrectAnswer(event.target.value)}
-                        placeholder="Enter the exact correct option text"
+                        onChange={(e) => setCorrectAnswer(e.target.value)}
+                        placeholder="Exact text of the correct option"
                         className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-950"
                       />
                     </label>
@@ -322,7 +331,7 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
                         type="number"
                         min="1"
                         value={weighting}
-                        onChange={(event) => setWeighting(event.target.value)}
+                        onChange={(e) => setWeighting(e.target.value)}
                         className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-950"
                       />
                     </label>
@@ -332,12 +341,13 @@ export function QuizDetailClient({ courseId, quizId }: QuizDetailClientProps) {
                     disabled={isSavingQuestion || !prompt.trim()}
                     className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                   >
-                    {isSavingQuestion ? "Saving..." : "Add question"}
+                    {isSavingQuestion ? "Saving…" : "Add question"}
                   </button>
                 </form>
               ) : (
-                <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm leading-7 text-slate-500">
-                  Sign in with a teacher or admin account to add quiz questions.
+                <div className="mt-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                  <Shield className="h-4 w-4 shrink-0" />
+                  Sign in with a teacher or admin account to manage questions.
                 </div>
               )}
             </div>

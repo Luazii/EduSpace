@@ -38,6 +38,7 @@ type CourseAssessmentData = {
   course: Doc<"courses">;
   enrollments: Array<Doc<"enrollments">>;
   finalMarks: Array<Doc<"finalMarks">>;
+  manualMarks: Array<Doc<"manualMarks">>;
   quizzes: Array<Doc<"quizzes">>;
   studentIds: Array<Id<"users">>;
   submissions: Array<Doc<"submissions">>;
@@ -78,6 +79,10 @@ async function getCourseAssessmentData(
     .query("finalMarks")
     .withIndex("by_course", (q) => q.eq("courseId", courseId))
     .collect();
+  const manualMarks = await ctx.db
+    .query("manualMarks")
+    .withIndex("by_course", (q) => q.eq("courseId", courseId))
+    .collect();
   const assignmentIds = new Set(assignments.map((assignment) => String(assignment._id)));
   const quizIds = new Set(quizzes.map((quiz) => String(quiz._id)));
   const submissions = (await ctx.db.query("submissions").collect()).filter((submission) =>
@@ -103,6 +108,9 @@ async function getCourseAssessmentData(
   for (const finalMark of finalMarks) {
     studentIdMap.set(String(finalMark.studentUserId), finalMark.studentUserId);
   }
+  for (const manualMark of manualMarks) {
+    studentIdMap.set(String(manualMark.studentUserId), manualMark.studentUserId);
+  }
 
   const studentIds = [...studentIdMap.values()];
   const users = await Promise.all(studentIds.map((studentId) => ctx.db.get(studentId)));
@@ -120,6 +128,7 @@ async function getCourseAssessmentData(
     course,
     enrollments,
     finalMarks,
+    manualMarks,
     quizzes,
     studentIds,
     submissions,
@@ -191,10 +200,17 @@ function buildStudentReportRow(
   const averageQuizScore = bestAttempts.length
     ? bestAttempts.reduce((sum, attempt) => sum + attempt.score, 0) / bestAttempts.length
     : null;
+  const aWeight = data.course.assignmentWeight ?? 50;
+  const qWeight = data.course.quizWeight ?? 50;
+  const studentManualMarks = data.manualMarks.filter((entry) => entry.studentUserId === studentUserId);
+  const averageManualPercent = studentManualMarks.length
+    ? studentManualMarks.reduce((sum, entry) => sum + (entry.mark / entry.maxMark) * 100, 0) /
+      studentManualMarks.length
+    : null;
   const computedFinalMark =
     averageAssignmentPercent !== null && averageQuizPercent !== null
-      ? (averageAssignmentPercent + averageQuizPercent) / 2
-      : averageAssignmentPercent ?? averageQuizPercent;
+      ? (averageAssignmentPercent * aWeight + averageQuizPercent * qWeight) / 100
+      : averageAssignmentPercent ?? averageQuizPercent ?? averageManualPercent;
   const storedFinalMark =
     data.finalMarks.find((mark) => mark.studentUserId === studentUserId) ?? null;
   const effectiveFinalMark =
@@ -223,6 +239,8 @@ function buildStudentReportRow(
       .length,
     averageQuizScore: roundMark(averageQuizScore),
     averageQuizPercent: roundMark(averageQuizPercent),
+    manualAssessmentCount: studentManualMarks.length,
+    averageManualPercent: roundMark(averageManualPercent),
     computedFinalMark: roundMark(computedFinalMark),
     finalMark: storedFinalMark
       ? {

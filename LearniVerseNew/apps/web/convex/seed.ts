@@ -22,6 +22,7 @@
  */
 
 import { mutation } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 
 export const seedTestUsers = mutation({
   args: {},
@@ -339,6 +340,424 @@ export const claimSeedAccount = mutation({
     return {
       merged: true,
       message: `Merged placeholder into real account (${clerkRecord.email}).`,
+    };
+  },
+});
+
+/**
+ * Seeds English (quizzes) and Maths (assignments) for Grades 8–12.
+ *
+ * English per grade:
+ *   - 2 published quizzes (5 questions each, 2 marks per question = 10 total)
+ *   - Students A, B, C → completed both quizzes (score 8/10 = 80%)
+ *   - Student D → not started (no attempt records)
+ *
+ * Maths per grade:
+ *   - 2 published assignments (maxMark 50)
+ *   - Student A → submitted both, both graded at 67% (mark = 34)
+ *   - Student B → submitted both, ungraded (no mark)
+ *   - Student C → submitted assignment 1 only, graded at 67%
+ *   - Student D → no submission (the one unsubmitted per grade)
+ *
+ * Idempotent — safe to run multiple times.
+ */
+export const seedAcademicData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+
+    // ── helpers ───────────────────────────────────────────────────────────
+    async function upsertUser(params: {
+      email: string;
+      fullName: string;
+      firstName: string;
+      lastName: string;
+      role: "teacher" | "student" | "parent";
+    }) {
+      const existing = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", params.email))
+        .first();
+      if (existing) return existing._id;
+      return ctx.db.insert("users", {
+        clerkUserId: `seed_${params.role}_${params.email.replace(/[^a-z0-9]/gi, "_")}`,
+        email: params.email,
+        firstName: params.firstName,
+        lastName: params.lastName,
+        fullName: params.fullName,
+        role: params.role,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    async function upsertTeacherProfile(userId: Id<"users">, employeeNumber: string) {
+      const existing = await ctx.db
+        .query("teacherProfiles")
+        .withIndex("by_user_id", (q) => q.eq("userId", userId))
+        .first();
+      if (existing) return existing._id;
+      return ctx.db.insert("teacherProfiles", {
+        userId,
+        employeeNumber,
+        qualificationText: "B.Ed (Hons)",
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    async function upsertCourse(params: {
+      courseCode: string;
+      courseName: string;
+      department: string;
+      teacherProfileId: Id<"teacherProfiles">;
+    }) {
+      const existing = await ctx.db
+        .query("courses")
+        .withIndex("by_course_code", (q) => q.eq("courseCode", params.courseCode))
+        .first();
+      if (existing) return existing._id;
+      return ctx.db.insert("courses", {
+        ...params,
+        description: `${params.courseName} curriculum.`,
+        semester: 1,
+        isPublished: true,
+        assignmentWeight: 50,
+        quizWeight: 50,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    async function ensureEnrollment(studentUserId: Id<"users">, courseId: Id<"courses">) {
+      const enrollments = await ctx.db
+        .query("enrollments")
+        .withIndex("by_student", (q) => q.eq("studentUserId", studentUserId))
+        .collect();
+      if (enrollments.some((e) => e.courseId === courseId)) return;
+      const appId = await ctx.db.insert("enrollmentApplications", {
+        studentUserId,
+        selectedCourseIds: [courseId],
+        status: "approved",
+        paymentStatus: "paid",
+        notes: "Seeded by seedAcademicData.",
+        createdAt: now,
+        updatedAt: now,
+      });
+      await ctx.db.insert("enrollments", {
+        studentUserId,
+        courseId,
+        applicationId: appId,
+        enrolledAt: now,
+        status: "active",
+      });
+    }
+
+    // ── teachers ─────────────────────────────────────────────────────────
+    const engTeacherId = await upsertUser({
+      email: "seed+eng.teacher@learnmanage.dev",
+      fullName: "Ms. Thandiwe Khumalo",
+      firstName: "Thandiwe",
+      lastName: "Khumalo",
+      role: "teacher",
+    });
+    const mathTeacherId = await upsertUser({
+      email: "seed+math.teacher@learnmanage.dev",
+      fullName: "Mr. Sipho Ndlovu",
+      firstName: "Sipho",
+      lastName: "Ndlovu",
+      role: "teacher",
+    });
+    const engTeacherProfileId = await upsertTeacherProfile(engTeacherId, "EMP-ENG-001");
+    const mathTeacherProfileId = await upsertTeacherProfile(mathTeacherId, "EMP-MATH-001");
+
+    // ── students (4 per grade) ────────────────────────────────────────────
+    const GRADES = ["Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
+
+    const studentDefs: {
+      email: string;
+      fullName: string;
+      firstName: string;
+      lastName: string;
+      grade: string;
+    }[] = [
+      // Grade 8
+      { email: "seed+g8.amahle@learnmanage.dev", fullName: "Amahle Dube", firstName: "Amahle", lastName: "Dube", grade: "Grade 8" },
+      { email: "seed+g8.lindo@learnmanage.dev", fullName: "Lindo Mthembu", firstName: "Lindo", lastName: "Mthembu", grade: "Grade 8" },
+      { email: "seed+g8.nomsa@learnmanage.dev", fullName: "Nomsa Zulu", firstName: "Nomsa", lastName: "Zulu", grade: "Grade 8" },
+      { email: "seed+g8.thabo@learnmanage.dev", fullName: "Thabo Sithole", firstName: "Thabo", lastName: "Sithole", grade: "Grade 8" },
+      // Grade 9
+      { email: "seed+g9.zanele@learnmanage.dev", fullName: "Zanele Nkosi", firstName: "Zanele", lastName: "Nkosi", grade: "Grade 9" },
+      { email: "seed+g9.mpho@learnmanage.dev", fullName: "Mpho Molefe", firstName: "Mpho", lastName: "Molefe", grade: "Grade 9" },
+      { email: "seed+g9.bongani@learnmanage.dev", fullName: "Bongani Khumalo", firstName: "Bongani", lastName: "Khumalo", grade: "Grade 9" },
+      { email: "seed+g9.siyanda@learnmanage.dev", fullName: "Siyanda Cele", firstName: "Siyanda", lastName: "Cele", grade: "Grade 9" },
+      // Grade 10
+      { email: "seed+g10.lerato@learnmanage.dev", fullName: "Lerato Mokoena", firstName: "Lerato", lastName: "Mokoena", grade: "Grade 10" },
+      { email: "seed+g10.sipho@learnmanage.dev", fullName: "Sipho Dlamini", firstName: "Sipho", lastName: "Dlamini", grade: "Grade 10" },
+      { email: "seed+g10.nomvula@learnmanage.dev", fullName: "Nomvula Ntuli", firstName: "Nomvula", lastName: "Ntuli", grade: "Grade 10" },
+      { email: "seed+g10.ayanda@learnmanage.dev", fullName: "Ayanda Mthembu", firstName: "Ayanda", lastName: "Mthembu", grade: "Grade 10" },
+      // Grade 11
+      { email: "seed+g11.khanya@learnmanage.dev", fullName: "Khanya Shabalala", firstName: "Khanya", lastName: "Shabalala", grade: "Grade 11" },
+      { email: "seed+g11.nandi@learnmanage.dev", fullName: "Nandi Vilakazi", firstName: "Nandi", lastName: "Vilakazi", grade: "Grade 11" },
+      { email: "seed+g11.thandeka@learnmanage.dev", fullName: "Thandeka Mkhize", firstName: "Thandeka", lastName: "Mkhize", grade: "Grade 11" },
+      { email: "seed+g11.sbusiso@learnmanage.dev", fullName: "Sbusiso Ngcobo", firstName: "Sbusiso", lastName: "Ngcobo", grade: "Grade 11" },
+      // Grade 12
+      { email: "seed+g12.palesa@learnmanage.dev", fullName: "Palesa Mahlangu", firstName: "Palesa", lastName: "Mahlangu", grade: "Grade 12" },
+      { email: "seed+g12.lungisa@learnmanage.dev", fullName: "Lungisa Mthethwa", firstName: "Lungisa", lastName: "Mthethwa", grade: "Grade 12" },
+      { email: "seed+g12.gugu@learnmanage.dev", fullName: "Gugu Nxumalo", firstName: "Gugu", lastName: "Nxumalo", grade: "Grade 12" },
+      { email: "seed+g12.phiway@learnmanage.dev", fullName: "Phiwayinkosi Buthelezi", firstName: "Phiwayinkosi", lastName: "Buthelezi", grade: "Grade 12" },
+    ];
+
+    const studentIdsByGrade: Record<string, Id<"users">[]> = {};
+    for (const def of studentDefs) {
+      const id = await upsertUser({ ...def, role: "student" });
+      if (!studentIdsByGrade[def.grade]) studentIdsByGrade[def.grade] = [];
+      studentIdsByGrade[def.grade].push(id);
+    }
+
+    // ── courses ───────────────────────────────────────────────────────────
+    const engCourseIds: Record<string, Id<"courses">> = {};
+    const mathCourseIds: Record<string, Id<"courses">> = {};
+
+    for (const grade of GRADES) {
+      const n = grade.split(" ")[1];
+      engCourseIds[grade] = await upsertCourse({
+        courseCode: `ENG-G${n}`,
+        courseName: `English Home Language Grade ${n}`,
+        department: "Languages",
+        teacherProfileId: engTeacherProfileId,
+      });
+      mathCourseIds[grade] = await upsertCourse({
+        courseCode: `MATH-G${n}`,
+        courseName: `Mathematics Grade ${n}`,
+        department: "Mathematics",
+        teacherProfileId: mathTeacherProfileId,
+      });
+    }
+
+    // ── enroll students ───────────────────────────────────────────────────
+    for (const grade of GRADES) {
+      for (const studentId of studentIdsByGrade[grade] ?? []) {
+        await ensureEnrollment(studentId, engCourseIds[grade]);
+        await ensureEnrollment(studentId, mathCourseIds[grade]);
+      }
+    }
+
+    // ── English quizzes + attempts ────────────────────────────────────────
+    // 5 questions per quiz, 2 marks each = 10 total; completed students score 8/10 (80%)
+    const ENG_QUESTIONS = [
+      {
+        prompt: "Which sentence is grammatically correct?",
+        options: ["Me and him went.", "He and I went.", "Him and me went.", "I and he went."],
+        correctAnswer: "He and I went.",
+      },
+      {
+        prompt: "What is the plural of 'child'?",
+        options: ["childs", "childes", "children", "childer"],
+        correctAnswer: "children",
+      },
+      {
+        prompt: "Which word is a synonym of 'happy'?",
+        options: ["sad", "elated", "angry", "bored"],
+        correctAnswer: "elated",
+      },
+      {
+        prompt: "Identify the adverb: 'She ran quickly.'",
+        options: ["She", "ran", "quickly", "None"],
+        correctAnswer: "quickly",
+      },
+      {
+        prompt: "What literary device is used in 'the sun smiled down'?",
+        options: ["simile", "alliteration", "personification", "hyperbole"],
+        correctAnswer: "personification",
+      },
+    ];
+
+    for (const grade of GRADES) {
+      const n = grade.split(" ")[1];
+      const courseId = engCourseIds[grade];
+      const gradeStudents = studentIdsByGrade[grade] ?? [];
+
+      for (let term = 1; term <= 2; term++) {
+        const quizTitle = `Term ${term} Language Quiz`;
+
+        // Upsert quiz
+        const existingQuizzes = await ctx.db
+          .query("quizzes")
+          .withIndex("by_course", (q) => q.eq("courseId", courseId))
+          .collect();
+        let quizId: Id<"quizzes">;
+        const existingQuiz = existingQuizzes.find((q) => q.title === quizTitle);
+        if (existingQuiz) {
+          quizId = existingQuiz._id;
+        } else {
+          quizId = await ctx.db.insert("quizzes", {
+            courseId,
+            title: quizTitle,
+            description: `Grade ${n} English Term ${term} language assessment.`,
+            maxAttempts: 1,
+            status: "published",
+            createdByUserId: engTeacherId,
+            createdAt: now - 21 * DAY,
+          });
+        }
+
+        // Upsert questions
+        const existingQs = await ctx.db
+          .query("questions")
+          .withIndex("by_quiz", (q) => q.eq("quizId", quizId))
+          .collect();
+        let questionIds: Id<"questions">[];
+        if (existingQs.length >= ENG_QUESTIONS.length) {
+          questionIds = existingQs.map((q) => q._id);
+        } else {
+          questionIds = [];
+          for (let i = 0; i < ENG_QUESTIONS.length; i++) {
+            const def = ENG_QUESTIONS[i];
+            const qId = await ctx.db.insert("questions", {
+              quizId,
+              prompt: def.prompt,
+              options: def.options,
+              correctAnswer: def.correctAnswer,
+              weighting: 2,
+              position: i + 1,
+            });
+            questionIds.push(qId);
+          }
+        }
+
+        // Students A, B, C (indices 0–2) = completed; Student D (index 3) = not started
+        for (let si = 0; si <= 2; si++) {
+          const studentId = gradeStudents[si];
+          if (!studentId) continue;
+
+          const existingAttempt = await ctx.db
+            .query("quizAttempts")
+            .withIndex("by_quiz_and_student", (q) =>
+              q.eq("quizId", quizId).eq("studentUserId", studentId),
+            )
+            .first();
+          if (existingAttempt) continue;
+
+          // 4/5 correct = 80% = score 8 out of 10
+          // Get wrong on question index 4 (last one)
+          const answers = questionIds.map((qId, idx) => ({
+            questionId: qId,
+            answer: idx === 4 ? "simile" : ENG_QUESTIONS[idx].correctAnswer,
+          }));
+
+          await ctx.db.insert("quizAttempts", {
+            quizId,
+            studentUserId: studentId,
+            answers,
+            score: 8,
+            maxScore: 10,
+            submittedAt: now - 7 * DAY,
+          });
+        }
+        // Student D (index 3) intentionally left without attempt
+      }
+    }
+
+    // ── Maths assignments + submissions ───────────────────────────────────
+    const MATH_ASSIGN_MAX = 50;
+    const MARK_67 = Math.round(MATH_ASSIGN_MAX * 0.67); // = 34
+
+    for (const grade of GRADES) {
+      const n = grade.split(" ")[1];
+      const courseId = mathCourseIds[grade];
+      const gradeStudents = studentIdsByGrade[grade] ?? [];
+
+      for (let assignNo = 1; assignNo <= 2; assignNo++) {
+        const assignTitle = `Assignment ${assignNo}: Algebraic Expressions`;
+
+        const existingAssigns = await ctx.db
+          .query("assignments")
+          .withIndex("by_course", (q) => q.eq("courseId", courseId))
+          .collect();
+        let assignmentId: Id<"assignments">;
+        const existingAssign = existingAssigns.find((a) => a.title === assignTitle);
+        if (existingAssign) {
+          assignmentId = existingAssign._id;
+        } else {
+          assignmentId = await ctx.db.insert("assignments", {
+            courseId,
+            title: assignTitle,
+            description: `Grade ${n} Mathematics ${assignTitle}`,
+            maxMark: MATH_ASSIGN_MAX,
+            isPublished: true,
+            createdByUserId: mathTeacherId,
+            createdAt: now - 14 * DAY,
+          });
+        }
+
+        for (let si = 0; si < gradeStudents.length; si++) {
+          const studentId = gradeStudents[si];
+
+          // Student D (index 3) = unsubmitted — skip
+          if (si === 3) continue;
+
+          // Student C (index 2) only submits assignment 1
+          if (si === 2 && assignNo === 2) continue;
+
+          const existing = await ctx.db
+            .query("submissions")
+            .withIndex("by_assignment_and_student", (q) =>
+              q.eq("assignmentId", assignmentId).eq("studentUserId", studentId),
+            )
+            .first();
+          if (existing) continue;
+
+          type SubInsert = {
+            assignmentId: Id<"assignments">;
+            studentUserId: Id<"users">;
+            fileName: string;
+            submittedAt: number;
+            mark?: number;
+            feedback?: string;
+            gradedAt?: number;
+            gradedByUserId?: Id<"users">;
+            isReleased?: boolean;
+          };
+
+          const payload: SubInsert = {
+            assignmentId,
+            studentUserId: studentId,
+            fileName: `g${n}_maths_assign${assignNo}_student${si + 1}.pdf`,
+            submittedAt: now - 5 * DAY,
+          };
+
+          // Student A (index 0): graded at 67%, released
+          if (si === 0) {
+            payload.mark = MARK_67;
+            payload.feedback = "Good work. Review Chapter 3 on factorisation for stronger results.";
+            payload.gradedAt = now - 3 * DAY;
+            payload.gradedByUserId = mathTeacherId;
+            payload.isReleased = true;
+          }
+          // Students B (index 1) and C (index 2): submitted but not yet marked
+
+          await ctx.db.insert("submissions", payload);
+        }
+      }
+    }
+
+    return {
+      message: "✅ Academic seed complete",
+      summary: {
+        grades: GRADES,
+        studentsCreated: studentDefs.length,
+        englishCoursesCreated: GRADES.length,
+        mathsCoursesCreated: GRADES.length,
+        quizzesPerGrade: 2,
+        assignmentsPerGrade: 2,
+        perGradePattern: {
+          english: "Students A-C completed both quizzes (80%); Student D not started",
+          maths: "Student A: graded at 67%; Student B: submitted, not marked; Student C: submit assign 1 only; Student D: unsubmitted",
+        },
+      },
     };
   },
 });

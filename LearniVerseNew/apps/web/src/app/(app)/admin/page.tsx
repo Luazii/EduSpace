@@ -49,6 +49,20 @@ export default function AdminPage() {
       color: "bg-indigo-50 text-indigo-600"
     },
     {
+      href: "/admin/classes",
+      title: "Class Register",
+      body: "Create classes, manage capacity, and assign learners.",
+      icon: Users,
+      color: "bg-cyan-50 text-cyan-600"
+    },
+    {
+      href: "/admin/fees",
+      title: "Fee Office",
+      body: "Create invoices, track balances, and issue receipts.",
+      icon: CreditCard,
+      color: "bg-emerald-50 text-emerald-600"
+    },
+    {
       href: "/admin/faculties",
       title: "Grades & Levels",
       body: "Manage school grades and academic levels.",

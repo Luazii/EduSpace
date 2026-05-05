@@ -64,7 +64,7 @@ export const listByCourse = query({
             ? await Promise.all(
                 latestStudentSubmissions.map(async (submission) => {
                   const student = await ctx.db.get(submission.studentUserId);
-                  const url = await ctx.storage.getUrl(submission.storageId);
+                  const url = submission.storageId ? await ctx.storage.getUrl(submission.storageId) : null;
 
                   return {
                     ...submission,
@@ -81,6 +81,17 @@ export const listByCourse = query({
               )
             : [];
 
+        const gradeVisible = myLatestSubmission?.isReleased !== false;
+        const myLatestSubmissionSafe = myLatestSubmission
+          ? {
+              ...myLatestSubmission,
+              url: submissionUrl,
+              mark: gradeVisible ? myLatestSubmission.mark : undefined,
+              feedback: gradeVisible ? myLatestSubmission.feedback : undefined,
+              isReleased: gradeVisible,
+            }
+          : null;
+
         return {
           ...assignment,
           submissionsCount: submissions.length,
@@ -90,12 +101,7 @@ export const listByCourse = query({
           pendingLatestSubmissionsCount: latestStudentSubmissions.filter(
             (submission) => typeof submission.mark !== "number",
           ).length,
-          myLatestSubmission: myLatestSubmission
-            ? {
-                ...myLatestSubmission,
-                url: submissionUrl,
-              }
-            : null,
+          myLatestSubmission: myLatestSubmissionSafe,
           latestStudentSubmissions: reviewSubmissions,
         };
       }),
@@ -174,10 +180,22 @@ export const listMine = query({
             .first();
         }
         const isOverdue = a.deadline != null && a.deadline < now && !mySubmission;
+
+        // isReleased: undefined/true = visible, false = grade held by teacher
+        const gradeVisible = mySubmission?.isReleased !== false;
+        const mySubmissionSafe = mySubmission
+          ? {
+              ...mySubmission,
+              mark: gradeVisible ? mySubmission.mark : undefined,
+              feedback: gradeVisible ? mySubmission.feedback : undefined,
+              isReleased: gradeVisible,
+            }
+          : null;
+
         return {
           ...a,
           courseName: course?.courseName ?? "Unknown Course",
-          mySubmission,
+          mySubmission: mySubmissionSafe,
           isOverdue,
         };
       }),
