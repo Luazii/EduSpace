@@ -146,6 +146,9 @@ export default defineSchema({
     isPublished: v.boolean(),
     createdByUserId: v.id("users"),
     createdAt: v.number(),
+    // Optional teacher-uploaded assignment brief / instruction document
+    documentStorageId: v.optional(v.id("_storage")),
+    documentFileName: v.optional(v.string()),
   }).index("by_course", ["courseId"]),
 
   submissions: defineTable({

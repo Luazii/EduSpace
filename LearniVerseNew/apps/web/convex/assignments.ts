@@ -21,6 +21,14 @@ async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
   return user;
 }
 
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await getCurrentUser(ctx);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
 export const listByCourse = query({
   args: {
     courseId: v.id("courses"),
@@ -92,8 +100,13 @@ export const listByCourse = query({
             }
           : null;
 
+        const documentUrl = assignment.documentStorageId
+          ? await ctx.storage.getUrl(assignment.documentStorageId)
+          : null;
+
         return {
           ...assignment,
+          documentUrl,
           submissionsCount: submissions.length,
           gradedLatestSubmissionsCount: latestStudentSubmissions.filter(
             (submission) => typeof submission.mark === "number",
@@ -210,6 +223,8 @@ export const create = mutation({
     description: v.optional(v.string()),
     deadline: v.optional(v.number()),
     maxMark: v.optional(v.number()),
+    documentStorageId: v.optional(v.id("_storage")),
+    documentFileName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -227,6 +242,8 @@ export const create = mutation({
       isPublished: true,
       createdByUserId: user._id,
       createdAt: Date.now(),
+      documentStorageId: args.documentStorageId,
+      documentFileName: args.documentFileName,
     });
   },
 });

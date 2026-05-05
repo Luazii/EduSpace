@@ -24,6 +24,7 @@ export function AssignmentsPanel({ courseId }: AssignmentsPanelProps) {
     courseId: typedCourseId,
   }) ?? [];
   const createAssignment = useMutation(api.assignments.create);
+  const generateAssignmentUploadUrl = useMutation(api.assignments.generateUploadUrl);
   const generateSubmissionUploadUrl = useMutation(api.submissions.generateUploadUrl);
   const createSubmission = useMutation(api.submissions.create);
   const gradeSubmission = useMutation(api.submissions.grade);
@@ -32,6 +33,7 @@ export function AssignmentsPanel({ courseId }: AssignmentsPanelProps) {
   const [description, setDescription] = useState("");
   const [deadline, setDeadline] = useState("");
   const [maxMark, setMaxMark] = useState("");
+  const [docFile, setDocFile] = useState<File | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [submittingAssignmentId, setSubmittingAssignmentId] = useState<string | null>(null);
   const [gradingSubmissionId, setGradingSubmissionId] = useState<string | null>(null);
@@ -63,18 +65,36 @@ export function AssignmentsPanel({ courseId }: AssignmentsPanelProps) {
     setIsCreating(true);
 
     try {
+      let documentStorageId: Id<"_storage"> | undefined;
+      let documentFileName: string | undefined;
+
+      if (docFile) {
+        const uploadUrl = await generateAssignmentUploadUrl({});
+        const res = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": docFile.type || "application/octet-stream" },
+          body: docFile,
+        });
+        const { storageId } = (await res.json()) as { storageId: Id<"_storage"> };
+        documentStorageId = storageId;
+        documentFileName = docFile.name;
+      }
+
       await createAssignment({
         courseId: typedCourseId,
         title: title.trim(),
         description: description.trim() || undefined,
         deadline: deadline ? new Date(deadline).getTime() : undefined,
         maxMark: maxMark ? Number(maxMark) : undefined,
+        documentStorageId,
+        documentFileName,
       });
 
       setTitle("");
       setDescription("");
       setDeadline("");
       setMaxMark("");
+      setDocFile(null);
     } finally {
       setIsCreating(false);
     }
@@ -206,6 +226,21 @@ export function AssignmentsPanel({ courseId }: AssignmentsPanelProps) {
                     <p className="text-sm leading-8 text-slate-600">
                       {assignment.description}
                     </p>
+                  )}
+
+                  {/* Assignment document download */}
+                  {assignment.documentUrl && (
+                    <a
+                      href={assignment.documentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-widest text-slate-700 transition hover:border-slate-950 hover:text-slate-950 w-fit"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                      </svg>
+                      {assignment.documentFileName ?? "Download Assignment"}
+                    </a>
                   )}
 
                   {/* Student Submission Action */}
@@ -436,12 +471,44 @@ export function AssignmentsPanel({ courseId }: AssignmentsPanelProps) {
                   />
                 </div>
               </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-600">
+                  Assignment Document <span className="normal-case font-normal text-slate-400">(optional)</span>
+                </label>
+                <label
+                  htmlFor="assignment-doc-upload"
+                  className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm transition hover:border-slate-950"
+                >
+                  <svg className="h-5 w-5 shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                  <span className="truncate text-slate-500">
+                    {docFile ? docFile.name : "Attach a PDF, Word or image file…"}
+                  </span>
+                  {docFile && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setDocFile(null); }}
+                      className="ml-auto shrink-0 text-xs text-slate-400 hover:text-rose-500"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </label>
+                <input
+                  id="assignment-doc-upload"
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,image/*"
+                  onChange={(e) => setDocFile(e.target.files?.[0] ?? null)}
+                />
+              </div>
               <button
                 type="submit"
                 disabled={isCreating || !title.trim()}
                 className="h-14 w-full rounded-full bg-slate-950 text-sm font-bold text-white transition hover:bg-slate-800 disabled:bg-slate-300"
               >
-                {isCreating ? "Publishing..." : "Publish Assignment"}
+                {isCreating ? (docFile ? "Uploading…" : "Publishing…") : "Publish Assignment"}
               </button>
             </form>
           </div>
