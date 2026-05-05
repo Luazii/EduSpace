@@ -152,7 +152,7 @@ export function FeeManager() {
             <select value={paymentInvoiceId} onChange={(e) => setPaymentInvoiceId(e.target.value)} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold">
               <option value="">Select invoice</option>
               {outstandingInvoices.map((invoice) => (
-                <option key={invoice._id} value={invoice._id}>{invoice.invoiceNumber} · {invoice.student?.fullName ?? invoice.student?.email} · balance R {invoice.balance}</option>
+                <option key={invoice._id} value={invoice._id}>{invoice.invoiceNumber} Â· {invoice.student?.fullName ?? invoice.student?.email} Â· balance R {invoice.balance}</option>
               ))}
             </select>
             <div className="grid grid-cols-2 gap-4">
@@ -183,7 +183,7 @@ export function FeeManager() {
                   <div>
                     <h3 className="font-black text-slate-950">{invoice.invoiceNumber}</h3>
                     <p className="text-sm text-slate-500">{invoice.student?.fullName ?? invoice.student?.email}</p>
-                    <p className="text-xs text-slate-400">{invoice.structure?.name} · {invoice.academicYear}</p>
+                    <p className="text-xs text-slate-400">{invoice.structure?.name} Â· {invoice.academicYear}</p>
                   </div>
                   <div className="text-right text-sm font-bold">
                     <p>Total R {invoice.totalAmount}</p>

@@ -97,7 +97,7 @@ export function ManualMarkCapture() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="font-black text-slate-950">{entry.student?.fullName ?? entry.student?.email}</h3>
-                    <p className="text-sm text-slate-500">{entry.assessmentName} · {entry.assessmentType} {entry.termLabel ? `· ${entry.termLabel}` : ""}</p>
+                    <p className="text-sm text-slate-500">{entry.assessmentName} Â· {entry.assessmentType} {entry.termLabel ? `Â· ${entry.termLabel}` : ""}</p>
                     <p className="mt-2 text-xs text-slate-400">{entry.comment ?? "No comment recorded."}</p>
                   </div>
                   <div className="text-right">
