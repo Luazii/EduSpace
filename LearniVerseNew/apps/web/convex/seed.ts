@@ -819,3 +819,104 @@ export const assignAlexToGrade8And9 = mutation({
     return { message: "✅ Done", updated };
   },
 });
+
+/**
+ * Seeds two showcase quizzes:
+ *   1. COMPLETE published English quiz  (5 Qs, 10 marks, ready for students)
+ *   2. INCOMPLETE draft Maths test      (2 of 10 Qs, teacher mid-way)
+ *
+ * Run seedTestUsers + seedAcademicData first.  Idempotent.
+ */
+export const seedDemoQuizzes = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+
+    const teacher = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", "lgumbi2169+teacher@gmail.com"))
+      .first();
+    if (!teacher) throw new Error("Run seedTestUsers first.");
+
+    const engCourse = await ctx.db
+      .query("courses")
+      .withIndex("by_course_code", (q) => q.eq("courseCode", "ENG-G8"))
+      .first();
+    if (!engCourse) throw new Error("Run seedAcademicData first — ENG-G8 not found.");
+
+    const mathCourse = await ctx.db
+      .query("courses")
+      .withIndex("by_course_code", (q) => q.eq("courseCode", "MATH-G8"))
+      .first();
+    if (!mathCourse) throw new Error("Run seedAcademicData first — MATH-G8 not found.");
+
+    // ── 1. Complete published quiz ──────────────────────────────────────────
+    const COMPLETE_TITLE = "Poetry & Figurative Language";
+    const allEngQuizzes = await ctx.db
+      .query("quizzes")
+      .withIndex("by_course", (q) => q.eq("courseId", engCourse._id))
+      .collect();
+
+    if (!allEngQuizzes.find((q) => q.title === COMPLETE_TITLE)) {
+      const completeId = await ctx.db.insert("quizzes", {
+        courseId: engCourse._id,
+        title: COMPLETE_TITLE,
+        description: "Covers simile, metaphor, personification, alliteration and hyperbole. 5 questions · 10 marks.",
+        maxAttempts: 2,
+        durationMinutes: 15,
+        startsAt: now - 7 * DAY,
+        endsAt: now + 14 * DAY,
+        status: "published",
+        createdByUserId: teacher._id,
+        createdAt: now - 7 * DAY,
+      });
+
+      const qs = [
+        { prompt: "Which sentence contains a simile?", options: ["The wind howled all night.", "Her smile was sunshine.", "He ran as fast as a cheetah.", "The car ate the miles."], correctAnswer: "He ran as fast as a cheetah.", weighting: 2 },
+        { prompt: '"The classroom was a zoo." — What figure of speech is this?', options: ["Simile", "Personification", "Metaphor", "Alliteration"], correctAnswer: "Metaphor", weighting: 2 },
+        { prompt: "Which of the following is an example of personification?", options: ["The stars twinkled brightly.", "The stars danced across the sky.", "The stars were like diamonds.", "The night sky was dark."], correctAnswer: "The stars danced across the sky.", weighting: 2 },
+        { prompt: '"Peter Piper picked a peck of pickled peppers." — This is:', options: ["Hyperbole", "Alliteration", "Onomatopoeia", "Assonance"], correctAnswer: "Alliteration", weighting: 2 },
+        { prompt: '"I\'ve told you a million times!" — What figure of speech is this?', options: ["Metaphor", "Simile", "Hyperbole", "Personification"], correctAnswer: "Hyperbole", weighting: 2 },
+      ];
+      for (let i = 0; i < qs.length; i++) {
+        await ctx.db.insert("questions", { quizId: completeId, ...qs[i], position: i + 1 });
+      }
+    }
+
+    // ── 2. Incomplete draft test ────────────────────────────────────────────
+    const DRAFT_TITLE = "Chapter 2: Algebra — Test";
+    const allMathQuizzes = await ctx.db
+      .query("quizzes")
+      .withIndex("by_course", (q) => q.eq("courseId", mathCourse._id))
+      .collect();
+
+    if (!allMathQuizzes.find((q) => q.title === DRAFT_TITLE)) {
+      const draftId = await ctx.db.insert("quizzes", {
+        courseId: mathCourse._id,
+        title: DRAFT_TITLE,
+        description: "Algebraic expressions, simplification and substitution. Target: 10 Qs · 20 marks. In progress — 2 of 10 questions added.",
+        maxAttempts: 1,
+        durationMinutes: 30,
+        status: "draft",
+        createdByUserId: teacher._id,
+        createdAt: now - 2 * DAY,
+      });
+
+      // Teacher has only added 2 so far
+      const draftQs = [
+        { prompt: "Simplify: 3x + 2x", options: ["5x", "6x", "5x²", "x⁵"], correctAnswer: "5x", weighting: 2 },
+        { prompt: "If x = 4, what is the value of 2x − 3?", options: ["5", "8", "11", "6"], correctAnswer: "5", weighting: 2 },
+      ];
+      for (let i = 0; i < draftQs.length; i++) {
+        await ctx.db.insert("questions", { quizId: draftId, ...draftQs[i], position: i + 1 });
+      }
+    }
+
+    return {
+      message: "✅ Demo quizzes seeded",
+      complete: COMPLETE_TITLE + " (published, 5 Qs)",
+      draft: DRAFT_TITLE + " (draft, 2/10 Qs — in progress)",
+    };
+  },
+});

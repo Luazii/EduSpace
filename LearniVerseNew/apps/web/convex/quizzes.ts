@@ -215,6 +215,56 @@ export const getDetail = query({
   },
 });
 
+export const updateStatus = mutation({
+  args: {
+    quizId: v.id("quizzes"),
+    status: v.union(v.literal("draft"), v.literal("published")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (user.role !== "teacher" && user.role !== "admin") {
+      throw new Error("Only teachers and admins can update quiz status.");
+    }
+    await ctx.db.patch(args.quizId, { status: args.status });
+  },
+});
+
+export const addQuestionsFromAI = mutation({
+  args: {
+    quizId: v.id("quizzes"),
+    questions: v.array(
+      v.object({
+        prompt: v.string(),
+        options: v.array(v.string()),
+        correctAnswer: v.string(),
+        weighting: v.number(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (user.role !== "teacher" && user.role !== "admin") {
+      throw new Error("Only teachers and admins can add quiz questions.");
+    }
+    const existing = await ctx.db
+      .query("questions")
+      .withIndex("by_quiz", (q) => q.eq("quizId", args.quizId))
+      .collect();
+    let position = existing.length + 1;
+    for (const q of args.questions) {
+      await ctx.db.insert("questions", {
+        quizId: args.quizId,
+        prompt: q.prompt,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        weighting: Math.max(q.weighting, 1),
+        position: position++,
+      });
+    }
+    return { added: args.questions.length };
+  },
+});
+
 export const deleteQuestion = mutation({
   args: { questionId: v.id("questions") },
   handler: async (ctx, args) => {
