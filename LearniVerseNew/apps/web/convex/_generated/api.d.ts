@@ -10,7 +10,9 @@
 
 import type * as admin from "../admin.js";
 import type * as assignments from "../assignments.js";
+import type * as attendance from "../attendance.js";
 import type * as bookings from "../bookings.js";
+import type * as calendar from "../calendar.js";
 import type * as classes from "../classes.js";
 import type * as courses from "../courses.js";
 import type * as enrollments from "../enrollments.js";
@@ -34,6 +36,7 @@ import type * as reports from "../reports.js";
 import type * as resources from "../resources.js";
 import type * as rooms from "../rooms.js";
 import type * as seed from "../seed.js";
+import type * as sports from "../sports.js";
 import type * as studySessions from "../studySessions.js";
 import type * as submissionComments from "../submissionComments.js";
 import type * as submissions from "../submissions.js";
@@ -52,7 +55,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   assignments: typeof assignments;
+  attendance: typeof attendance;
   bookings: typeof bookings;
+  calendar: typeof calendar;
   classes: typeof classes;
   courses: typeof courses;
   enrollments: typeof enrollments;
@@ -76,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   resources: typeof resources;
   rooms: typeof rooms;
   seed: typeof seed;
+  sports: typeof sports;
   studySessions: typeof studySessions;
   submissionComments: typeof submissionComments;
   submissions: typeof submissions;
