@@ -261,6 +261,7 @@ export const getStudentFullReport = query({
 
             return {
               _id: a._id,
+              submissionId: sub?._id ?? null,
               title: a.title,
               maxMark: a.maxMark ?? null,
               deadline: a.deadline ?? null,
@@ -269,6 +270,7 @@ export const getStudentFullReport = query({
               feedback: gradeVisible ? (sub?.feedback ?? null) : null,
               submittedAt: sub?.submittedAt ?? null,
               gradedAt: gradeVisible ? (sub?.gradedAt ?? null) : null,
+              parentComments: sub?.parentComments ?? [],
             };
           }),
         );
@@ -296,6 +298,7 @@ export const getStudentFullReport = query({
 
             return {
               _id: quiz._id,
+              bestAttemptId: best?._id ?? null,
               title: quiz.title,
               attemptsUsed: attempts.length,
               maxAttempts: quiz.maxAttempts,
@@ -303,6 +306,7 @@ export const getStudentFullReport = query({
               maxScore: best?.maxScore ?? null,
               percent,
               lastAttemptAt: best?.submittedAt ?? null,
+              parentComments: best?.parentComments ?? [],
             };
           }),
         );
@@ -382,6 +386,7 @@ export const getStudentFullReport = query({
           },
           finalMark: showFinal && finalMark?.status === "published"
             ? {
+                _id: finalMark._id,
                 effectiveMark:
                   finalMark.overrideMark ??
                   finalMark.computedFinalMark ??
@@ -389,6 +394,7 @@ export const getStudentFullReport = query({
                   manualAverage,
                 notes: finalMark.notes ?? null,
                 publishedAt: finalMark.publishedAt ?? null,
+                parentComments: finalMark.parentComments ?? [],
               }
             : null,
         };

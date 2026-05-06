@@ -312,6 +312,56 @@ export const addReportComment = mutation({
   },
 });
 
+export const addSubmissionComment = mutation({
+  args: {
+    submissionId: v.id("submissions"),
+    comment: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+    if (!user || user.role !== "parent") throw new Error("Only parents can leave comments.");
+
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) throw new Error("Submission not found.");
+
+    const existing = submission.parentComments ?? [];
+    await ctx.db.patch(args.submissionId, {
+      parentComments: [...existing, { parentId: user._id, comment: args.comment.trim(), createdAt: Date.now() }],
+    });
+  },
+});
+
+export const addQuizAttemptComment = mutation({
+  args: {
+    attemptId: v.id("quizAttempts"),
+    comment: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+    if (!user || user.role !== "parent") throw new Error("Only parents can leave comments.");
+
+    const attempt = await ctx.db.get(args.attemptId);
+    if (!attempt) throw new Error("Quiz attempt not found.");
+
+    const existing = attempt.parentComments ?? [];
+    await ctx.db.patch(args.attemptId, {
+      parentComments: [...existing, { parentId: user._id, comment: args.comment.trim(), createdAt: Date.now() }],
+    });
+  },
+});
+
 export const listAllLinks = query({
   args: {},
   handler: async (ctx) => {

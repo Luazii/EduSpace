@@ -17,7 +17,6 @@ import {
   ClipboardList,
   HelpCircle,
   TrendingDown,
-  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -51,20 +50,34 @@ export default function ParentStudentReportPage() {
   const studentId = params.id as Id<"users">;
 
   const report = useQuery(api.marks.getStudentFullReport, { studentUserId: studentId });
-  const addComment = useMutation(api.parentServices.addReportComment);
+  const addReportComment = useMutation(api.parentServices.addReportComment);
+  const addSubmissionComment = useMutation(api.parentServices.addSubmissionComment);
+  const addQuizAttemptComment = useMutation(api.parentServices.addQuizAttemptComment);
 
+  // Track which item has the active comment box open: "report:{finalMarkId}", "sub:{submissionId}", "quiz:{attemptId}"
+  const [activeCommentKey, setActiveCommentKey] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeMarkId, setActiveMarkId] = useState<Id<"finalMarks"> | null>(null);
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
 
-  const handleComment = async () => {
-    if (!activeMarkId || !commentText.trim()) return;
+  const openComment = (key: string) => {
+    setActiveCommentKey(activeCommentKey === key ? null : key);
+    setCommentText("");
+  };
+
+  const submitComment = async () => {
+    if (!activeCommentKey || !commentText.trim()) return;
     setIsSubmitting(true);
     try {
-      await addComment({ finalMarkId: activeMarkId, comment: commentText.trim() });
+      if (activeCommentKey.startsWith("report:")) {
+        await addReportComment({ finalMarkId: activeCommentKey.slice(7) as Id<"finalMarks">, comment: commentText.trim() });
+      } else if (activeCommentKey.startsWith("sub:")) {
+        await addSubmissionComment({ submissionId: activeCommentKey.slice(4) as Id<"submissions">, comment: commentText.trim() });
+      } else if (activeCommentKey.startsWith("quiz:")) {
+        await addQuizAttemptComment({ attemptId: activeCommentKey.slice(5) as Id<"quizAttempts">, comment: commentText.trim() });
+      }
       setCommentText("");
-      setActiveMarkId(null);
+      setActiveCommentKey(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -269,6 +282,61 @@ export default function ParentStudentReportPage() {
                     </div>
                   )}
 
+                  {/* Report-level parent comment */}
+                  {course.finalMark && (() => {
+                    const commentKey = `report:${course.finalMark._id}`;
+                    const isOpen = activeCommentKey === commentKey;
+                    return (
+                      <div className="mt-4 rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                        <div className="flex items-center justify-between px-4 py-3">
+                          <p className="text-xs font-bold text-slate-500 flex items-center gap-2">
+                            <MessageSquare className="h-3.5 w-3.5 text-indigo-500" />
+                            Comments on final report
+                          </p>
+                          <button
+                            onClick={() => openComment(commentKey)}
+                            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[10px] font-bold transition ${isOpen ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                          >
+                            <MessageSquare className="h-3 w-3" />
+                            {isOpen ? "Cancel" : "Add comment"}
+                          </button>
+                        </div>
+                        {(course.finalMark.parentComments?.length ?? 0) > 0 && (
+                          <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 space-y-2">
+                            {course.finalMark.parentComments!.map((c, i) => (
+                              <div key={i} className="text-[11px] text-slate-600">
+                                <span className="font-bold text-slate-800">You · </span>
+                                <span className="text-slate-400">{format(c.createdAt, "d MMM yyyy")} · </span>
+                                {c.comment}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {isOpen && (
+                          <div className="border-t border-slate-100 bg-indigo-50/40 px-4 py-3 flex gap-2">
+                            <input
+                              type="text"
+                              value={commentText}
+                              onChange={(e) => setCommentText(e.target.value)}
+                              onKeyDown={(e) => e.key === "Enter" && submitComment()}
+                              placeholder="Comment on your child's final report…"
+                              className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/20"
+                              autoFocus
+                            />
+                            <button
+                              onClick={submitComment}
+                              disabled={isSubmitting || !commentText.trim()}
+                              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                              <Send className="h-3 w-3" />
+                              {isSubmitting ? "…" : "Post"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* Expand/collapse toggle */}
                   <button
                     onClick={() =>
@@ -303,54 +371,101 @@ export default function ParentStudentReportPage() {
                         <div className="space-y-2">
                           {course.assignments.map((a) => {
                             const aLevel = nscLevel(a.percent);
+                            const commentKey = a.submissionId ? `sub:${a.submissionId}` : null;
+                            const isCommentOpen = commentKey && activeCommentKey === commentKey;
                             return (
                               <div
                                 key={String(a._id)}
-                                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                                className="rounded-2xl border border-slate-200 bg-white overflow-hidden"
                               >
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-bold text-slate-900">
-                                    {a.title}
-                                  </p>
-                                  <div className="mt-0.5 flex flex-wrap gap-2 text-[10px] text-slate-400">
-                                    {a.deadline && (
-                                      <span>Due {new Date(a.deadline).toLocaleDateString()}</span>
-                                    )}
-                                    {a.gradedAt && (
-                                      <span>
-                                        Graded {new Date(a.gradedAt).toLocaleDateString()}
-                                      </span>
+                                <div className="flex items-center justify-between px-4 py-3">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-bold text-slate-900">
+                                      {a.title}
+                                    </p>
+                                    <div className="mt-0.5 flex flex-wrap gap-2 text-[10px] text-slate-400">
+                                      {a.deadline && (
+                                        <span>Due {new Date(a.deadline).toLocaleDateString()}</span>
+                                      )}
+                                      {a.gradedAt && (
+                                        <span>
+                                          Graded {new Date(a.gradedAt).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {a.feedback && (
+                                      <p className="mt-1 text-[11px] italic text-slate-500 leading-relaxed">
+                                        "{a.feedback}"
+                                      </p>
                                     )}
                                   </div>
-                                  {a.feedback && (
-                                    <p className="mt-1 text-[11px] italic text-slate-500 leading-relaxed">
-                                      "{a.feedback}"
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="ml-4 shrink-0 text-right">
-                                  {a.mark != null ? (
-                                    <>
-                                      <p className="text-sm font-black text-slate-950">
-                                        {a.mark}
-                                        {a.maxMark ? `/${a.maxMark}` : ""}
-                                      </p>
-                                      <span
-                                        className={`rounded-full px-2 py-0.5 text-[9px] font-black ${aLevel.bg} ${aLevel.text}`}
-                                      >
-                                        {a.percent}%
+                                  <div className="ml-4 flex shrink-0 items-center gap-3">
+                                    {a.mark != null ? (
+                                      <div className="text-right">
+                                        <p className="text-sm font-black text-slate-950">
+                                          {a.mark}
+                                          {a.maxMark ? `/${a.maxMark}` : ""}
+                                        </p>
+                                        <span
+                                          className={`rounded-full px-2 py-0.5 text-[9px] font-black ${aLevel.bg} ${aLevel.text}`}
+                                        >
+                                          {a.percent}%
+                                        </span>
+                                      </div>
+                                    ) : a.submittedAt ? (
+                                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black text-amber-700">
+                                        Awaiting grade
                                       </span>
-                                    </>
-                                  ) : a.submittedAt ? (
-                                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-black text-amber-700">
-                                      Awaiting grade
-                                    </span>
-                                  ) : (
-                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-400">
-                                      Not submitted
-                                    </span>
-                                  )}
+                                    ) : (
+                                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-400">
+                                        Not submitted
+                                      </span>
+                                    )}
+                                    {commentKey && (
+                                      <button
+                                        onClick={() => openComment(commentKey)}
+                                        className={`flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[10px] font-bold transition ${isCommentOpen ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                                      >
+                                        <MessageSquare className="h-3 w-3" />
+                                        {(a.parentComments?.length ?? 0) > 0 ? a.parentComments!.length : ""}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
+                                {/* Existing comments */}
+                                {(a.parentComments?.length ?? 0) > 0 && (
+                                  <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 space-y-2">
+                                    {a.parentComments!.map((c, i) => (
+                                      <div key={i} className="text-[11px] text-slate-600">
+                                        <span className="font-bold text-slate-800">You · </span>
+                                        <span className="text-slate-400">{format(c.createdAt, "d MMM yyyy")} · </span>
+                                        {c.comment}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {/* Comment input */}
+                                {isCommentOpen && (
+                                  <div className="border-t border-slate-100 bg-indigo-50/40 px-4 py-3 flex gap-2">
+                                    <input
+                                      type="text"
+                                      value={commentText}
+                                      onChange={(e) => setCommentText(e.target.value)}
+                                      onKeyDown={(e) => e.key === "Enter" && submitComment()}
+                                      placeholder="Leave a comment on this assignment…"
+                                      className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/20"
+                                      autoFocus
+                                    />
+                                    <button
+                                      onClick={submitComment}
+                                      disabled={isSubmitting || !commentText.trim()}
+                                      className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                                    >
+                                      <Send className="h-3 w-3" />
+                                      {isSubmitting ? "…" : "Post"}
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
@@ -368,40 +483,87 @@ export default function ParentStudentReportPage() {
                         <div className="space-y-2">
                           {course.quizzes.map((q) => {
                             const qLevel = nscLevel(q.percent);
+                            const commentKey = q.bestAttemptId ? `quiz:${q.bestAttemptId}` : null;
+                            const isCommentOpen = commentKey && activeCommentKey === commentKey;
                             return (
                               <div
                                 key={String(q._id)}
-                                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                                className="rounded-2xl border border-slate-200 bg-white overflow-hidden"
                               >
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-sm font-bold text-slate-900">
-                                    {q.title}
-                                  </p>
-                                  <p className="mt-0.5 text-[10px] text-slate-400">
-                                    {q.attemptsUsed}/{q.maxAttempts} attempts used
-                                    {q.lastAttemptAt &&
-                                      ` · Last attempt ${new Date(q.lastAttemptAt).toLocaleDateString()}`}
-                                  </p>
-                                </div>
-                                <div className="ml-4 shrink-0 text-right">
-                                  {q.bestScore != null ? (
-                                    <>
-                                      <p className="text-sm font-black text-slate-950">
-                                        {q.bestScore}
-                                        {q.maxScore ? `/${q.maxScore}` : ""}
-                                      </p>
-                                      <span
-                                        className={`rounded-full px-2 py-0.5 text-[9px] font-black ${qLevel.bg} ${qLevel.text}`}
-                                      >
-                                        {q.percent}% best
+                                <div className="flex items-center justify-between px-4 py-3">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-bold text-slate-900">
+                                      {q.title}
+                                    </p>
+                                    <p className="mt-0.5 text-[10px] text-slate-400">
+                                      {q.attemptsUsed}/{q.maxAttempts} attempts used
+                                      {q.lastAttemptAt &&
+                                        ` · Last attempt ${new Date(q.lastAttemptAt).toLocaleDateString()}`}
+                                    </p>
+                                  </div>
+                                  <div className="ml-4 flex shrink-0 items-center gap-3">
+                                    {q.bestScore != null ? (
+                                      <div className="text-right">
+                                        <p className="text-sm font-black text-slate-950">
+                                          {q.bestScore}
+                                          {q.maxScore ? `/${q.maxScore}` : ""}
+                                        </p>
+                                        <span
+                                          className={`rounded-full px-2 py-0.5 text-[9px] font-black ${qLevel.bg} ${qLevel.text}`}
+                                        >
+                                          {q.percent}% best
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-400">
+                                        Not attempted
                                       </span>
-                                    </>
-                                  ) : (
-                                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-black text-slate-400">
-                                      Not attempted
-                                    </span>
-                                  )}
+                                    )}
+                                    {commentKey && q.bestScore != null && (
+                                      <button
+                                        onClick={() => openComment(commentKey)}
+                                        className={`flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[10px] font-bold transition ${isCommentOpen ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                                      >
+                                        <MessageSquare className="h-3 w-3" />
+                                        {(q.parentComments?.length ?? 0) > 0 ? q.parentComments!.length : ""}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
+                                {/* Existing comments */}
+                                {(q.parentComments?.length ?? 0) > 0 && (
+                                  <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 space-y-2">
+                                    {q.parentComments!.map((c, i) => (
+                                      <div key={i} className="text-[11px] text-slate-600">
+                                        <span className="font-bold text-slate-800">You · </span>
+                                        <span className="text-slate-400">{format(c.createdAt, "d MMM yyyy")} · </span>
+                                        {c.comment}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {/* Comment input */}
+                                {isCommentOpen && (
+                                  <div className="border-t border-slate-100 bg-indigo-50/40 px-4 py-3 flex gap-2">
+                                    <input
+                                      type="text"
+                                      value={commentText}
+                                      onChange={(e) => setCommentText(e.target.value)}
+                                      onKeyDown={(e) => e.key === "Enter" && submitComment()}
+                                      placeholder="Leave a comment on this quiz result…"
+                                      className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/20"
+                                      autoFocus
+                                    />
+                                    <button
+                                      onClick={submitComment}
+                                      disabled={isSubmitting || !commentText.trim()}
+                                      className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                                    >
+                                      <Send className="h-3 w-3" />
+                                      {isSubmitting ? "…" : "Post"}
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             );
                           })}

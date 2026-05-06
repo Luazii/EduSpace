@@ -165,6 +165,11 @@ export default defineSchema({
     gradedByUserId: v.optional(v.id("users")),
     // undefined/true = immediately visible to student; false = held until releaseGrade is called
     isReleased: v.optional(v.boolean()),
+    parentComments: v.optional(v.array(v.object({
+      parentId: v.id("users"),
+      comment: v.string(),
+      createdAt: v.number(),
+    }))),
   })
     .index("by_assignment", ["assignmentId"])
     .index("by_student", ["studentUserId"])
@@ -204,6 +209,11 @@ export default defineSchema({
     score: v.number(),
     maxScore: v.number(),
     submittedAt: v.number(),
+    parentComments: v.optional(v.array(v.object({
+      parentId: v.id("users"),
+      comment: v.string(),
+      createdAt: v.number(),
+    }))),
   })
     .index("by_quiz", ["quizId"])
     .index("by_student", ["studentUserId"])
