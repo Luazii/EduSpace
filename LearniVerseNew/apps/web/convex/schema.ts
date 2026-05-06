@@ -630,4 +630,46 @@ export default defineSchema({
   })
     .index("by_submission", ["submissionId"])
     .index("by_reviewer", ["reviewerUserId"]),
+
+  sports: defineTable({
+    name: v.string(),
+    category: v.optional(v.string()),
+    description: v.optional(v.string()),
+    coachName: v.optional(v.string()),
+    venue: v.optional(v.string()),
+    schedule: v.optional(v.string()),
+    maxCapacity: v.optional(v.number()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_name", ["name"]),
+
+  sportRegistrations: defineTable({
+    sportId: v.id("sports"),
+    studentUserId: v.id("users"),
+    registeredAt: v.number(),
+    status: v.union(v.literal("active"), v.literal("withdrawn")),
+  })
+    .index("by_sport", ["sportId"])
+    .index("by_student", ["studentUserId"])
+    .index("by_sport_and_student", ["sportId", "studentUserId"]),
+
+  attendance: defineTable({
+    courseId: v.id("courses"),
+    studentUserId: v.id("users"),
+    sessionDate: v.number(),
+    status: v.union(
+      v.literal("present"),
+      v.literal("absent"),
+      v.literal("late"),
+      v.literal("excused"),
+    ),
+    markedByUserId: v.id("users"),
+    markedAt: v.number(),
+    notes: v.optional(v.string()),
+  })
+    .index("by_course", ["courseId"])
+    .index("by_student", ["studentUserId"])
+    .index("by_course_and_student", ["courseId", "studentUserId"])
+    .index("by_course_and_date", ["courseId", "sessionDate"]),
 });

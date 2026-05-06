@@ -1,6 +1,8 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { action, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -259,5 +261,167 @@ export const capturePayment = mutation({
     });
 
     return receiptId;
+  },
+});
+
+// ── Parent: view invoices for linked students ─────────────────────────────────
+
+export const listParentInvoices = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (user.role !== "parent" && user.role !== "student") return [];
+
+    let studentIds: Id<"users">[] = [];
+    if (user.role === "parent") {
+      const links = await ctx.db
+        .query("parentStudentLinks")
+        .withIndex("by_parent", (q) => q.eq("parentId", user._id))
+        .collect();
+      studentIds = links.map((l) => l.studentId);
+    } else {
+      studentIds = [user._id];
+    }
+
+    const allInvoices = [];
+    for (const sid of studentIds) {
+      const student = await ctx.db.get(sid);
+      const invoices = await ctx.db
+        .query("feeInvoices")
+        .withIndex("by_student", (q) => q.eq("studentUserId", sid))
+        .collect();
+      for (const inv of invoices) {
+        allInvoices.push({ ...inv, student, structure: await ctx.db.get(inv.feeStructureId) });
+      }
+    }
+    return allInvoices.sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+});
+
+// ── Internal helpers for fee Paystack checkout ────────────────────────────────
+
+export const internalGetInvoice = internalQuery({
+  args: { invoiceId: v.id("feeInvoices") },
+  handler: async (ctx, args) => ctx.db.get(args.invoiceId),
+});
+
+export const internalGetUserByClerkId = internalQuery({
+  args: { clerkUserId: v.string() },
+  handler: async (ctx, args) =>
+    ctx.db.query("users").withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", args.clerkUserId)).first(),
+});
+
+export const internalRecordFeePayment = internalMutation({
+  args: {
+    invoiceId: v.id("feeInvoices"),
+    amount: v.number(),
+    reference: v.string(),
+    payerUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const invoice = await ctx.db.get(args.invoiceId);
+    if (!invoice) throw new Error("Invoice not found.");
+
+    const applyAmount = Math.min(args.amount, invoice.balance);
+    const newAmountPaid = invoice.amountPaid + applyAmount;
+    const newBalance = invoice.totalAmount - newAmountPaid;
+    const now = Date.now();
+
+    await ctx.db.insert("feeReceipts", {
+      invoiceId: args.invoiceId,
+      studentUserId: invoice.studentUserId,
+      receiptNumber: `RCT-${Date.now()}`,
+      amount: applyAmount,
+      paymentMethod: "paystack",
+      reference: args.reference,
+      receivedByUserId: args.payerUserId,
+      receivedAt: now,
+      createdAt: now,
+    });
+
+    await ctx.db.patch(args.invoiceId, {
+      amountPaid: newAmountPaid,
+      balance: newBalance,
+      status: newBalance <= 0 ? "paid" : "partially_paid",
+      updatedAt: now,
+    });
+  },
+});
+
+// ── Parent: Paystack checkout for a fee invoice ───────────────────────────────
+
+export const initializeFeeCheckout = action({
+  args: { invoiceId: v.id("feeInvoices"), origin: v.string() },
+  handler: async (ctx: ActionCtx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Must be signed in.");
+
+    const user = await ctx.runQuery(internal.fees.internalGetUserByClerkId, {
+      clerkUserId: identity.subject,
+    });
+    if (!user) throw new Error("No user record found.");
+    if (user.role !== "parent" && user.role !== "student") throw new Error("Only parents/students can pay invoices.");
+
+    const invoice = await ctx.runQuery(internal.fees.internalGetInvoice, { invoiceId: args.invoiceId });
+    if (!invoice) throw new Error("Invoice not found.");
+    if (invoice.balance <= 0) throw new Error("Invoice is already fully paid.");
+
+    const secret = process.env.PAYSTACK_SECRET_KEY;
+    if (!secret) throw new ConvexError("PAYSTACK_SECRET_KEY not configured.");
+
+    const reference = `fee-${args.invoiceId}-${Date.now()}`;
+    const amountKobo = invoice.balance * 100;
+
+    const res = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: user.email,
+        amount: amountKobo,
+        reference,
+        callback_url: `${args.origin}/parent/fees/callback?invoiceId=${args.invoiceId}`,
+        metadata: { invoiceId: args.invoiceId, userId: user._id },
+      }),
+    });
+
+    const json = (await res.json()) as { status: boolean; data?: { authorization_url: string; access_code: string } };
+    if (!json.status || !json.data) throw new Error("Paystack initialization failed.");
+
+    return { authorizationUrl: json.data.authorization_url, reference };
+  },
+});
+
+export const verifyFeePayment = action({
+  args: { reference: v.string(), invoiceId: v.id("feeInvoices") },
+  handler: async (ctx: ActionCtx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Must be signed in.");
+
+    const user = await ctx.runQuery(internal.fees.internalGetUserByClerkId, {
+      clerkUserId: identity.subject,
+    });
+    if (!user) throw new Error("No user record found.");
+
+    const secret = process.env.PAYSTACK_SECRET_KEY;
+    if (!secret) throw new ConvexError("PAYSTACK_SECRET_KEY not configured.");
+
+    const res = await fetch(`https://api.paystack.co/transaction/verify/${args.reference}`, {
+      headers: { Authorization: `Bearer ${secret}` },
+    });
+    const json = (await res.json()) as { status: boolean; data?: { status: string; amount: number; reference: string } };
+
+    if (!json.status || json.data?.status !== "success") {
+      return { success: false, message: "Payment not confirmed by Paystack." };
+    }
+
+    const amountPaid = json.data.amount / 100;
+    await ctx.runMutation(internal.fees.internalRecordFeePayment, {
+      invoiceId: args.invoiceId,
+      amount: amountPaid,
+      reference: args.reference,
+      payerUserId: user._id,
+    });
+
+    return { success: true, amountPaid };
   },
 });

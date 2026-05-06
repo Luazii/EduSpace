@@ -17,7 +17,8 @@ import {
   History,
   CheckCircle2,
   Clock,
-  Bell
+  Bell,
+  Trophy,
 } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { format } from "date-fns";
@@ -82,6 +83,13 @@ export default function AdminPage() {
       body: "View top performers and at-risk students across all subjects.",
       icon: Award,
       color: "bg-indigo-50 text-indigo-600"
+    },
+    {
+      href: "/admin/sports",
+      title: "Sports Management",
+      body: "Create and manage sports activities available for students.",
+      icon: Trophy,
+      color: "bg-emerald-50 text-emerald-600"
     },
     {
       href: "/admin/communications",

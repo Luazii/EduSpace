@@ -51,6 +51,14 @@ export function Navbar() {
     },
     // Profile — everyone sees this if authenticated
     { href: "/profile", label: "Profile", show: true },
+    // Calendar — students
+    { href: "/calendar", label: "Calendar", show: isStudent && isEnrolled },
+    // Attendance — students
+    { href: "/attendance", label: "Attendance", show: isStudent && isEnrolled },
+    // Sports — students
+    { href: "/sports", label: "Sports", show: isStudent },
+    // Fee payment — parents
+    { href: "/parent/fees", label: "School Fees", show: isParent },
     // Book a Meeting — students and parents
     {
       href: "/bookings/teachers",
