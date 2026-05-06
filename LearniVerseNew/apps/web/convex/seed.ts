@@ -1222,3 +1222,151 @@ export const seedOutlookStudent = mutation({
     };
   },
 });
+
+/**
+ * Seeds published final marks for all enrolled students across all courses.
+ * Parents will immediately see their child's report once this runs.
+ * Generates realistic marks spread across the achievement band (40%–90%).
+ * Idempotent — skips students that already have a published finalMark for a course.
+ */
+export const seedFinalMarks = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+
+    // Deterministic "random" mark from a student+course seed
+    function deterministicMark(seed: string): number {
+      let hash = 0;
+      for (let i = 0; i < seed.length; i++) {
+        hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+      }
+      // Map to 40–90 range
+      const norm = (Math.abs(hash) % 1000) / 1000;
+      return Math.round(40 + norm * 50);
+    }
+
+    // Get all courses
+    const courses = await ctx.db.query("courses").take(50);
+    const summary: string[] = [];
+    let seeded = 0;
+    let skipped = 0;
+
+    for (const course of courses) {
+      // Get all active enrollments for this course
+      const enrollments = await ctx.db
+        .query("enrollments")
+        .withIndex("by_course", (q) => q.eq("courseId", course._id))
+        .collect();
+
+      for (const enrollment of enrollments) {
+        if (enrollment.status !== "active") continue;
+
+        const studentUserId = enrollment.studentUserId;
+
+        // Check if a final mark already exists
+        const existing = await ctx.db
+          .query("finalMarks")
+          .withIndex("by_course_and_student", (q) =>
+            q.eq("courseId", course._id).eq("studentUserId", studentUserId),
+          )
+          .first();
+
+        if (existing?.status === "published") {
+          skipped++;
+          continue;
+        }
+
+        // Generate a realistic mark
+        const seed = `${String(studentUserId)}-${String(course._id)}`;
+        const mark = deterministicMark(seed);
+
+        const payload = {
+          courseId: course._id,
+          studentUserId,
+          computedAssignmentPercent: mark,
+          computedQuizPercent: mark + (deterministicMark(seed + "q") % 10) - 5,
+          computedFinalMark: mark,
+          notes: `Term report — ${course.courseName}.`,
+          status: "published" as const,
+          updatedAt: now,
+          publishedAt: now,
+        };
+
+        if (existing) {
+          await ctx.db.patch(existing._id, payload);
+        } else {
+          await ctx.db.insert("finalMarks", payload);
+        }
+
+        seeded++;
+      }
+    }
+
+    summary.push(`Published ${seeded} final marks across ${courses.length} courses.`);
+    summary.push(`Skipped ${skipped} already-published marks.`);
+
+    return { success: true, seeded, skipped, summary };
+  },
+});
+
+/**
+ * Links a parent to a student by email. Idempotent — won't create duplicates.
+ * Also ensures the parent's role is "parent" and the student's role is "student".
+ */
+export const linkParentToStudent = mutation({
+  args: {
+    parentEmail: v.string(),
+    studentEmail: v.string(),
+    relationship: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const parent = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.parentEmail.toLowerCase()))
+      .first();
+    if (!parent) throw new Error(`Parent not found: ${args.parentEmail}`);
+
+    const student = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.studentEmail.toLowerCase()))
+      .first();
+    if (!student) throw new Error(`Student not found: ${args.studentEmail}`);
+
+    // Ensure correct roles
+    if (parent.role !== "parent") {
+      await ctx.db.patch(parent._id, { role: "parent", updatedAt: now });
+    }
+    if (student.role !== "student") {
+      await ctx.db.patch(student._id, { role: "student", updatedAt: now });
+    }
+
+    // Check for an existing link (avoid duplicates)
+    const existingLinks = await ctx.db
+      .query("parentStudentLinks")
+      .withIndex("by_parent", (q) => q.eq("parentId", parent._id))
+      .collect();
+
+    const alreadyLinked = existingLinks.some((l) => l.studentId === student._id);
+
+    if (!alreadyLinked) {
+      await ctx.db.insert("parentStudentLinks", {
+        parentId: parent._id,
+        studentId: student._id,
+        relationship: args.relationship ?? "Parent",
+        createdAt: now,
+      });
+    }
+
+    return {
+      success: true,
+      linked: !alreadyLinked,
+      parent: { email: parent.email, role: "parent" },
+      student: { email: student.email, role: "student" },
+      message: alreadyLinked
+        ? "Link already exists — no changes made."
+        : `✅ ${args.parentEmail} is now linked as parent of ${args.studentEmail}.`,
+    };
+  },
+});
