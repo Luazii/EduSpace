@@ -21,6 +21,7 @@
  * (see BOOTSTRAP_* sets in users.ts).
  */
 
+import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
@@ -817,6 +818,116 @@ export const assignAlexToGrade8And9 = mutation({
     }
 
     return { message: "✅ Done", updated };
+  },
+});
+
+/**
+ * Sets up a specific user as a Grade 8 learner and enrolls them in
+ * Grade 8 English and Mathematics.
+ */
+export const setupGrade8Learner = mutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const normalizedEmail = args.email.toLowerCase();
+
+    // 1. Find the user
+    let user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
+      .first();
+
+    if (!user) {
+      // Create user if not exists (placeholder)
+      const userId = await ctx.db.insert("users", {
+        clerkUserId: `seed_placeholder_student_${Date.now()}`,
+        email: normalizedEmail,
+        firstName: "Seeded",
+        lastName: "Student",
+        fullName: "Seeded Student",
+        role: "student",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      user = (await ctx.db.get(userId))!;
+    } else {
+      // Update role to student
+      await ctx.db.patch(user._id, { role: "student", updatedAt: now });
+    }
+
+    // 2. Setup Student Profile
+    const existingProfile = await ctx.db
+      .query("studentProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user!._id))
+      .first();
+
+    if (!existingProfile) {
+      await ctx.db.insert("studentProfiles", {
+        userId: user._id,
+        createdAt: now,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.patch(existingProfile._id, {
+        updatedAt: now,
+      });
+    }
+
+    // 3. Enroll in Grade 8 subjects
+    const targetCodes = ["ENG-G8", "MATH-G8"];
+    const enrollmentSummary: string[] = [];
+
+    for (const code of targetCodes) {
+      const course = await ctx.db
+        .query("courses")
+        .withIndex("by_course_code", (q) => q.eq("courseCode", code))
+        .first();
+
+      if (!course) {
+        enrollmentSummary.push(`${code}: course not found`);
+        continue;
+      }
+
+      // Check for existing enrollment
+      const existingEnrollment = await ctx.db
+        .query("enrollments")
+        .withIndex("by_student", (q) => q.eq("studentUserId", user!._id))
+        .collect();
+      
+      const alreadyEnrolled = existingEnrollment.some(e => e.courseId === course._id);
+
+      if (!alreadyEnrolled) {
+        // Create a dummy application for the enrollment
+        const appId = await ctx.db.insert("enrollmentApplications", {
+          studentUserId: user._id,
+          gradeLabel: "Grade 8",
+          selectedCourseIds: [course._id],
+          status: "approved",
+          paymentStatus: "paid",
+          notes: "Auto-enrolled via setupGrade8Learner.",
+          createdAt: now,
+          updatedAt: now,
+        });
+
+        await ctx.db.insert("enrollments", {
+          studentUserId: user._id,
+          courseId: course._id,
+          applicationId: appId,
+          enrolledAt: now,
+          status: "active",
+        });
+        enrollmentSummary.push(`${code}: enrolled`);
+      } else {
+        enrollmentSummary.push(`${code}: already enrolled`);
+      }
+    }
+
+    return {
+      success: true,
+      user: user.email,
+      enrollments: enrollmentSummary,
+    };
   },
 });
 
