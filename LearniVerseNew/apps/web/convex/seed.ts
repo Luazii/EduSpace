@@ -920,3 +920,194 @@ export const seedDemoQuizzes = mutation({
     };
   },
 });
+
+/**
+ * Seeds 22148086@outlook.com as a Grade 9 student.
+ * Enrolls them in ENG-G9 and MATH-G9, then generates realistic
+ * quiz attempts and assignment submissions for both subjects.
+ *
+ * Run seedAcademicData first.  Idempotent.
+ */
+export const seedOutlookStudent = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+
+    // ── 1. Upsert the student user ─────────────────────────────────────────
+    const EMAIL = "22148086@outlook.com";
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", EMAIL))
+      .first();
+
+    let studentId: Id<"users">;
+    if (existing) {
+      if (existing.role !== "student") {
+        await ctx.db.patch(existing._id, { role: "student", updatedAt: now });
+      }
+      studentId = existing._id;
+    } else {
+      studentId = await ctx.db.insert("users", {
+        clerkUserId: `seed_student_${EMAIL.replace(/[^a-z0-9]/gi, "_")}`,
+        email: EMAIL,
+        firstName: "Lwazi",
+        lastName: "Student",
+        fullName: "Lwazi Student",
+        role: "student",
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    // ── 2. Fetch Grade 9 courses ───────────────────────────────────────────
+    const engCourse = await ctx.db
+      .query("courses")
+      .withIndex("by_course_code", (q) => q.eq("courseCode", "ENG-G9"))
+      .first();
+    if (!engCourse) throw new Error("ENG-G9 not found — run seedAcademicData first.");
+
+    const mathCourse = await ctx.db
+      .query("courses")
+      .withIndex("by_course_code", (q) => q.eq("courseCode", "MATH-G9"))
+      .first();
+    if (!mathCourse) throw new Error("MATH-G9 not found — run seedAcademicData first.");
+
+    // ── 3. Enroll in both courses ──────────────────────────────────────────
+    async function ensureEnrollment(courseId: Id<"courses">) {
+      const enrollments = await ctx.db
+        .query("enrollments")
+        .withIndex("by_student", (q) => q.eq("studentUserId", studentId))
+        .collect();
+      if (enrollments.some((e) => e.courseId === courseId)) return;
+      const appId = await ctx.db.insert("enrollmentApplications", {
+        studentUserId: studentId,
+        selectedCourseIds: [courseId],
+        status: "approved",
+        paymentStatus: "paid",
+        notes: "Seeded by seedOutlookStudent.",
+        createdAt: now,
+        updatedAt: now,
+      });
+      await ctx.db.insert("enrollments", {
+        studentUserId: studentId,
+        courseId,
+        applicationId: appId,
+        enrolledAt: now,
+        status: "active",
+      });
+    }
+
+    await ensureEnrollment(engCourse._id);
+    await ensureEnrollment(mathCourse._id);
+
+    // ── 4. English quiz attempts ───────────────────────────────────────────
+    // Complete both Term 1 and Term 2 quizzes with 80% (8/10)
+    const engQuizzes = await ctx.db
+      .query("quizzes")
+      .withIndex("by_course", (q) => q.eq("courseId", engCourse._id))
+      .collect();
+
+    let engAttemptsSeeded = 0;
+    for (const quiz of engQuizzes) {
+      if (quiz.status !== "published") continue;
+
+      const alreadyAttempted = await ctx.db
+        .query("quizAttempts")
+        .withIndex("by_quiz_and_student", (q) =>
+          q.eq("quizId", quiz._id).eq("studentUserId", studentId),
+        )
+        .first();
+      if (alreadyAttempted) continue;
+
+      const questions = await ctx.db
+        .query("questions")
+        .withIndex("by_quiz", (q) => q.eq("quizId", quiz._id))
+        .collect();
+      if (questions.length === 0) continue;
+
+      const sorted = questions.sort((a, b) => a.position - b.position);
+      // Get the last question wrong for 80% (4/5 correct)
+      const answers = sorted.map((q, idx) => ({
+        questionId: q._id,
+        answer: idx === sorted.length - 1 ? q.options[0] : q.correctAnswer,
+      }));
+
+      const totalWeight = sorted.reduce((s, q) => s + q.weighting, 0);
+      const correctWeight = sorted.slice(0, sorted.length - 1).reduce((s, q) => s + q.weighting, 0);
+
+      await ctx.db.insert("quizAttempts", {
+        quizId: quiz._id,
+        studentUserId: studentId,
+        answers,
+        score: correctWeight,
+        maxScore: totalWeight,
+        submittedAt: now - 6 * DAY,
+      });
+      engAttemptsSeeded++;
+    }
+
+    // ── 5. Maths assignment submissions ───────────────────────────────────
+    // Assignment 1: submitted and graded at 74%
+    // Assignment 2: submitted, not yet marked
+    const mathAssignments = (await ctx.db
+      .query("assignments")
+      .withIndex("by_course", (q) => q.eq("courseId", mathCourse._id))
+      .collect()
+    ).sort((a, b) => a.createdAt - b.createdAt);
+
+    // Resolve the maths teacher for grading
+    const mathTeacherUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", "seed+math.teacher@learnmanage.dev"))
+      .first();
+
+    let mathSubsSeeded = 0;
+    for (let i = 0; i < mathAssignments.length; i++) {
+      const assignment = mathAssignments[i];
+      const alreadySubmitted = await ctx.db
+        .query("submissions")
+        .withIndex("by_assignment_and_student", (q) =>
+          q.eq("assignmentId", assignment._id).eq("studentUserId", studentId),
+        )
+        .first();
+      if (alreadySubmitted) continue;
+
+      const maxMark = assignment.maxMark ?? 50;
+
+      if (i === 0) {
+        // Assignment 1: graded at 74%
+        await ctx.db.insert("submissions", {
+          assignmentId: assignment._id,
+          studentUserId: studentId,
+          fileName: "g9_maths_assign1_22148086.pdf",
+          submittedAt: now - 8 * DAY,
+          mark: Math.round(maxMark * 0.74),
+          feedback: "Good understanding of algebraic expressions. Work on showing more steps in your factorisation.",
+          gradedAt: now - 5 * DAY,
+          gradedByUserId: mathTeacherUser?._id,
+          isReleased: true,
+        });
+      } else {
+        // Assignment 2: submitted, awaiting marking
+        await ctx.db.insert("submissions", {
+          assignmentId: assignment._id,
+          studentUserId: studentId,
+          fileName: "g9_maths_assign2_22148086.pdf",
+          submittedAt: now - 2 * DAY,
+        });
+      }
+      mathSubsSeeded++;
+    }
+
+    return {
+      message: "✅ Student seeded",
+      student: EMAIL,
+      grade: "Grade 9",
+      coursesEnrolled: ["ENG-G9", "MATH-G9"],
+      englishQuizAttempts: engAttemptsSeeded,
+      mathsSubmissions: mathSubsSeeded,
+    };
+  },
+});
