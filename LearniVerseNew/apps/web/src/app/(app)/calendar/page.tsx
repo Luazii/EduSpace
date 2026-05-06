@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useState, useMemo } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
+import Link from "next/link";
 import {
   Calendar,
   ClipboardList,
@@ -13,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  ArrowRight,
 } from "lucide-react";
 
 type EventType = "assignment" | "quiz" | "live_session" | "meeting";
@@ -184,13 +186,22 @@ export default function CalendarPage() {
                 <div className="space-y-2">
                   {upcoming.slice(0, 6).map((e) => {
                     const cfg = TYPE_CONFIG[e.type as EventType];
-                    return (
-                      <div key={e.id} className="flex items-start gap-3">
+                    const Row = (
+                      <>
                         <span className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${cfg.dot}`} />
                         <div className="min-w-0">
                           <p className="truncate text-xs font-bold text-slate-900">{e.title}</p>
                           <p className="text-[10px] text-slate-400">{format(new Date(e.date), "d MMM · HH:mm")}{e.courseCode ? ` · ${e.courseCode}` : ""}</p>
                         </div>
+                      </>
+                    );
+                    return e.href ? (
+                      <Link key={e.id} href={e.href} className="flex items-start gap-3 rounded-xl px-1 py-0.5 transition hover:bg-slate-50">
+                        {Row}
+                      </Link>
+                    ) : (
+                      <div key={e.id} className="flex items-start gap-3">
+                        {Row}
                       </div>
                     );
                   })}
@@ -216,25 +227,33 @@ export default function CalendarPage() {
   );
 }
 
-function EventCard({ event, large }: { event: { id: string; type: string; title: string; courseCode?: string; courseName?: string; date: number; endDate?: number; detail?: string; status?: string }; large?: boolean }) {
+function EventCard({ event, large }: { event: { id: string; type: string; title: string; courseCode?: string; courseName?: string; date: number; endDate?: number; detail?: string; status?: string; href?: string }; large?: boolean }) {
   const cfg = TYPE_CONFIG[event.type as EventType] ?? TYPE_CONFIG.assignment;
   const Icon = cfg.icon;
-  return (
-    <div className={`rounded-2xl border px-4 py-3 ${cfg.color}`}>
-      <div className="flex items-start gap-3">
-        <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-        <div className="min-w-0 flex-1">
-          <p className={`font-bold ${large ? "text-sm" : "text-xs"} text-slate-900`}>{event.title}</p>
-          {event.courseCode && (
-            <p className="text-[10px] font-bold opacity-70">{event.courseCode}{event.courseName ? ` · ${event.courseName}` : ""}</p>
-          )}
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] font-medium opacity-70">
-            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{format(new Date(event.date), large ? "EEEE d MMM, HH:mm" : "HH:mm")}</span>
-            {event.endDate && <span>– {format(new Date(event.endDate), "HH:mm")}</span>}
-            {event.detail && <span>{event.detail}</span>}
-          </div>
+  const inner = (
+    <div className="flex items-start gap-3">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className={`font-bold ${large ? "text-sm" : "text-xs"} text-slate-900`}>{event.title}</p>
+        {event.courseCode && (
+          <p className="text-[10px] font-bold opacity-70">{event.courseCode}{event.courseName ? ` · ${event.courseName}` : ""}</p>
+        )}
+        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] font-medium opacity-70">
+          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{format(new Date(event.date), large ? "EEEE d MMM, HH:mm" : "HH:mm")}</span>
+          {event.endDate && <span>– {format(new Date(event.endDate), "HH:mm")}</span>}
+          {event.detail && <span>{event.detail}</span>}
         </div>
       </div>
+      {event.href && <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-50" />}
     </div>
   );
+
+  if (event.href) {
+    return (
+      <Link href={event.href} className={`block rounded-2xl border px-4 py-3 transition hover:shadow-md ${cfg.color}`}>
+        {inner}
+      </Link>
+    );
+  }
+  return <div className={`rounded-2xl border px-4 py-3 ${cfg.color}`}>{inner}</div>;
 }

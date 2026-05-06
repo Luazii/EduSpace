@@ -22,6 +22,7 @@ export type CalendarEvent = {
   endDate?: number;
   detail?: string;
   status?: string;
+  href?: string;
 };
 
 export const getStudentCalendar = query({
@@ -66,6 +67,7 @@ export const getStudentCalendar = query({
             courseName: course.courseName,
             date: a.deadline,
             detail: `Max mark: ${a.maxMark ?? "—"}`,
+            href: `/assignments`,
           });
         }
       }
@@ -90,6 +92,7 @@ export const getStudentCalendar = query({
             endDate: q.endsAt,
             detail: q.durationMinutes ? `${q.durationMinutes} min · ${q.maxAttempts} attempt(s)` : undefined,
             status: q.status,
+            href: `/courses/${enrollment.courseId}/quizzes/${q._id}`,
           });
         }
       }
@@ -109,6 +112,7 @@ export const getStudentCalendar = query({
           date: s.startTime,
           endDate: s.endTime ?? undefined,
           status: s.status,
+          href: `/study-sessions`,
         });
       }
     }
@@ -128,6 +132,7 @@ export const getStudentCalendar = query({
           date: m.startTime,
           endDate: m.endTime ?? undefined,
           status: m.status,
+          href: `/bookings/my`,
         });
       }
     }
