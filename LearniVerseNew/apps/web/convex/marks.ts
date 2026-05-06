@@ -526,3 +526,115 @@ export const getAtRiskOverview = query({
     return rows.sort((a, b) => a.effectiveMark - b.effectiveMark);
   },
 });
+
+// ── Top-performing students across all courses for admin ──────────────────────
+export const getTopStudentsOverview = query({
+  args: { threshold: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const caller = await getCurrentUser(ctx);
+    if (caller.role !== "teacher" && caller.role !== "admin") {
+      throw new Error("Only teachers and admins can view performance data.");
+    }
+
+    const threshold = args.threshold ?? 75;
+    const courses = await ctx.db.query("courses").collect();
+
+    const rows: Array<{
+      courseId: string;
+      courseName: string;
+      courseCode: string;
+      studentId: string;
+      studentName: string | null;
+      studentEmail: string;
+      effectiveMark: number;
+      assignmentPct: number | null;
+      quizPct: number | null;
+    }> = [];
+
+    for (const course of courses) {
+      const enrollments = await ctx.db
+        .query("enrollments")
+        .withIndex("by_course", (q) => q.eq("courseId", course._id))
+        .filter((q) => q.eq(q.field("status"), "active"))
+        .collect();
+
+      const assignments = await ctx.db
+        .query("assignments")
+        .withIndex("by_course", (q) => q.eq("courseId", course._id))
+        .collect();
+
+      const quizzes = await ctx.db
+        .query("quizzes")
+        .withIndex("by_course", (q) => q.eq("courseId", course._id))
+        .collect();
+
+      const aWeight = course.assignmentWeight ?? 50;
+      const qWeight = course.quizWeight ?? 50;
+
+      for (const enrollment of enrollments) {
+        const student = await ctx.db.get(enrollment.studentUserId);
+        if (!student) continue;
+
+        const subs = await ctx.db
+          .query("submissions")
+          .withIndex("by_student", (q) => q.eq("studentUserId", student._id))
+          .collect();
+
+        const courseGraded = subs.filter(
+          (s) =>
+            assignments.some((a) => a._id === s.assignmentId) &&
+            typeof s.mark === "number",
+        );
+
+        const avgA = courseGraded.length
+          ? courseGraded.reduce((sum, s) => {
+              const a = assignments.find((a) => a._id === s.assignmentId);
+              return sum + ((s.mark ?? 0) / (a?.maxMark || 1)) * 100;
+            }, 0) / courseGraded.length
+          : null;
+
+        const attempts = await ctx.db
+          .query("quizAttempts")
+          .withIndex("by_student", (q) => q.eq("studentUserId", student._id))
+          .collect();
+
+        const courseAttempts = attempts.filter((a) =>
+          quizzes.some((q) => q._id === a.quizId),
+        );
+        const bestByQuiz = new Map<string, (typeof courseAttempts)[number]>();
+        for (const att of [...courseAttempts].sort((a, b) => b.score - a.score)) {
+          if (!bestByQuiz.has(String(att.quizId))) bestByQuiz.set(String(att.quizId), att);
+        }
+
+        const avgQ =
+          bestByQuiz.size > 0
+            ? [...bestByQuiz.values()].reduce(
+                (sum, a) => sum + (a.score / (a.maxScore || 1)) * 100,
+                0,
+              ) / bestByQuiz.size
+            : null;
+
+        const effectiveMark =
+          avgA !== null && avgQ !== null
+            ? (avgA * aWeight + avgQ * qWeight) / 100
+            : avgA ?? avgQ;
+
+        if (typeof effectiveMark === "number" && effectiveMark >= threshold) {
+          rows.push({
+            courseId: String(course._id),
+            courseName: course.courseName,
+            courseCode: course.courseCode,
+            studentId: String(student._id),
+            studentName: student.fullName ?? null,
+            studentEmail: student.email,
+            effectiveMark: Math.round(effectiveMark * 10) / 10,
+            assignmentPct: avgA !== null ? Math.round(avgA * 10) / 10 : null,
+            quizPct: avgQ !== null ? Math.round(avgQ * 10) / 10 : null,
+          });
+        }
+      }
+    }
+
+    return rows.sort((a, b) => b.effectiveMark - a.effectiveMark);
+  },
+});

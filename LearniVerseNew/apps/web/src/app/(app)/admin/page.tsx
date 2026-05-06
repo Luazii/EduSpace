@@ -77,6 +77,13 @@ export default function AdminPage() {
       color: "bg-rose-50 text-rose-600"
     },
     {
+      href: "/admin/performance",
+      title: "Student Insights",
+      body: "View top performers and at-risk students across all subjects.",
+      icon: Award,
+      color: "bg-indigo-50 text-indigo-600"
+    },
+    {
       href: "/admin/communications",
       title: "Notice Board",
       body: "Send announcements and manage communications.",
