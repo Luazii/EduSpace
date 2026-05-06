@@ -17,7 +17,7 @@ const STATUS_OPTIONS: { value: AttendanceStatus; label: string; color: string }[
 ];
 
 export default function TeacherAttendancePage() {
-  const myCourses = useQuery(api.marks.listMyCourses);
+  const myCourses = useQuery(api.manualMarks.listMyCourses);
   const [selectedCourse, setSelectedCourse] = useState<Id<"courses"> | null>(null);
   const [sessionDate, setSessionDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [marks, setMarks] = useState<Record<string, AttendanceStatus>>({});
