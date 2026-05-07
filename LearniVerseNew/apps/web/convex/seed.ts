@@ -1748,3 +1748,41 @@ export const seedBehaviourRecords = mutation({
   },
 });
 
+export const linkByEmail = mutation({
+  args: {
+    parentEmail: v.string(),
+    studentEmails: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const parent = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.parentEmail))
+      .first();
+
+    if (!parent) throw new Error("Parent not found");
+
+    for (const sEmail of args.studentEmails) {
+      const student = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", sEmail))
+        .first();
+
+      if (!student) throw new Error(`Student ${sEmail} not found`);
+
+      const existing = await ctx.db
+        .query("parentStudentLinks")
+        .withIndex("by_parent", (q) => q.eq("parentId", parent._id))
+        .filter((q) => q.eq(q.field("studentId"), student._id))
+        .first();
+
+      if (!existing) {
+        await ctx.db.insert("parentStudentLinks", {
+          parentId: parent._id,
+          studentId: student._id,
+          createdAt: Date.now(),
+        });
+      }
+    }
+  },
+});
+
