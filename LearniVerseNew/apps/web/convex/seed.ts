@@ -1668,3 +1668,83 @@ export const seedAllSubjectsAndTimetable = mutation({
     return { coursesCreated: Object.keys(courseIds).length, timetableCreated };
   },
 });
+
+/**
+ * Seeds behaviour records for Grade 8 and Grade 9 students.
+ * - 3-5 merits per student
+ * - 1-2 demerits per student
+ * - Spread across the past 30 days
+ * - Awarded by the existing seeded teacher (Alex Dlamini)
+ */
+export const seedBehaviourRecords = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+
+    const teacher = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", "lgumbi2169+teacher@gmail.com"))
+      .first();
+
+    if (!teacher) {
+      throw new Error("Teacher account not found. Run seedTestUsers first.");
+    }
+
+    const students = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "student"))
+      .collect();
+
+    // Filter to just grade 8 and 9 (using the emails we used in seedAcademicData)
+    const targetStudents = students.filter((s) => 
+      s.email.includes("+g8.") || s.email.includes("+g9.")
+    );
+
+    const meritCategories = ["Helpfulness", "Academic Excellence", "Leadership", "Sportsmanship", "Respect"];
+    const demeritCategories = ["Disruptive Behaviour", "Late Submission", "Truancy", "Disrespect", "Property Damage"];
+
+    let recordsCreated = 0;
+
+    for (const student of targetStudents) {
+      // 3-5 merits
+      const numMerits = Math.floor(Math.random() * 3) + 3;
+      for (let i = 0; i < numMerits; i++) {
+        const daysAgo = Math.floor(Math.random() * 30);
+        await ctx.db.insert("behaviourRecords", {
+          studentUserId: student._id,
+          awardedByUserId: teacher._id,
+          type: "merit",
+          category: meritCategories[Math.floor(Math.random() * meritCategories.length)],
+          description: `Seeded positive behaviour record ${i + 1}`,
+          points: 1,
+          occurredAt: now - (daysAgo * DAY),
+          createdAt: now,
+        });
+        recordsCreated++;
+      }
+
+      // 1-2 demerits
+      const numDemerits = Math.floor(Math.random() * 2) + 1;
+      for (let i = 0; i < numDemerits; i++) {
+        const daysAgo = Math.floor(Math.random() * 30);
+        await ctx.db.insert("behaviourRecords", {
+          studentUserId: student._id,
+          awardedByUserId: teacher._id,
+          type: "demerit",
+          category: demeritCategories[Math.floor(Math.random() * demeritCategories.length)],
+          description: `Seeded negative behaviour record ${i + 1}`,
+          points: -1,
+          occurredAt: now - (daysAgo * DAY),
+          createdAt: now,
+        });
+        recordsCreated++;
+      }
+    }
+
+    return {
+      message: `✅ Behaviour seed complete. Created ${recordsCreated} records for ${targetStudents.length} students.`,
+    };
+  },
+});
+

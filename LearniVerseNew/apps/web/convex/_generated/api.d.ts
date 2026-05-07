@@ -11,6 +11,7 @@
 import type * as admin from "../admin.js";
 import type * as assignments from "../assignments.js";
 import type * as attendance from "../attendance.js";
+import type * as behaviour from "../behaviour.js";
 import type * as bookings from "../bookings.js";
 import type * as calendar from "../calendar.js";
 import type * as classes from "../classes.js";
@@ -57,6 +58,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   assignments: typeof assignments;
   attendance: typeof attendance;
+  behaviour: typeof behaviour;
   bookings: typeof bookings;
   calendar: typeof calendar;
   classes: typeof classes;

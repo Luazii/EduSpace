@@ -687,4 +687,21 @@ export default defineSchema({
   })
     .index("by_course", ["courseId"])
     .index("by_day", ["dayOfWeek"]),
+
+  // ── Merit & Demerit behaviour tracking ──────────────────────────────────
+  behaviourRecords: defineTable({
+    studentUserId:   v.id("users"),       // the learner
+    awardedByUserId: v.id("users"),       // teacher or admin who recorded it
+    type:            v.union(v.literal("merit"), v.literal("demerit")),
+    category:        v.string(),          // e.g. "Helpfulness", "Conduct"
+    description:     v.string(),          // free-text note
+    points:          v.number(),          // merit = +1, demerit = -1 (configurable)
+    courseId:        v.optional(v.id("courses")), // optional subject link
+    occurredAt:      v.number(),          // timestamp of the actual event
+    createdAt:       v.number(),
+  })
+    .index("by_student",       ["studentUserId"])
+    .index("by_student_type",  ["studentUserId", "type"])
+    .index("by_awarder",       ["awardedByUserId"])
+    .index("by_course",        ["courseId"]),
 });

@@ -105,6 +105,13 @@ export default function AdminPage() {
       body: "Send announcements and manage communications.",
       icon: Bell,
       color: "bg-amber-50 text-amber-600"
+    },
+    {
+      href: "/admin/behaviour",
+      title: "Behaviour Records",
+      body: "Track merits and demerits across all learners.",
+      icon: CheckCircle2,
+      color: "bg-emerald-50 text-emerald-600"
     }
   ];
 

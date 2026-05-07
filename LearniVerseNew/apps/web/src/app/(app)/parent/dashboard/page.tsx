@@ -66,30 +66,7 @@ export default function ParentDashboard() {
               </div>
             ) : (
               links.map((link) => (
-                <Link 
-                  key={link._id}
-                  href={`/parent/students/${link.student?._id}`}
-                  className="group flex flex-col rounded-4xl border border-slate-200 bg-white p-8 shadow-sm transition hover:border-slate-300 hover:shadow-xl hover:shadow-slate-200/20"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-950 text-xl font-black text-white">
-                        {link.student?.fullName?.[0] || "?"}
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-black text-slate-950 group-hover:text-[#7c4dff] transition">{link.student?.fullName}</h3>
-                        <p className="text-sm font-medium text-slate-500">{link.relationship || "Student"}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black text-emerald-700 uppercase">
-                        <CheckCircle2 className="h-3 w-3" /> Enrolled
-                      </span>
-                      <p className="mt-2 text-xs font-bold text-slate-400">View Performance Report</p>
-                      <Link href="/parent/fees" onClick={(e) => e.stopPropagation()} className="mt-1 text-xs font-bold text-indigo-600 hover:underline">School Fees →</Link>
-                    </div>
-                  </div>
-                </Link>
+                <StudentCard key={link._id} link={link} />
               ))
             )}
           </section>
@@ -188,3 +165,98 @@ export default function ParentDashboard() {
     </main>
   );
 }
+
+function StudentCard({ link }: { link: any }) {
+  return (
+    <div className="rounded-4xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <Link 
+        href={`/parent/students/${link.student?._id}`}
+        className="group flex flex-col p-8 transition hover:bg-slate-50"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-950 text-xl font-black text-white">
+              {link.student?.fullName?.[0] || "?"}
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-950 group-hover:text-[#7c4dff] transition">{link.student?.fullName}</h3>
+              <p className="text-sm font-medium text-slate-500">{link.relationship || "Student"}</p>
+            </div>
+          </div>
+          <div className="text-right">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-black text-emerald-700 uppercase">
+              <CheckCircle2 className="h-3 w-3" /> Enrolled
+            </span>
+            <p className="mt-2 text-xs font-bold text-slate-400">View Performance Report</p>
+            <Link href="/parent/fees" onClick={(e) => e.stopPropagation()} className="mt-1 text-xs font-bold text-indigo-600 hover:underline">School Fees →</Link>
+          </div>
+        </div>
+      </Link>
+      
+      {/* Behaviour Panel */}
+      <div className="border-t border-slate-100 bg-slate-50/50 p-6">
+        <BehaviourWidget studentId={link.student?._id} />
+      </div>
+    </div>
+  );
+}
+
+function BehaviourWidget({ studentId }: { studentId: string }) {
+  const [expanded, setExpanded] = import("react").then(m => m.useState(false)).catch(() => [false, () => {}]) as any;
+  const summary = useQuery(api.behaviour.summaryForStudent, { studentUserId: studentId as any });
+  const records = useQuery(api.behaviour.listForStudent, { studentUserId: studentId as any, limit: 20 });
+
+  if (!summary || !records) return <div className="text-xs text-slate-400">Loading behaviour data...</div>;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="text-sm font-bold text-slate-950">Behaviour & Conduct</h4>
+          <p className="text-xs text-slate-500 mt-1">
+            Merits: <span className="font-bold text-emerald-600">{summary.merits}</span> | 
+            Demerits: <span className="font-bold text-rose-600">{summary.demerits}</span> | 
+            Net: <span className="font-black text-slate-900">{summary.netPoints > 0 ? "+" : ""}{summary.netPoints}</span>
+          </p>
+        </div>
+        <button 
+          onClick={() => setExpanded(!expanded)}
+          className="text-xs font-bold text-[#7c4dff] hover:underline"
+        >
+          {expanded ? "Hide Records" : "View History"}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="mt-4 space-y-3 pt-4 border-t border-slate-200">
+          {records.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">No behaviour records found.</p>
+          ) : (
+            records.map((record) => (
+              <div key={record._id} className="flex justify-between items-start gap-4 text-sm">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${
+                      record.type === "merit" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                    }`}>
+                      {record.type}
+                    </span>
+                    <span className="font-bold text-slate-950">{record.category}</span>
+                  </div>
+                  <p className="text-xs text-slate-600">{record.description}</p>
+                </div>
+                <div className="text-right shrink-0">
+                   <span className={`font-black ${record.type === "merit" ? "text-emerald-600" : "text-rose-600"}`}>
+                     {record.points > 0 ? "+" : ""}{record.points}
+                   </span>
+                   <p className="text-[10px] text-slate-400 mt-1">{new Date(record.occurredAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+

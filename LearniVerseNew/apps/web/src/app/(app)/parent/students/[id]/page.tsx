@@ -645,6 +645,9 @@ export default function ParentStudentReportPage() {
             </div>
           </section>
 
+          {/* Behaviour Summary Section */}
+          <BehaviourSummaryCard studentId={studentId} />
+
           {/* NSC Level legend */}
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">
@@ -703,5 +706,43 @@ function MiniStat({ label, value }: { label: string; value: string }) {
       <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</p>
       <p className="mt-0.5 text-sm font-black text-slate-900">{value}</p>
     </div>
+  );
+}
+
+function BehaviourSummaryCard({ studentId }: { studentId: string }) {
+  const summary = useQuery(api.behaviour.summaryForStudent, { studentUserId: studentId as any });
+  
+  if (!summary) return null;
+
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+          <CheckCircle2 className="h-5 w-5" />
+        </div>
+        <h3 className="text-lg font-bold text-slate-950">Conduct Summary</h3>
+      </div>
+      
+      <div className="grid grid-cols-3 gap-2 text-center mb-4">
+        <div className="rounded-xl bg-emerald-50 p-2">
+          <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600">Merits</p>
+          <p className="text-lg font-black text-emerald-700">{summary.merits}</p>
+        </div>
+        <div className="rounded-xl bg-slate-50 p-2">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Demerits</p>
+          <p className="text-lg font-black text-slate-700">{summary.demerits}</p>
+        </div>
+        <div className="rounded-xl bg-indigo-50 p-2">
+          <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600">Net</p>
+          <p className={`text-lg font-black ${summary.netPoints > 0 ? "text-emerald-600" : summary.netPoints < 0 ? "text-rose-600" : "text-slate-900"}`}>
+            {summary.netPoints > 0 ? "+" : ""}{summary.netPoints}
+          </p>
+        </div>
+      </div>
+      
+      <Link href="/parent/dashboard" className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:underline block text-center mt-2">
+        View Full History on Dashboard →
+      </Link>
+    </section>
   );
 }
