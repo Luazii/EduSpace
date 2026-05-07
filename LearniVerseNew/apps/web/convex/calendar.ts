@@ -117,6 +117,54 @@ export const getStudentCalendar = query({
       }
     }
 
+    // Weekly timetable classes (recurring)
+    for (const enrollment of enrollments) {
+      const course = await ctx.db.get(enrollment.courseId);
+      if (!course) continue;
+
+      const slots = await ctx.db
+        .query("timetable")
+        .withIndex("by_course", (q) => q.eq("courseId", enrollment.courseId))
+        .filter((q) => q.eq(q.field("isActive"), true))
+        .collect();
+
+      for (const slot of slots) {
+        // dayOfWeek: 1=Mon..5=Fri  JS getUTCDay: 0=Sun,1=Mon..5=Fri,6=Sat
+        const jsDay = slot.dayOfWeek; // 1-5 same in JS
+        const fromDate = new Date(from);
+        fromDate.setUTCHours(0, 0, 0, 0);
+        const daysUntilFirst = (jsDay - fromDate.getUTCDay() + 7) % 7;
+        const first = new Date(fromDate);
+        first.setUTCDate(first.getUTCDate() + daysUntilFirst);
+
+        const current = new Date(first);
+        while (current.getTime() <= to) {
+          // Convert SAST time (UTC+2) → UTC: subtract 2 hours
+          const hourUTC = slot.startHour - 2;
+          const eventStart = new Date(current);
+          eventStart.setUTCHours(hourUTC, slot.startMinute, 0, 0);
+          const eventEnd = eventStart.getTime() + slot.durationMinutes * 60_000;
+
+          const dayName = ["", "Mon", "Tue", "Wed", "Thu", "Fri"][slot.dayOfWeek];
+          const modeLabel = slot.deliveryMode === "online" ? "Online" : slot.venue ?? "In-Person";
+
+          events.push({
+            id: `timetable-${slot._id}-${current.toISOString().slice(0, 10)}`,
+            type: "live_session",
+            title: `${course.courseCode} — ${modeLabel}`,
+            courseCode: course.courseCode,
+            courseName: course.courseName,
+            date: eventStart.getTime(),
+            endDate: eventEnd,
+            detail: slot.deliveryMode === "online" ? "Online class" : `In-person · ${slot.venue ?? "Classroom"}`,
+            href: `/courses/${enrollment.courseId}`,
+          });
+
+          current.setUTCDate(current.getUTCDate() + 7);
+        }
+      }
+    }
+
     // Parent-teacher meetings the student is a participant in
     const meetings = await ctx.db.query("meetings").collect();
     for (const m of meetings) {

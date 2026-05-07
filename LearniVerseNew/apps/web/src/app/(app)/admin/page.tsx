@@ -19,6 +19,7 @@ import {
   Clock,
   Bell,
   Trophy,
+  CalendarDays,
 } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { format } from "date-fns";
@@ -90,6 +91,13 @@ export default function AdminPage() {
       body: "Create and manage sports activities available for students.",
       icon: Trophy,
       color: "bg-emerald-50 text-emerald-600"
+    },
+    {
+      href: "/admin/timetable",
+      title: "Class Timetable",
+      body: "Build and manage weekly recurring class schedules for all grades.",
+      icon: CalendarDays,
+      color: "bg-sky-50 text-sky-600"
     },
     {
       href: "/admin/communications",

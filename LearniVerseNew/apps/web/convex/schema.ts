@@ -672,4 +672,19 @@ export default defineSchema({
     .index("by_student", ["studentUserId"])
     .index("by_course_and_student", ["courseId", "studentUserId"])
     .index("by_course_and_date", ["courseId", "sessionDate"]),
+
+  timetable: defineTable({
+    courseId: v.id("courses"),
+    dayOfWeek: v.number(), // 1=Mon 2=Tue 3=Wed 4=Thu 5=Fri
+    startHour: v.number(),   // SAST 24h
+    startMinute: v.number(),
+    durationMinutes: v.number(),
+    deliveryMode: v.union(v.literal("online"), v.literal("in_person")),
+    venue: v.optional(v.string()),
+    meetingUrl: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_course", ["courseId"])
+    .index("by_day", ["dayOfWeek"]),
 });

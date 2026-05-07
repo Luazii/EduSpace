@@ -44,6 +44,7 @@ import type * as taskItems from "../taskItems.js";
 import type * as teacherBookings from "../teacherBookings.js";
 import type * as teachers from "../teachers.js";
 import type * as timeSlots from "../timeSlots.js";
+import type * as timetable from "../timetable.js";
 import type * as users from "../users.js";
 
 import type {
@@ -89,6 +90,7 @@ declare const fullApi: ApiFromModules<{
   teacherBookings: typeof teacherBookings;
   teachers: typeof teachers;
   timeSlots: typeof timeSlots;
+  timetable: typeof timetable;
   users: typeof users;
 }>;
 
