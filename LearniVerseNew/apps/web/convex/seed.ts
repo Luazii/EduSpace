@@ -1370,3 +1370,301 @@ export const linkParentToStudent = mutation({
     };
   },
 });
+
+// ── SA CAPS full subject list + complete timetable for all grades ─────────────
+// Run this AFTER seedAcademicData to create all remaining subjects,
+// enrol seeded students, and generate a Mon-Fri timetable.
+// Grade 8/9: all 9 Senior Phase subjects (compulsory)
+// Grade 10/11/12: 4 core + 7 electives seeded (students only see their enrolled ones)
+export const seedAllSubjectsAndTimetable = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+
+    // ── helpers ────────────────────────────────────────────────────────────
+    async function upsertUser(params: {
+      email: string; fullName: string; firstName: string; lastName: string;
+      role: "teacher" | "student" | "parent";
+    }) {
+      const existing = await ctx.db
+        .query("users").withIndex("by_email", (q) => q.eq("email", params.email)).first();
+      if (existing) return existing._id;
+      return ctx.db.insert("users", {
+        clerkUserId: `seed_${params.role}_${params.email.replace(/[^a-z0-9]/gi, "_")}`,
+        email: params.email, firstName: params.firstName, lastName: params.lastName,
+        fullName: params.fullName, role: params.role, isActive: true, createdAt: now, updatedAt: now,
+      });
+    }
+
+    async function upsertTeacherProfile(userId: Id<"users">, employeeNumber: string) {
+      const existing = await ctx.db
+        .query("teacherProfiles").withIndex("by_user_id", (q) => q.eq("userId", userId)).first();
+      if (existing) return existing._id;
+      return ctx.db.insert("teacherProfiles", {
+        userId, employeeNumber, qualificationText: "B.Ed (Hons)", createdAt: now, updatedAt: now,
+      });
+    }
+
+    async function upsertCourse(params: {
+      courseCode: string; courseName: string; department: string;
+      teacherProfileId: Id<"teacherProfiles">;
+    }) {
+      const existing = await ctx.db
+        .query("courses").withIndex("by_course_code", (q) => q.eq("courseCode", params.courseCode)).first();
+      if (existing) return existing._id;
+      return ctx.db.insert("courses", {
+        ...params, description: `${params.courseName} curriculum.`,
+        semester: 1, isPublished: true, assignmentWeight: 50, quizWeight: 50,
+        createdAt: now, updatedAt: now,
+      });
+    }
+
+    async function ensureEnrollment(studentUserId: Id<"users">, courseId: Id<"courses">) {
+      const enrollments = await ctx.db
+        .query("enrollments").withIndex("by_student", (q) => q.eq("studentUserId", studentUserId)).collect();
+      if (enrollments.some((e) => e.courseId === courseId)) return;
+      const appId = await ctx.db.insert("enrollmentApplications", {
+        studentUserId, selectedCourseIds: [courseId], status: "approved", paymentStatus: "paid",
+        notes: "Seeded by seedAllSubjectsAndTimetable.", createdAt: now, updatedAt: now,
+      });
+      await ctx.db.insert("enrollments", {
+        studentUserId, courseId, applicationId: appId, enrolledAt: now, status: "active",
+      });
+    }
+
+    async function upsertTimetableSlot(params: {
+      courseId: Id<"courses">; dayOfWeek: number; startHour: number; startMinute: number;
+      durationMinutes: number; deliveryMode: "online" | "in_person";
+      venue?: string; meetingUrl?: string;
+    }) {
+      // Avoid duplicates (same course + day + start time)
+      const existing = await ctx.db
+        .query("timetable").withIndex("by_course", (q) => q.eq("courseId", params.courseId))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("dayOfWeek"), params.dayOfWeek),
+            q.eq(q.field("startHour"), params.startHour),
+            q.eq(q.field("startMinute"), params.startMinute),
+          ),
+        ).first();
+      if (existing) return;
+      await ctx.db.insert("timetable", { ...params, isActive: true, createdAt: now });
+    }
+
+    // ── teachers for new subjects ─────────────────────────────────────────
+    const scienceTeacherId = await upsertUser({
+      email: "seed+science.teacher@learnmanage.dev",
+      fullName: "Dr. Nomsa Dlamini", firstName: "Nomsa", lastName: "Dlamini", role: "teacher",
+    });
+    const humanitiesTeacherId = await upsertUser({
+      email: "seed+humanities.teacher@learnmanage.dev",
+      fullName: "Mr. Thabo Zulu", firstName: "Thabo", lastName: "Zulu", role: "teacher",
+    });
+    const commerceTeacherId = await upsertUser({
+      email: "seed+commerce.teacher@learnmanage.dev",
+      fullName: "Ms. Zanele Mthembu", firstName: "Zanele", lastName: "Mthembu", role: "teacher",
+    });
+    const lifeSkillsTeacherId = await upsertUser({
+      email: "seed+lifeskills.teacher@learnmanage.dev",
+      fullName: "Ms. Patricia Nkosi", firstName: "Patricia", lastName: "Nkosi", role: "teacher",
+    });
+    const scienceProfileId   = await upsertTeacherProfile(scienceTeacherId,    "EMP-SCI-001");
+    const humanitiesProfileId = await upsertTeacherProfile(humanitiesTeacherId, "EMP-HUM-001");
+    const commerceProfileId  = await upsertTeacherProfile(commerceTeacherId,   "EMP-COM-001");
+    const lifeSkillsProfileId = await upsertTeacherProfile(lifeSkillsTeacherId, "EMP-LO-001");
+
+    const GRADES = ["8", "9", "10", "11", "12"];
+
+    // ── subject definitions per phase ────────────────────────────────────
+    type SubjectDef = { code: string; name: string; dept: string; profileId: Id<"teacherProfiles"> };
+
+    const seniorSubjects = (n: string): SubjectDef[] => [
+      { code: `FAL-G${n}`,  name: `Afrikaans First Additional Language Grade ${n}`,  dept: "Languages",   profileId: lifeSkillsProfileId },
+      { code: `NS-G${n}`,   name: `Natural Sciences Grade ${n}`,                      dept: "Sciences",    profileId: scienceProfileId },
+      { code: `SS-G${n}`,   name: `Social Sciences Grade ${n}`,                       dept: "Humanities",  profileId: humanitiesProfileId },
+      { code: `TECH-G${n}`, name: `Technology Grade ${n}`,                            dept: "Technology",  profileId: scienceProfileId },
+      { code: `EMS-G${n}`,  name: `Economic and Management Sciences Grade ${n}`,      dept: "Commerce",    profileId: commerceProfileId },
+      { code: `LO-G${n}`,   name: `Life Orientation Grade ${n}`,                      dept: "Life Skills", profileId: lifeSkillsProfileId },
+      { code: `CA-G${n}`,   name: `Creative Arts Grade ${n}`,                         dept: "Arts",        profileId: lifeSkillsProfileId },
+    ];
+
+    const fetSubjects = (n: string): SubjectDef[] => [
+      { code: `FAL-G${n}`,  name: `Afrikaans First Additional Language Grade ${n}`, dept: "Languages",    profileId: lifeSkillsProfileId },
+      { code: `LO-G${n}`,   name: `Life Orientation Grade ${n}`,                   dept: "Life Skills",  profileId: lifeSkillsProfileId },
+      { code: `PS-G${n}`,   name: `Physical Sciences Grade ${n}`,                  dept: "Sciences",     profileId: scienceProfileId },
+      { code: `LS-G${n}`,   name: `Life Sciences Grade ${n}`,                      dept: "Sciences",     profileId: scienceProfileId },
+      { code: `ACC-G${n}`,  name: `Accounting Grade ${n}`,                         dept: "Commerce",     profileId: commerceProfileId },
+      { code: `BS-G${n}`,   name: `Business Studies Grade ${n}`,                   dept: "Commerce",     profileId: commerceProfileId },
+      { code: `ECO-G${n}`,  name: `Economics Grade ${n}`,                          dept: "Commerce",     profileId: commerceProfileId },
+      { code: `HIST-G${n}`, name: `History Grade ${n}`,                            dept: "Humanities",   profileId: humanitiesProfileId },
+      { code: `GEO-G${n}`,  name: `Geography Grade ${n}`,                          dept: "Humanities",   profileId: humanitiesProfileId },
+    ];
+
+    // ── create courses + enroll seeded students ───────────────────────────
+    // courseId map: code → id
+    const courseIds: Record<string, Id<"courses">> = {};
+
+    // Look up existing seeded students by email
+    async function getStudentId(email: string) {
+      const user = await ctx.db
+        .query("users").withIndex("by_email", (q) => q.eq("email", email)).first();
+      return user?._id ?? null;
+    }
+
+    const studentsByGrade: Record<string, (Id<"users"> | null)[]> = {
+      "8":  await Promise.all(["seed+g8.amahle@learnmanage.dev","seed+g8.lindo@learnmanage.dev","seed+g8.nomsa@learnmanage.dev","seed+g8.thabo@learnmanage.dev"].map(getStudentId)),
+      "9":  await Promise.all(["seed+g9.zanele@learnmanage.dev","seed+g9.mpho@learnmanage.dev","seed+g9.bongani@learnmanage.dev","seed+g9.siyanda@learnmanage.dev"].map(getStudentId)),
+      "10": await Promise.all(["seed+g10.lerato@learnmanage.dev","seed+g10.sipho@learnmanage.dev","seed+g10.nomvula@learnmanage.dev","seed+g10.ayanda@learnmanage.dev"].map(getStudentId)),
+      "11": await Promise.all(["seed+g11.khanya@learnmanage.dev","seed+g11.nandi@learnmanage.dev","seed+g11.thandeka@learnmanage.dev","seed+g11.sbusiso@learnmanage.dev"].map(getStudentId)),
+      "12": await Promise.all(["seed+g12.palesa@learnmanage.dev","seed+g12.siphamandla@learnmanage.dev","seed+g12.nokwanda@learnmanage.dev","seed+g12.lungelo@learnmanage.dev"].map(getStudentId)),
+    };
+
+    for (const n of GRADES) {
+      const subjects = n === "8" || n === "9" ? seniorSubjects(n) : fetSubjects(n);
+      for (const subj of subjects) {
+        const cid = await upsertCourse({ courseCode: subj.code, courseName: subj.name, department: subj.dept, teacherProfileId: subj.profileId });
+        courseIds[subj.code] = cid;
+
+        // Enroll all seeded students in this grade
+        for (const studentId of studentsByGrade[n] ?? []) {
+          if (studentId) await ensureEnrollment(studentId, cid);
+        }
+      }
+    }
+
+    // ── timetable slots ───────────────────────────────────────────────────
+    // P1=07:30, P2=08:30, P3=09:30, P4=11:00, P5=12:00, P6=13:40, P7=14:40
+    // Delivery: IP=in_person, OL=online
+    type RawSlot = {
+      code: string; day: number; h: number; m: number;
+      mode: "online" | "in_person"; venue?: string; url?: string;
+    };
+
+    const IP = (venue: string) => ({ mode: "in_person" as const, venue });
+    const OL = (url: string)   => ({ mode: "online"    as const, url });
+
+    // ── Grade 8/9 Senior Phase: no conflicts for any student (all take all 9) ──
+    const SENIOR_SLOTS: RawSlot[] = [
+      // MATH P1 daily (existing course, skip — already handled by seedTimetable)
+      // but we re-seed here for completeness (upsert deduplicates)
+      { code:"MATH", day:1, h:7,  m:30, ...IP("Maths Room 101") },
+      { code:"MATH", day:2, h:7,  m:30, ...IP("Maths Room 101") },
+      { code:"MATH", day:3, h:7,  m:30, ...OL("https://meet.google.com/math") },
+      { code:"MATH", day:4, h:7,  m:30, ...IP("Maths Room 101") },
+      { code:"MATH", day:5, h:7,  m:30, ...OL("https://meet.google.com/math") },
+      // ENG P2 daily
+      { code:"ENG",  day:1, h:8,  m:30, ...OL("https://meet.google.com/eng") },
+      { code:"ENG",  day:2, h:8,  m:30, ...IP("English Room B") },
+      { code:"ENG",  day:3, h:8,  m:30, ...OL("https://meet.google.com/eng") },
+      { code:"ENG",  day:4, h:8,  m:30, ...IP("English Room B") },
+      { code:"ENG",  day:5, h:8,  m:30, ...IP("English Room B") },
+      // FAL P3 daily
+      { code:"FAL",  day:1, h:9,  m:30, ...IP("Language Lab") },
+      { code:"FAL",  day:2, h:9,  m:30, ...OL("https://meet.google.com/fal") },
+      { code:"FAL",  day:3, h:9,  m:30, ...IP("Language Lab") },
+      { code:"FAL",  day:4, h:9,  m:30, ...OL("https://meet.google.com/fal") },
+      { code:"FAL",  day:5, h:9,  m:30, ...IP("Language Lab") },
+      // NS  P4 Mon/Wed/Fri
+      { code:"NS",   day:1, h:11, m:0,  ...IP("Science Lab") },
+      { code:"NS",   day:3, h:11, m:0,  ...OL("https://meet.google.com/ns") },
+      { code:"NS",   day:5, h:11, m:0,  ...IP("Science Lab") },
+      // SS  P4 Tue/Thu + P5 Wed
+      { code:"SS",   day:2, h:11, m:0,  ...IP("Room 204") },
+      { code:"SS",   day:4, h:11, m:0,  ...IP("Room 204") },
+      { code:"SS",   day:3, h:12, m:0,  ...OL("https://meet.google.com/ss") },
+      // TECH P5 Mon/Fri + P6 Thu
+      { code:"TECH", day:1, h:12, m:0,  ...IP("Tech Lab") },
+      { code:"TECH", day:5, h:12, m:0,  ...IP("Tech Lab") },
+      { code:"TECH", day:4, h:13, m:40, ...OL("https://meet.google.com/tech") },
+      // EMS  P5 Tue/Thu + P6 Fri
+      { code:"EMS",  day:2, h:12, m:0,  ...OL("https://meet.google.com/ems") },
+      { code:"EMS",  day:4, h:12, m:0,  ...IP("Room 206") },
+      { code:"EMS",  day:5, h:13, m:40, ...OL("https://meet.google.com/ems") },
+      // CA   P6 Tue/Wed
+      { code:"CA",   day:2, h:13, m:40, ...IP("Arts Room") },
+      { code:"CA",   day:3, h:13, m:40, ...OL("https://meet.google.com/ca") },
+      // LO   P7 Mon + P7 Wed
+      { code:"LO",   day:1, h:14, m:40, ...IP("Main Hall") },
+      { code:"LO",   day:3, h:14, m:40, ...OL("https://meet.google.com/lo") },
+    ];
+
+    // ── Grade 10-12 FET Phase ────────────────────────────────────────────────
+    // Core runs at same periods as Senior Phase.
+    // Electives are scheduled in P4-P7; parallel slots are normal school practice.
+    // Students only see subjects they're enrolled in.
+    const FET_SLOTS: RawSlot[] = [
+      // MATH P1 daily
+      { code:"MATH", day:1, h:7,  m:30, ...IP("Maths Room 101") },
+      { code:"MATH", day:2, h:7,  m:30, ...IP("Maths Room 101") },
+      { code:"MATH", day:3, h:7,  m:30, ...OL("https://meet.google.com/math") },
+      { code:"MATH", day:4, h:7,  m:30, ...IP("Maths Room 101") },
+      { code:"MATH", day:5, h:7,  m:30, ...OL("https://meet.google.com/math") },
+      // ENG P2 daily
+      { code:"ENG",  day:1, h:8,  m:30, ...OL("https://meet.google.com/eng") },
+      { code:"ENG",  day:2, h:8,  m:30, ...IP("English Room B") },
+      { code:"ENG",  day:3, h:8,  m:30, ...OL("https://meet.google.com/eng") },
+      { code:"ENG",  day:4, h:8,  m:30, ...IP("English Room B") },
+      { code:"ENG",  day:5, h:8,  m:30, ...IP("English Room B") },
+      // FAL P3 daily
+      { code:"FAL",  day:1, h:9,  m:30, ...IP("Language Lab") },
+      { code:"FAL",  day:2, h:9,  m:30, ...OL("https://meet.google.com/fal") },
+      { code:"FAL",  day:3, h:9,  m:30, ...IP("Language Lab") },
+      { code:"FAL",  day:4, h:9,  m:30, ...OL("https://meet.google.com/fal") },
+      { code:"FAL",  day:5, h:9,  m:30, ...IP("Language Lab") },
+      // LO  P7 Tue/Thu (compulsory, 2×/week — no electives run Tue/Thu P7)
+      { code:"LO",   day:2, h:14, m:40, ...IP("Main Hall") },
+      { code:"LO",   day:4, h:14, m:40, ...OL("https://meet.google.com/lo") },
+      // SCIENCES (P4): PS Mon/Wed/Fri, LS Tue/Thu + Wed P5
+      { code:"PS",   day:1, h:11, m:0,  ...IP("Physics Lab") },
+      { code:"PS",   day:3, h:11, m:0,  ...OL("https://meet.google.com/ps") },
+      { code:"PS",   day:5, h:11, m:0,  ...IP("Physics Lab") },
+      { code:"LS",   day:2, h:11, m:0,  ...IP("Biology Lab") },
+      { code:"LS",   day:4, h:11, m:0,  ...OL("https://meet.google.com/ls") },
+      { code:"LS",   day:3, h:12, m:0,  ...IP("Biology Lab") },
+      // COMMERCE (P5): ACC Mon/Wed/Fri, BS Tue/Thu + Fri P6
+      { code:"ACC",  day:1, h:12, m:0,  ...IP("Room 301") },
+      { code:"ACC",  day:3, h:12, m:0,  ...OL("https://meet.google.com/acc") },
+      { code:"ACC",  day:5, h:12, m:0,  ...IP("Room 301") },
+      { code:"BS",   day:2, h:12, m:0,  ...OL("https://meet.google.com/bs") },
+      { code:"BS",   day:4, h:12, m:0,  ...IP("Room 302") },
+      { code:"BS",   day:5, h:13, m:40, ...IP("Room 302") },
+      // ECONOMICS: Mon/Tue/Thu P6
+      { code:"ECO",  day:1, h:13, m:40, ...OL("https://meet.google.com/eco") },
+      { code:"ECO",  day:2, h:13, m:40, ...IP("Room 303") },
+      { code:"ECO",  day:4, h:13, m:40, ...IP("Room 303") },
+      // HUMANITIES (P6/P7): HIST Mon/Wed/Fri P7, GEO Mon/Wed/Fri P6 (parallel with ECO; different students)
+      { code:"HIST", day:1, h:14, m:40, ...IP("Room 401") },
+      { code:"HIST", day:3, h:14, m:40, ...OL("https://meet.google.com/hist") },
+      { code:"HIST", day:5, h:14, m:40, ...IP("Room 401") },
+      { code:"GEO",  day:3, h:13, m:40, ...IP("Room 402") },
+      { code:"GEO",  day:4, h:13, m:40, ...OL("https://meet.google.com/geo") },
+      { code:"GEO",  day:5, h:14, m:40, ...OL("https://meet.google.com/geo") },
+    ];
+
+    // ── write timetable slots ─────────────────────────────────────────────
+    let timetableCreated = 0;
+    for (const n of GRADES) {
+      const rawSlots = n === "8" || n === "9" ? SENIOR_SLOTS : FET_SLOTS;
+      for (const slot of rawSlots) {
+        const codeWithGrade = `${slot.code}-G${n}`;
+        const courseId = courseIds[codeWithGrade] ??
+          (await ctx.db.query("courses")
+            .withIndex("by_course_code", (q) => q.eq("courseCode", codeWithGrade)).first())?._id;
+        if (!courseId) continue;
+        await upsertTimetableSlot({
+          courseId,
+          dayOfWeek: slot.day,
+          startHour: slot.h,
+          startMinute: slot.m,
+          durationMinutes: 50,
+          deliveryMode: slot.mode,
+          venue: slot.venue,
+          meetingUrl: slot.url,
+        });
+        timetableCreated++;
+      }
+    }
+
+    return { coursesCreated: Object.keys(courseIds).length, timetableCreated };
+  },
+});
