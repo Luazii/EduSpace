@@ -1786,3 +1786,62 @@ export const linkByEmail = mutation({
   },
 });
 
+export const seedTerm1Reports = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("role"), "admin"))
+      .first();
+    const adminId = admin?._id;
+
+    const enrollments = await ctx.db
+      .query("enrollments")
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+    
+    let count = 0;
+
+    for (const e of enrollments) {
+      const existing = await ctx.db
+        .query("finalMarks")
+        .withIndex("by_course_and_student", (q) =>
+          q.eq("courseId", e.courseId).eq("studentUserId", e.studentUserId)
+        )
+        .first();
+
+      // Generate a believable mark between 50 and 95
+      const mark = Math.floor(Math.random() * 46) + 50;
+
+      if (existing) {
+        await ctx.db.patch(existing._id, {
+          computedFinalMark: mark,
+          overrideMark: mark,
+          status: "published",
+          notes: "Term 1 Final Report - System Generated",
+          publishedAt: Date.now(),
+          publishedByUserId: adminId,
+          updatedAt: Date.now(),
+        });
+      } else {
+        await ctx.db.insert("finalMarks", {
+          courseId: e.courseId,
+          studentUserId: e.studentUserId,
+          computedAssignmentPercent: mark,
+          computedQuizPercent: mark,
+          computedFinalMark: mark,
+          overrideMark: mark,
+          notes: "Term 1 Final Report - System Generated",
+          status: "published",
+          updatedAt: Date.now(),
+          publishedAt: Date.now(),
+          publishedByUserId: adminId,
+        });
+      }
+      count++;
+    }
+
+    return { message: `✅ Successfully seeded Term 1 reports for ${count} enrollments.` };
+  },
+});
+
