@@ -353,8 +353,8 @@ export const getStudentFullReport = query({
           )
           .first();
 
-        // Parents only see published marks
-        const showFinal = isTeacherOrAdmin || isSelf || finalMark?.status === "published";
+        // Parents and students can see current progress
+        const showFinal = true;
 
         return {
           courseId: course._id,
