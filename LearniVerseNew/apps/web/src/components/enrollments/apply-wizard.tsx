@@ -80,30 +80,40 @@ const SA_SUBJECTS: Record<string, string[]> = {
   ],
 };
 
-const SENIOR_PHASE_SUBJECTS: Record<string, string[]> = {
-  "Languages": [
-    "English Home Language",
-    "Afrikaans Home Language",
-    "IsiZulu Home Language",
-    "English First Additional Language",
-    "Afrikaans First Additional Language",
-  ],
-  "Mathematics & Science": [
-    "Mathematics",
-    "Natural Sciences",
-  ],
-  "Humanities & Arts": [
-    "Social Sciences",
-    "Life Orientation",
-    "Creative Arts",
-  ],
-  "Other": [
-    "Economic and Management Sciences (EMS)",
-    "Technology",
-    "Information Technology (IT)",
-    "Agricultural Sciences",
-  ],
-};
+// ── Grade 8 & 9 (Senior Phase) — all subjects compulsory per SA CAPS ─────────
+const SENIOR_PHASE_COMPULSORY = [
+  "Mathematics",
+  "Natural Sciences",
+  "Social Sciences",
+  "Technology",
+  "Economic and Management Sciences (EMS)",
+  "Life Orientation",
+  "Creative Arts",
+];
+
+const SENIOR_PHASE_HOME_LANGUAGES = [
+  "English Home Language",
+  "Afrikaans Home Language",
+  "IsiZulu Home Language",
+  "IsiXhosa Home Language",
+  "Sesotho sa Leboa (Sepedi) Home Language",
+  "Setswana Home Language",
+  "Sesotho Home Language",
+  "Xitsonga Home Language",
+  "siSwati Home Language",
+  "Tshivenda Home Language",
+  "isiNdebele Home Language",
+];
+
+const SENIOR_PHASE_FAL = [
+  "English First Additional Language",
+  "Afrikaans First Additional Language",
+  "IsiZulu First Additional Language",
+  "IsiXhosa First Additional Language",
+  "Sesotho First Additional Language",
+  "Setswana First Additional Language",
+  "Xitsonga First Additional Language",
+];
 
 // ── Document config ───────────────────────────────────────────────────────────
 type DocKey = "birthCert" | "parentId" | "proofOfResidence" | "schoolReport" | "transferLetter";
@@ -137,12 +147,40 @@ export function ApplyWizard() {
   const [dob, setDob] = useState("");
   const [phone, setPhone] = useState(""); // parent contact
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [homeLanguage, setHomeLanguage] = useState("");
+  const [firstAdditionalLanguage, setFirstAdditionalLanguage] = useState("");
   const [currentMarks, setCurrentMarks] = useState<Record<string, string>>({});
   const [docs, setDocs] = useState<DocState>({ birthCert: null, parentId: null, proofOfResidence: null, schoolReport: null, transferLetter: null });
   const [notes, setNotes] = useState("");
 
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isSeniorPhase = gradeLabel === "Grade 8" || gradeLabel === "Grade 9";
+
+  function buildSeniorPhaseSubjects(hl: string, fal: string) {
+    return [...SENIOR_PHASE_COMPULSORY, ...(hl ? [hl] : []), ...(fal ? [fal] : [])];
+  }
+
+  function handleGradeSelect(grade: string) {
+    setGradeLabel(grade);
+    setSelectedSubjects([]);
+    setHomeLanguage("");
+    setFirstAdditionalLanguage("");
+    if (grade === "Grade 8" || grade === "Grade 9") {
+      setSelectedSubjects(SENIOR_PHASE_COMPULSORY);
+    }
+  }
+
+  function handleHomeLanguageChange(lang: string) {
+    setHomeLanguage(lang);
+    setSelectedSubjects(buildSeniorPhaseSubjects(lang, firstAdditionalLanguage));
+  }
+
+  function handleFALChange(lang: string) {
+    setFirstAdditionalLanguage(lang);
+    setSelectedSubjects(buildSeniorPhaseSubjects(homeLanguage, lang));
+  }
 
   function toggleSubject(name: string) {
     setSelectedSubjects((cur) =>
@@ -248,7 +286,7 @@ export function ApplyWizard() {
                   <button
                     key={grade}
                     type="button"
-                    onClick={() => { setGradeLabel(grade); setSelectedSubjects([]); }}
+                    onClick={() => handleGradeSelect(grade)}
                     className={`rounded-3xl border-2 p-5 text-center transition-all ${
                       gradeLabel === grade
                         ? "border-sky-500 bg-sky-50 ring-4 ring-sky-500/10"
@@ -329,48 +367,133 @@ export function ApplyWizard() {
 
           {/* ── Step 3: Subject Selection ── */}
           {step === 3 && (
-            <div className="grid gap-5">
+            <div className="grid gap-6">
               <div>
                 <p className="text-sm font-bold text-slate-900">
-                  Select your subjects for {gradeLabel || "this grade"}
+                  Subjects for {gradeLabel || "this grade"}
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Learners typically take 7 subjects. Life Orientation is compulsory. Select at least one Home Language and one Mathematics option.
-                  <span className="ml-2 font-bold text-sky-600">{selectedSubjects.length} selected</span>
-                </p>
+                {isSeniorPhase ? (
+                  <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                    Grade 8 and 9 follow the <span className="font-bold text-slate-700">South African CAPS Senior Phase</span> curriculum. All 9 subjects are compulsory — no electives. Select your language variants below.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-400">
+                    Learners typically take 7 subjects. Life Orientation is compulsory. Select at least one Home Language and one Mathematics option.
+                    <span className="ml-2 font-bold text-sky-600">{selectedSubjects.length} selected</span>
+                  </p>
+                )}
               </div>
 
-              <div className="grid gap-5">
-                {Object.entries(gradeLabel === "Grade 8" || gradeLabel === "Grade 9" ? SENIOR_PHASE_SUBJECTS : SA_SUBJECTS).map(([category, subjects]) => (
-                  <div key={category}>
-                    <p className="mb-2 text-xs font-black uppercase tracking-widest text-slate-400">{category}</p>
+              {isSeniorPhase ? (
+                <div className="grid gap-6">
+                  {/* Language choices */}
+                  <div className="rounded-3xl border-2 border-sky-100 bg-sky-50/50 p-6 grid gap-5">
+                    <p className="text-xs font-black uppercase tracking-widest text-sky-600">Language Selection (required)</p>
+
+                    <label className="grid gap-2 text-sm font-bold text-slate-900">
+                      Home Language <span className="text-rose-500">*</span>
+                      <select
+                        value={homeLanguage}
+                        onChange={(e) => handleHomeLanguageChange(e.target.value)}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 appearance-none"
+                      >
+                        <option value="">Select home language…</option>
+                        {SENIOR_PHASE_HOME_LANGUAGES.map((lang) => (
+                          <option key={lang} value={lang}>{lang}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="grid gap-2 text-sm font-bold text-slate-900">
+                      First Additional Language <span className="text-rose-500">*</span>
+                      <select
+                        value={firstAdditionalLanguage}
+                        onChange={(e) => handleFALChange(e.target.value)}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10 appearance-none"
+                      >
+                        <option value="">Select first additional language…</option>
+                        {SENIOR_PHASE_FAL.filter((l) => l !== homeLanguage.replace("Home Language", "First Additional Language")).map((lang) => (
+                          <option key={lang} value={lang}>{lang}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  {/* Locked compulsory subjects */}
+                  <div>
+                    <p className="mb-3 text-xs font-black uppercase tracking-widest text-slate-400">Compulsory Subjects (all automatically included)</p>
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {subjects.map((subject) => {
-                        const active = selectedSubjects.includes(subject);
-                        return (
-                          <button
-                            key={subject}
-                            type="button"
-                            onClick={() => toggleSubject(subject)}
-                            className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition-all ${
-                              active
-                                ? "border-sky-500 bg-sky-50 ring-2 ring-sky-500/10 font-bold text-sky-900"
-                                : "border-slate-100 bg-slate-50/50 text-slate-600 hover:border-slate-200 hover:bg-white"
-                            }`}
-                          >
-                            <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] transition ${
-                              active ? "border-sky-500 bg-sky-500 text-white" : "border-slate-300"
-                            }`}>
-                              {active ? "✓" : ""}
-                            </span>
-                            {subject}
-                          </button>
-                        );
-                      })}
+                      {SENIOR_PHASE_COMPULSORY.map((subject) => (
+                        <div
+                          key={subject}
+                          className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 px-4 py-3 text-sm font-bold text-emerald-800"
+                        >
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-500 text-[10px] text-white">✓</span>
+                          {subject}
+                          <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-emerald-500">Compulsory</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  {/* Selected language preview */}
+                  {(homeLanguage || firstAdditionalLanguage) && (
+                    <div>
+                      <p className="mb-3 text-xs font-black uppercase tracking-widest text-slate-400">Your Language Choices</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {homeLanguage && (
+                          <div className="flex items-center gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-sky-500 text-[10px] text-white">✓</span>
+                            {homeLanguage}
+                          </div>
+                        )}
+                        {firstAdditionalLanguage && (
+                          <div className="flex items-center gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-bold text-sky-800">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-sky-500 text-[10px] text-white">✓</span>
+                            {firstAdditionalLanguage}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+                    <span className="font-black">Total: {selectedSubjects.length} subjects</span> — {SENIOR_PHASE_COMPULSORY.length} compulsory + {homeLanguage ? 1 : 0} home language + {firstAdditionalLanguage ? 1 : 0} additional language
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-5">
+                  {Object.entries(SA_SUBJECTS).map(([category, subjects]) => (
+                    <div key={category}>
+                      <p className="mb-2 text-xs font-black uppercase tracking-widest text-slate-400">{category}</p>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {subjects.map((subject) => {
+                          const active = selectedSubjects.includes(subject);
+                          return (
+                            <button
+                              key={subject}
+                              type="button"
+                              onClick={() => toggleSubject(subject)}
+                              className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition-all ${
+                                active
+                                  ? "border-sky-500 bg-sky-50 ring-2 ring-sky-500/10 font-bold text-sky-900"
+                                  : "border-slate-100 bg-slate-50/50 text-slate-600 hover:border-slate-200 hover:bg-white"
+                              }`}
+                            >
+                              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border text-[10px] transition ${
+                                active ? "border-sky-500 bg-sky-500 text-white" : "border-slate-300"
+                              }`}>
+                                {active ? "✓" : ""}
+                              </span>
+                              {subject}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -508,7 +631,12 @@ export function ApplyWizard() {
 
             {step < 5 ? (
               <button type="button" onClick={() => setStep((s) => s + 1)}
-                disabled={(step === 1 && !gradeLabel) || (step === 2 && !studentEmail.trim()) || (step === 3 && selectedSubjects.length === 0)}
+                disabled={
+                  (step === 1 && !gradeLabel) ||
+                  (step === 2 && !studentEmail.trim()) ||
+                  (step === 3 && isSeniorPhase && (!homeLanguage || !firstAdditionalLanguage)) ||
+                  (step === 3 && !isSeniorPhase && selectedSubjects.length === 0)
+                }
                 className="rounded-2xl bg-slate-950 px-9 py-3.5 text-sm font-bold text-white shadow-xl shadow-slate-950/20 hover:bg-slate-800 transition disabled:opacity-40">
                 Next
               </button>
