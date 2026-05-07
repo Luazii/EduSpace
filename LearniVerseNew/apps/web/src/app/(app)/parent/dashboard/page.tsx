@@ -16,12 +16,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { useState } from "react";
 
 export default function ParentDashboard() {
   const currentUser = useQuery(api.users.current);
-  const links = useQuery(api.parentServices.listLinkedStudents, { 
-    parentId: currentUser?._id as any 
-  });
+  const links = useQuery(
+    api.parentServices.listLinkedStudents,
+    currentUser ? { parentId: currentUser._id as any } : "skip"
+  );
   const announcements = useQuery(api.parentServices.listAnnouncements, { role: "parent" });
   const meetings = useQuery(api.meetings.listMyMeetings) ?? [];
   const confirmMeeting = useMutation(api.meetings.confirmAttendance);
@@ -202,7 +204,7 @@ function StudentCard({ link }: { link: any }) {
 }
 
 function BehaviourWidget({ studentId }: { studentId: string }) {
-  const [expanded, setExpanded] = import("react").then(m => m.useState(false)).catch(() => [false, () => {}]) as any;
+  const [expanded, setExpanded] = useState(false);
   const summary = useQuery(api.behaviour.summaryForStudent, { studentUserId: studentId as any });
   const records = useQuery(api.behaviour.listForStudent, { studentUserId: studentId as any, limit: 20 });
 
