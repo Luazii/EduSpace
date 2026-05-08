@@ -29,7 +29,7 @@ const TYPE_CONFIG: Record<EventType, { color: string; dot: string; icon: React.E
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [view, setView] = useState<"month" | "list">("month");
+  const [view, setView] = useState<"month" | "list" | "timetable">("month");
 
   const from = startOfMonth(subMonths(currentMonth, 1)).getTime();
   const to = endOfMonth(addMonths(currentMonth, 1)).getTime();
@@ -63,6 +63,33 @@ export default function CalendarPage() {
     return events.filter((e) => e.date >= now && e.date <= cutoff).slice(0, 20);
   }, [events]);
 
+  // Extract unique recurring timetable events mapped by day of week
+  const timetableClasses = useMemo(() => {
+    const unique = new Map<string, typeof events[0]>();
+    for (const e of events) {
+      if (e.id.startsWith("timetable-")) {
+        const slotId = e.id.split("-")[1];
+        if (!unique.has(slotId)) unique.set(slotId, e);
+      }
+    }
+    const classes = Array.from(unique.values());
+    const byDay: Record<number, typeof classes> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+    
+    for (const c of classes) {
+      const day = new Date(c.date).getDay(); // 0 is Sun, 1 is Mon
+      if (day >= 1 && day <= 5) byDay[day].push(c);
+    }
+    
+    for (let day = 1; day <= 5; day++) {
+      byDay[day].sort((a, b) => {
+        const d1 = new Date(a.date);
+        const d2 = new Date(b.date);
+        return (d1.getHours() * 60 + d1.getMinutes()) - (d2.getHours() * 60 + d2.getMinutes());
+      });
+    }
+    return byDay;
+  }, [events]);
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-6 py-14 sm:px-10">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
@@ -72,13 +99,13 @@ export default function CalendarPage() {
           <p className="mt-2 text-sm text-slate-500">Assignments, quizzes, classes and meetings in one place.</p>
         </div>
         <div className="flex items-center gap-2">
-          {(["month", "list"] as const).map((v) => (
+          {(["month", "list", "timetable"] as const).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
               className={`rounded-2xl px-4 py-2 text-xs font-bold transition ${view === v ? "bg-slate-950 text-white" : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
             >
-              {v === "month" ? "Month view" : "Upcoming"}
+              {v === "month" ? "Month view" : v === "list" ? "Upcoming" : "Class Timetable"}
             </button>
           ))}
         </div>
@@ -94,7 +121,30 @@ export default function CalendarPage() {
         ))}
       </div>
 
-      {view === "month" ? (
+    {view === "timetable" ? (
+        <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+            {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((dayName, idx) => {
+              const dayIndex = idx + 1;
+              const classes = timetableClasses[dayIndex] ?? [];
+              return (
+                <div key={dayName} className="flex flex-col md:min-h-[600px]">
+                  <div className="border-b border-slate-100 bg-slate-50 p-4 text-center text-xs font-black uppercase tracking-widest text-slate-700">
+                    {dayName}
+                  </div>
+                  <div className="flex-1 bg-white p-4 space-y-3">
+                    {classes.length === 0 ? (
+                      <p className="mt-4 text-center text-xs font-bold text-slate-300">No classes</p>
+                    ) : (
+                      classes.map(c => <EventCard key={c.id} event={c} />)
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : view === "month" ? (
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           {/* Calendar grid */}
           <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
