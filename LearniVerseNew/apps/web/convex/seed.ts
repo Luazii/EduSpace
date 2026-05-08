@@ -13,9 +13,9 @@
  *
  * TEST CREDENTIALS  (Gmail aliases — all land in your real inbox)
  * ────────────────────────────────────────────────────────────────
- *   Teacher  → lgumbi2169+teacher@gmail.com   / TeachPass@2025!
- *   Student  → lgumbi2169+student@gmail.com   / StudyPass@2025!
- *   Parent   → lgumbi2169+parent@gmail.com    / ParentPass@2025!
+ *   Teacher  → teacher1@learnmanage.dev   / TeachPass@2025!
+ *   Student  → student1@learnmanage.dev   / StudyPass@2025!
+ *   Parent   → parent1@learnmanage.dev    / ParentPass@2025!
  *
  * Roles are bootstrapped automatically by email on Clerk signup
  * (see BOOTSTRAP_* sets in users.ts).
@@ -64,7 +64,7 @@ export const seedTestUsers = mutation({
     }
 
     const teacherId = await upsertUser({
-      email: "lgumbi2169+teacher@gmail.com",
+      email: "teacher1@learnmanage.dev",
       fullName: "Alex Dlamini",
       firstName: "Alex",
       lastName: "Dlamini",
@@ -72,15 +72,15 @@ export const seedTestUsers = mutation({
     });
 
     const studentId = await upsertUser({
-      email: "lgumbi2169+student@gmail.com",
-      fullName: "Lwazi Mokoena",
-      firstName: "Lwazi",
+      email: "student1@learnmanage.dev",
+      fullName: "Test Student",
+      firstName: "Test",
       lastName: "Mokoena",
       role: "student",
     });
 
     const parentId = await upsertUser({
-      email: "lgumbi2169+parent@gmail.com",
+      email: "parent1@learnmanage.dev",
       fullName: "Bongiwe Mokoena",
       firstName: "Bongiwe",
       lastName: "Mokoena",
@@ -208,24 +208,24 @@ export const seedTestUsers = mutation({
       message: "✅ Seed complete",
       credentials: {
         teacher: {
-          email: "lgumbi2169+teacher@gmail.com",
+          email: "teacher1@learnmanage.dev",
           password: "TeachPass@2025!",
           role: "teacher",
           name: "Alex Dlamini",
         },
         student: {
-          email: "lgumbi2169+student@gmail.com",
+          email: "student1@learnmanage.dev",
           password: "StudyPass@2025!",
           role: "student",
-          name: "Lwazi Mokoena",
+          name: "Test Student",
           enrolledIn: course.courseName,
         },
         parent: {
-          email: "lgumbi2169+parent@gmail.com",
+          email: "parent1@learnmanage.dev",
           password: "ParentPass@2025!",
           role: "parent",
           name: "Bongiwe Mokoena",
-          linkedTo: "Lwazi Mokoena (student)",
+          linkedTo: "Test Student (student)",
         },
       },
       ids: {
@@ -765,7 +765,7 @@ export const seedAcademicData = mutation({
 
 /**
  * Reassigns the Grade 8 and Grade 9 English + Maths courses to the
- * lgumbi2169+teacher@gmail.com account (Alex Dlamini).
+ * teacher1@learnmanage.dev account (Alex Dlamini).
  * Creates a teacher profile for that account if one doesn't exist yet.
  * Safe to run multiple times.
  */
@@ -776,11 +776,11 @@ export const assignAlexToGrade8And9 = mutation({
 
     const teacher = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", "lgumbi2169+teacher@gmail.com"))
+      .withIndex("by_email", (q) => q.eq("email", "teacher1@learnmanage.dev"))
       .first();
 
     if (!teacher) {
-      throw new Error("Teacher account lgumbi2169+teacher@gmail.com not found. Run seedTestUsers first.");
+      throw new Error("Teacher account teacher1@learnmanage.dev not found. Run seedTestUsers first.");
     }
 
     let profile = await ctx.db
@@ -946,7 +946,7 @@ export const seedDemoQuizzes = mutation({
 
     const teacher = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", "lgumbi2169+teacher@gmail.com"))
+      .withIndex("by_email", (q) => q.eq("email", "teacher1@learnmanage.dev"))
       .first();
     if (!teacher) throw new Error("Run seedTestUsers first.");
 
@@ -1062,9 +1062,9 @@ export const seedOutlookStudent = mutation({
       studentId = await ctx.db.insert("users", {
         clerkUserId: `seed_student_${EMAIL.replace(/[^a-z0-9]/gi, "_")}`,
         email: EMAIL,
-        firstName: "Lwazi",
+        firstName: "Test",
         lastName: "Student",
-        fullName: "Lwazi Student",
+        fullName: "Test Student",
         role: "student",
         isActive: true,
         createdAt: now,
@@ -1684,7 +1684,7 @@ export const seedBehaviourRecords = mutation({
 
     const teacher = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", "lgumbi2169+teacher@gmail.com"))
+      .withIndex("by_email", (q) => q.eq("email", "teacher1@learnmanage.dev"))
       .first();
 
     if (!teacher) {

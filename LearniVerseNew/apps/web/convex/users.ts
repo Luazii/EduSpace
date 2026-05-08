@@ -2,15 +2,15 @@ import { v } from "convex/values";
 
 import { mutation, query } from "./_generated/server";
 
-const BOOTSTRAP_ADMIN_EMAILS = new Set<string>(["lgumbi2169@gmail.com", "faxqiniso@gmail.com", "empresssolutions101@gmail.com"]);
+const BOOTSTRAP_ADMIN_EMAILS = new Set<string>(["admin1@learnmanage.dev", "faxqiniso@gmail.com", "empresssolutions101@gmail.com"]);
 // ── Replace the +teacher / +parent addresses with your real Gmail aliases ──
 const BOOTSTRAP_TEACHER_EMAILS = new Set<string>([
-  "lgumbi2169@gmail.com",
-  "lgumbi2169+teacher@gmail.com",
+  "admin1@learnmanage.dev",
+  "teacher1@learnmanage.dev",
   "sitholeandries89@gmail.com",
 ]);
 const BOOTSTRAP_PARENT_EMAILS = new Set<string>([
-  "lgumbi2169+parent@gmail.com",
+  "parent1@learnmanage.dev",
   "njabulomorris0@gmail.com",
   "intradelis@gmail.com",
 ]);

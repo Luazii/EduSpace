@@ -70,7 +70,7 @@ export const removeProfile = mutation({
 // ── Seed: Assign teachers to Maths, Physics & Sciences across all grades ──
 const TEACHER_EMAILS = [
   "sitholeandries89@gmail.com",
-  "lgumbi2169+teacher@gmail.com",
+  "teacher1@learnmanage.dev",
 ];
 const SUBJECT_NAMES = ["Mathematics", "Physical Sciences", "Life Sciences"];
 
