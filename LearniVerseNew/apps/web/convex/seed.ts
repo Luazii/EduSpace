@@ -1890,3 +1890,39 @@ export const seedAttendance = mutation({
     return { success: true, count };
   }
 });
+
+
+export const fixStudents = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const parent = await ctx.db.query('users').withIndex('by_email', q => q.eq('email', 'johnmabena23@gmail.com')).first();
+    if (!parent) throw new Error('Parent not found');
+
+    const studentsToFix = [
+      { email: 'siphokazimasuku281@gmail.com', grade: '8' },
+      { email: 'thomasmkhasibe10@gmail.com', grade: '10' }
+    ];
+
+    for (const s of studentsToFix) {
+      const student = await ctx.db.query('users').withIndex('by_email', q => q.eq('email', s.email)).first();
+      if (!student) { continue; }
+      
+      const existingLink = await ctx.db.query('parentStudentLinks').withIndex('by_parent', q => q.eq('parentId', parent._id)).filter(q => q.eq(q.field('studentId'), student._id)).first();
+      if (!existingLink) {
+        await ctx.db.insert('parentStudentLinks', { parentId: parent._id, studentId: student._id, createdAt: Date.now() });
+      }
+
+      const courses = await ctx.db.query('courses').filter(q => q.eq(q.field('isPublished'), true)).collect();
+      for (const course of courses) {
+        if (course.courseName.includes("Grade " + s.grade)) {
+          const isEnrolled = await ctx.db.query('enrollments').withIndex('by_student', q => q.eq('studentUserId', student._id)).filter(q => q.eq(q.field('courseId'), course._id)).first();
+          if (!isEnrolled) {
+            const fakeAppId = await ctx.db.insert('enrollmentApplications', { studentUserId: student._id, studentEmail: student.email, selectedCourseIds: [course._id], status: 'approved', paymentStatus: 'paid', createdAt: Date.now(), updatedAt: Date.now() });
+            await ctx.db.insert('enrollments', { studentUserId: student._id, courseId: course._id, applicationId: fakeAppId, enrolledAt: Date.now(), status: 'active' });
+          }
+        }
+      }
+    }
+    return { success: true };
+  }
+});
