@@ -1512,9 +1512,9 @@ export const seedAllSubjectsAndTimetable = mutation({
     }
 
     const studentsByGrade: Record<string, (Id<"users"> | null)[]> = {
-      "8":  await Promise.all(["seed+g8.amahle@learnmanage.dev","seed+g8.lindo@learnmanage.dev","seed+g8.nomsa@learnmanage.dev","seed+g8.thabo@learnmanage.dev"].map(getStudentId)),
+      "8":  await Promise.all(["seed+g8.amahle@learnmanage.dev","seed+g8.lindo@learnmanage.dev","seed+g8.nomsa@learnmanage.dev","seed+g8.thabo@learnmanage.dev", "siphokazimasuku281@gmail.com"].map(getStudentId)),
       "9":  await Promise.all(["seed+g9.zanele@learnmanage.dev","seed+g9.mpho@learnmanage.dev","seed+g9.bongani@learnmanage.dev","seed+g9.siyanda@learnmanage.dev"].map(getStudentId)),
-      "10": await Promise.all(["seed+g10.lerato@learnmanage.dev","seed+g10.sipho@learnmanage.dev","seed+g10.nomvula@learnmanage.dev","seed+g10.ayanda@learnmanage.dev"].map(getStudentId)),
+      "10": await Promise.all(["seed+g10.lerato@learnmanage.dev","seed+g10.sipho@learnmanage.dev","seed+g10.nomvula@learnmanage.dev","seed+g10.ayanda@learnmanage.dev", "thomasmkhasibe10@gmail.com"].map(getStudentId)),
       "11": await Promise.all(["seed+g11.khanya@learnmanage.dev","seed+g11.nandi@learnmanage.dev","seed+g11.thandeka@learnmanage.dev","seed+g11.sbusiso@learnmanage.dev"].map(getStudentId)),
       "12": await Promise.all(["seed+g12.palesa@learnmanage.dev","seed+g12.siphamandla@learnmanage.dev","seed+g12.nokwanda@learnmanage.dev","seed+g12.lungelo@learnmanage.dev"].map(getStudentId)),
     };
@@ -1696,9 +1696,10 @@ export const seedBehaviourRecords = mutation({
       .withIndex("by_role", (q) => q.eq("role", "student"))
       .collect();
 
-    // Filter to just grade 8 and 9 (using the emails we used in seedAcademicData)
+    // Filter to just grade 8 and 9 (using the emails we used in seedAcademicData) and our two specific students
     const targetStudents = students.filter((s) => 
-      s.email.includes("+g8.") || s.email.includes("+g9.")
+      s.email.includes("+g8.") || s.email.includes("+g9.") ||
+      s.email === "siphokazimasuku281@gmail.com" || s.email === "thomasmkhasibe10@gmail.com"
     );
 
     const meritCategories = ["Helpfulness", "Academic Excellence", "Leadership", "Sportsmanship", "Respect"];
