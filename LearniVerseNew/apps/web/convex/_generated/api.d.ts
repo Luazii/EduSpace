@@ -15,6 +15,7 @@ import type * as behaviour from "../behaviour.js";
 import type * as bookings from "../bookings.js";
 import type * as calendar from "../calendar.js";
 import type * as classes from "../classes.js";
+import type * as cleanup from "../cleanup.js";
 import type * as courses from "../courses.js";
 import type * as enrollments from "../enrollments.js";
 import type * as faculties from "../faculties.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   bookings: typeof bookings;
   calendar: typeof calendar;
   classes: typeof classes;
+  cleanup: typeof cleanup;
   courses: typeof courses;
   enrollments: typeof enrollments;
   faculties: typeof faculties;
