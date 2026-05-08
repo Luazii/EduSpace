@@ -1846,3 +1846,47 @@ export const seedTerm1Reports = mutation({
   },
 });
 
+export const seedAttendance = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const teachers = await ctx.db.query("users").withIndex("by_role", q => q.eq("role", "teacher")).collect();
+    if (teachers.length === 0) throw new Error("No teachers found");
+
+    const enrollments = await ctx.db.query("enrollments").filter(q => q.eq(q.field("status"), "active")).collect();
+    
+    let count = 0;
+    const now = Date.now();
+    const statuses: ("present" | "absent" | "late" | "excused")[] = [
+      "present", "present", "present", "present", "present", "present", "present", "present",
+      "absent", "late", "excused"
+    ];
+
+    for (const enrollment of enrollments) {
+      const course = await ctx.db.get(enrollment.courseId);
+      if (!course) continue;
+
+      let teacherId = teachers[0]._id;
+      if (course.teacherProfileId) {
+        const profile = await ctx.db.get(course.teacherProfileId);
+        if (profile) teacherId = profile.userId;
+      }
+
+      for (let i = 0; i < 10; i++) {
+        const sessionDate = now - (i + 1) * 24 * 60 * 60 * 1000;
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+        
+        await ctx.db.insert("attendance", {
+          courseId: course._id,
+          studentUserId: enrollment.studentUserId,
+          sessionDate,
+          status,
+          markedByUserId: teacherId,
+          markedAt: sessionDate + 3600000,
+          notes: status === "absent" ? "No sick note provided" : status === "late" ? "Arrived 15 minutes late" : undefined,
+        });
+        count++;
+      }
+    }
+    return { success: true, count };
+  }
+});
