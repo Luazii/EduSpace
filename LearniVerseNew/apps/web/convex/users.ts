@@ -8,11 +8,14 @@ const BOOTSTRAP_TEACHER_EMAILS = new Set<string>([
   "admin1@learnmanage.dev",
   "teacher1@learnmanage.dev",
   "sitholeandries89@gmail.com",
+  "omniteacher@learnmanage.dev",
+  "lgumbi2169+omni@gmail.com",
 ]);
 const BOOTSTRAP_PARENT_EMAILS = new Set<string>([
   "parent1@learnmanage.dev",
   "njabulomorris0@gmail.com",
   "intradelis@gmail.com",
+  "lgumbi2169@gmail.com",
 ]);
 
 export const current = query({

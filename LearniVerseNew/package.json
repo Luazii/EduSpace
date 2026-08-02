@@ -6,15 +6,21 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm --prefix apps/web run dev",
-    "dev:web": "npm --prefix apps/web run dev",
-    "build:web": "npm --prefix apps/web run build",
-    "lint:web": "npm --prefix apps/web run lint"
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=web",
+    "dev:mobile": "turbo run dev --filter=mobile",
+    "build": "turbo run build",
+    "build:web": "turbo run build --filter=web",
+    "lint": "turbo run lint",
+    "type-check": "turbo run type-check"
   },
   "dependencies": {
     "@swc/helpers": "^0.5.15"
   },
   "overrides": {
     "next": "~15.5.14"
+  },
+  "devDependencies": {
+    "turbo": "latest"
   }
 }
