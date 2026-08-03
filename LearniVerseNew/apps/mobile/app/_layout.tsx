@@ -1,3 +1,4 @@
+/// <reference types="nativewind/types" />
 import "../global.css";
 
 import { useEffect } from "react";
@@ -43,7 +44,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView className="flex-1">
+    {/* @ts-expect-error React 19 types issue */}
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <ClerkProvider
         publishableKey={CLERK_KEY}
         tokenCache={tokenCache}

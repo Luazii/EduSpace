@@ -1,5 +1,9 @@
 import * as SecureStore from "expo-secure-store";
-import type { TokenCache } from "@clerk/clerk-expo/dist/cache";
+export interface TokenCache {
+  getToken: (key: string) => Promise<string | undefined | null>;
+  saveToken: (key: string, value: string) => Promise<void>;
+  clearToken?: (key: string) => void;
+}
 
 /**
  * Persists Clerk JWT tokens in the device's secure keychain.
