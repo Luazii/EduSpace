@@ -44,28 +44,30 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   return (
-    {/* @ts-expect-error React 19 types issue */}
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ClerkProvider
-        publishableKey={CLERK_KEY}
-        tokenCache={tokenCache}
-      >
-        <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-          <AuthGate>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="(teacher)" />
-              <Stack.Screen name="(admin)" />
-              <Stack.Screen name="profile/index" options={{ presentation: "modal", headerShown: true, title: "Profile" }} />
-              <Stack.Screen name="notifications/index" options={{ presentation: "modal", headerShown: true, title: "Notifications" }} />
-              <Stack.Screen name="announcements/index" options={{ headerShown: true, title: "Announcements" }} />
-              <Stack.Screen name="payments/index" options={{ headerShown: true, title: "Payments" }} />
-            </Stack>
-          </AuthGate>
-        </ConvexProviderWithClerk>
-      </ClerkProvider>
-      <StatusBar style="auto" />
-    </GestureHandlerRootView>
+    <>
+      {/* @ts-expect-error React 19 types issue */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ClerkProvider
+          publishableKey={CLERK_KEY}
+          tokenCache={tokenCache}
+        >
+          <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+            <AuthGate>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="(teacher)" />
+                <Stack.Screen name="(admin)" />
+                <Stack.Screen name="profile/index" options={{ presentation: "modal", headerShown: true, title: "Profile" }} />
+                <Stack.Screen name="notifications/index" options={{ presentation: "modal", headerShown: true, title: "Notifications" }} />
+                <Stack.Screen name="announcements/index" options={{ headerShown: true, title: "Announcements" }} />
+                <Stack.Screen name="payments/index" options={{ headerShown: true, title: "Payments" }} />
+              </Stack>
+            </AuthGate>
+          </ConvexProviderWithClerk>
+        </ClerkProvider>
+        <StatusBar style="auto" />
+      </GestureHandlerRootView>
+    </>
   );
 }
