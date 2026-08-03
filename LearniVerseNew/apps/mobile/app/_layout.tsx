@@ -45,7 +45,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
   return (
     <>
-      {/* @ts-expect-error React 19 types issue */}
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ClerkProvider
           publishableKey={CLERK_KEY}
@@ -58,6 +57,7 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(teacher)" />
                 <Stack.Screen name="(admin)" />
+                <Stack.Screen name="(events)" />
                 <Stack.Screen name="(coach)" />
                 <Stack.Screen name="(driver)" />
                 <Stack.Screen name="(transport_admin)" />

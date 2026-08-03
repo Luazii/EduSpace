@@ -19,6 +19,7 @@ import type * as cleanup from "../cleanup.js";
 import type * as coach from "../coach.js";
 import type * as courses from "../courses.js";
 import type * as enrollments from "../enrollments.js";
+import type * as events from "../events.js";
 import type * as faculties from "../faculties.js";
 import type * as fees from "../fees.js";
 import type * as fixLowkii from "../fixLowkii.js";
@@ -72,6 +73,7 @@ declare const fullApi: ApiFromModules<{
   coach: typeof coach;
   courses: typeof courses;
   enrollments: typeof enrollments;
+  events: typeof events;
   faculties: typeof faculties;
   fees: typeof fees;
   fixLowkii: typeof fixLowkii;

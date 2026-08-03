@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { api } from "@/convex/_generated/api";
 import { Ionicons } from "@expo/vector-icons";
+// @ts-expect-error
 import { format } from "date-fns";
 import { Colors } from "@/constants/colors";
 
@@ -79,25 +80,25 @@ function StudentDashboard() {
               My Subjects
             </Text>
             <View className="gap-3 mb-6">
-              {(activeCourses ?? []).slice(0, 4).map((course) => (
+              {(activeCourses ?? []).filter(Boolean).slice(0, 4).map((course) => (
                 <TouchableOpacity
-                  key={course._id}
-                  onPress={() => router.push(`/(tabs)/courses/${course._id}`)}
+                  key={course!._id}
+                  onPress={() => router.push(`/(tabs)/courses/${course!._id}` as never)}
                   className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm"
                 >
                   <Text className="text-sky-700 text-[10px] font-black uppercase tracking-widest mb-1">
-                    {course.department ?? course.courseCode}
+                    {course!.department ?? course!.courseCode}
                   </Text>
-                  <Text className="text-slate-950 font-bold text-base">{course.courseName}</Text>
+                  <Text className="text-slate-950 font-bold text-base">{course!.courseName}</Text>
                   <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-slate-100">
                     <Text className="text-slate-400 text-xs">
-                      Enrolled {new Date(course.enrolledAt).toLocaleDateString()}
+                      Enrolled {new Date(course!.enrolledAt).toLocaleDateString()}
                     </Text>
                     <Ionicons name="chevron-forward" size={14} color={Colors.onSurfaceSubtle} />
                   </View>
                 </TouchableOpacity>
               ))}
-              {(activeCourses ?? []).length > 4 && (
+              {(activeCourses ?? []).filter(Boolean).length > 4 && (
                 <TouchableOpacity
                   onPress={() => router.push("/(tabs)/courses")}
                   className="bg-sky-50 rounded-3xl p-4 items-center"
@@ -111,7 +112,7 @@ function StudentDashboard() {
 
             <TouchableOpacity
               onPress={() => router.push("/transport")}
-              className="bg-emerald-600 rounded-3xl p-5 flex-row items-center gap-4 mb-6"
+              className="bg-emerald-600 rounded-3xl p-5 flex-row items-center gap-4 mb-4"
             >
               <View className="w-12 h-12 rounded-2xl bg-white/20 items-center justify-center">
                 <Ionicons name="bus-outline" size={22} color="white" />
@@ -120,6 +121,22 @@ function StudentDashboard() {
                 <Text className="text-white font-bold text-base">Transport Hub</Text>
                 <Text className="text-white/70 text-xs mt-0.5">
                   Book routes, track scans, and report incidents
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="white" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.push("/(events)/index")}
+              className="bg-rose-600 rounded-3xl p-5 flex-row items-center gap-4 mb-6"
+            >
+              <View className="w-12 h-12 rounded-2xl bg-white/20 items-center justify-center">
+                <Ionicons name="ticket-outline" size={22} color="white" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-white font-bold text-base">Events & Tickets</Text>
+                <Text className="text-white/70 text-xs mt-0.5">
+                  Discover upcoming events and get your digital tickets
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color="white" />
@@ -304,9 +321,9 @@ function AdminDashboard() {
         {stats && (
           <View className="flex-row gap-3 mb-6">
             {[
-              { label: "Students", value: stats.totalStudents ?? 0, color: "bg-sky-50", text: "text-sky-700" },
-              { label: "Courses", value: stats.totalCourses ?? 0, color: "bg-violet-50", text: "text-violet-700" },
-              { label: "Pending Apps", value: stats.pendingApplications ?? 0, color: "bg-amber-50", text: "text-amber-700" },
+              { label: "Students", value: stats.studentCount ?? 0, color: "bg-sky-50", text: "text-sky-700" },
+              { label: "Courses", value: stats.courseCount ?? 0, color: "bg-violet-50", text: "text-violet-700" },
+              { label: "Pending Apps", value: stats.pendingAdmissionsCount ?? 0, color: "bg-amber-50", text: "text-amber-700" },
             ].map((s) => (
               <View key={s.label} className={`${s.color} rounded-2xl p-4 flex-1 items-center`}>
                 <Text className={`${s.text} text-2xl font-black`}>{s.value}</Text>
@@ -328,6 +345,7 @@ function AdminDashboard() {
             { label: "Timetable", icon: "calendar-outline" as const, route: "/(admin)/timetable/index", desc: "Manage class schedules" },
             { label: "Communications", icon: "megaphone-outline" as const, route: "/(admin)/communications/index", desc: "Announcements & notices" },
             { label: "Performance", icon: "bar-chart-outline" as const, route: "/(admin)/performance/index", desc: "School-wide analytics" },
+            { label: "Events Management", icon: "ticket-outline" as const, route: "/(admin)/events/index", desc: "Create events & scan tickets" },
           ].map((item) => (
             <TouchableOpacity
               key={item.label}
@@ -493,6 +511,7 @@ function ParentDashboard() {
             { label: "Book Transport", icon: "bus-outline" as const, route: "/(parent)/transport", color: "bg-emerald-50", textColor: "text-emerald-700" },
             { label: "Messages & Notices", icon: "chatbubbles-outline" as const, route: "/(parent)/messages", color: "bg-violet-50", textColor: "text-violet-700" },
             { label: "Fee Statements", icon: "card-outline" as const, route: "/(parent)/fees", color: "bg-amber-50", textColor: "text-amber-700" },
+            { label: "Events & Tickets", icon: "ticket-outline" as const, route: "/(events)/index", color: "bg-rose-50", textColor: "text-rose-700" },
           ].map((item) => (
             <TouchableOpacity
               key={item.label}

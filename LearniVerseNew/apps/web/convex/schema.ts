@@ -882,4 +882,28 @@ export default defineSchema({
     .index("by_route", ["routeId"])
     .index("by_driver", ["driverUserId"])
     .index("by_date", ["assignmentDate"]),
+
+  events: defineTable({
+    title: v.string(),
+    description: v.string(),
+    eventDate: v.number(),
+    location: v.string(),
+    capacity: v.optional(v.number()),
+    isActive: v.boolean(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }),
+  eventTickets: defineTable({
+    eventId: v.id("events"),
+    userId: v.id("users"), // Owner of the ticket
+    ticketCode: v.string(), // Unique string for QR code
+    status: v.union(v.literal("valid"), v.literal("scanned"), v.literal("cancelled")),
+    scannedAt: v.optional(v.number()),
+    scannedByUserId: v.optional(v.id("users")),
+    createdAt: v.number(),
+  }).index("by_event", ["eventId"])
+    .index("by_user", ["userId"])
+    .index("by_code", ["ticketCode"])
+    .index("by_event_user", ["eventId", "userId"]),
 });
