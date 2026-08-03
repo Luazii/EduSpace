@@ -58,10 +58,15 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(teacher)" />
                 <Stack.Screen name="(admin)" />
+                <Stack.Screen name="(coach)" />
+                <Stack.Screen name="(driver)" />
+                <Stack.Screen name="(transport_admin)" />
+                <Stack.Screen name="(parent)" />
                 <Stack.Screen name="profile/index" options={{ presentation: "modal", headerShown: true, title: "Profile" }} />
                 <Stack.Screen name="notifications/index" options={{ presentation: "modal", headerShown: true, title: "Notifications" }} />
                 <Stack.Screen name="announcements/index" options={{ headerShown: true, title: "Announcements" }} />
                 <Stack.Screen name="payments/index" options={{ headerShown: true, title: "Payments" }} />
+                <Stack.Screen name="transport/index" options={{ headerShown: true, title: "Transport Hub" }} />
               </Stack>
             </AuthGate>
           </ConvexProviderWithClerk>

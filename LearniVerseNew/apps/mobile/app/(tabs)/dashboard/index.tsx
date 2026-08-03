@@ -109,6 +109,22 @@ function StudentDashboard() {
               )}
             </View>
 
+            <TouchableOpacity
+              onPress={() => router.push("/transport")}
+              className="bg-emerald-600 rounded-3xl p-5 flex-row items-center gap-4 mb-6"
+            >
+              <View className="w-12 h-12 rounded-2xl bg-white/20 items-center justify-center">
+                <Ionicons name="bus-outline" size={22} color="white" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-white font-bold text-base">Transport Hub</Text>
+                <Text className="text-white/70 text-xs mt-0.5">
+                  Book routes, track scans, and report incidents
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="white" />
+            </TouchableOpacity>
+
             {/* Upcoming deadlines */}
             {deadlines.length > 0 && (
               <View className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm mb-5">
@@ -247,6 +263,7 @@ function TeacherDashboard() {
             { label: "Grade Book", icon: "bar-chart-outline" as const, route: "/(teacher)/gradebook/index", color: "bg-emerald-50", textColor: "text-emerald-700" },
             { label: "Behaviour Records", icon: "medal-outline" as const, route: "/(teacher)/behaviour/index", color: "bg-amber-50", textColor: "text-amber-700" },
             { label: "Reports", icon: "document-text-outline" as const, route: "/(teacher)/reports/index", color: "bg-rose-50", textColor: "text-rose-700" },
+            { label: "Transport Hub", icon: "bus-outline" as const, route: "/transport", color: "bg-cyan-50", textColor: "text-cyan-700" },
           ].map((item) => (
             <TouchableOpacity
               key={item.label}
@@ -306,6 +323,7 @@ function AdminDashboard() {
             { label: "Admissions Center", icon: "person-add-outline" as const, route: "/(admin)/enrollments/index", desc: "Review enrollment applications" },
             { label: "User Directory", icon: "people-outline" as const, route: "/(admin)/users/index", desc: "Manage students & staff" },
             { label: "Subject Catalog", icon: "book-outline" as const, route: "/(admin)/courses/index", desc: "Create & manage subjects" },
+            { label: "Transport Hub", icon: "bus-outline" as const, route: "/transport", desc: "Routes, bookings & incidents" },
             { label: "Fee Office", icon: "card-outline" as const, route: "/(admin)/fees/index", desc: "Invoices & payments" },
             { label: "Timetable", icon: "calendar-outline" as const, route: "/(admin)/timetable/index", desc: "Manage class schedules" },
             { label: "Communications", icon: "megaphone-outline" as const, route: "/(admin)/communications/index", desc: "Announcements & notices" },
@@ -332,6 +350,168 @@ function AdminDashboard() {
   );
 }
 
+function CoachDashboard() {
+  const router = useRouter();
+  const user = useQuery(api.users.current);
+
+  return (
+    <ScrollView className="flex-1 bg-slate-50" showsVerticalScrollIndicator={false}>
+      <View className="px-5 pt-6 pb-24">
+        <View className="mb-6">
+          <Text className="text-xs font-black uppercase tracking-widest text-orange-600 mb-1">
+            Coach Portal
+          </Text>
+          <Text className="text-2xl font-black text-slate-950 tracking-tight">
+            Hello, {user?.firstName ?? "Coach"}
+          </Text>
+        </View>
+        <View className="gap-3">
+          {[
+            { label: "My Teams", icon: "people-outline" as const, route: "/(coach)/teams", color: "bg-orange-50", textColor: "text-orange-700" },
+            { label: "Training Sessions", icon: "calendar-outline" as const, route: "/(coach)/training", color: "bg-emerald-50", textColor: "text-emerald-700" },
+            { label: "Attendance", icon: "checkmark-circle-outline" as const, route: "/(coach)/attendance", color: "bg-sky-50", textColor: "text-sky-700" },
+            { label: "Match Fixtures", icon: "trophy-outline" as const, route: "/(coach)/fixtures", color: "bg-violet-50", textColor: "text-violet-700" },
+            { label: "Performance Reports", icon: "document-text-outline" as const, route: "/(coach)/reports", color: "bg-rose-50", textColor: "text-rose-700" },
+          ].map((item) => (
+            <TouchableOpacity
+              key={item.label}
+              onPress={() => router.push(item.route as never)}
+              className={`${item.color} rounded-3xl p-5 flex-row items-center gap-4`}
+            >
+              <View className="w-12 h-12 rounded-2xl bg-white items-center justify-center">
+                <Ionicons name={item.icon} size={22} color={Colors.navy} />
+              </View>
+              <Text className={`${item.textColor} font-bold text-base flex-1`}>{item.label}</Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.onSurfaceSubtle} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+function DriverDashboard() {
+  const router = useRouter();
+  const user = useQuery(api.users.current);
+
+  return (
+    <ScrollView className="flex-1 bg-slate-50" showsVerticalScrollIndicator={false}>
+      <View className="px-5 pt-6 pb-24">
+        <View className="mb-6">
+          <Text className="text-xs font-black uppercase tracking-widest text-cyan-600 mb-1">
+            Driver Portal
+          </Text>
+          <Text className="text-2xl font-black text-slate-950 tracking-tight">
+            Hello, {user?.firstName ?? "Driver"}
+          </Text>
+        </View>
+        <View className="gap-3">
+          {[
+            { label: "My Routes", icon: "map-outline" as const, route: "/(driver)/routes", color: "bg-cyan-50", textColor: "text-cyan-700" },
+            { label: "Passenger Manifest", icon: "list-outline" as const, route: "/(driver)/passengers", color: "bg-sky-50", textColor: "text-sky-700" },
+            { label: "Scan Boarding", icon: "qr-code-outline" as const, route: "/(driver)/scan", color: "bg-emerald-50", textColor: "text-emerald-700" },
+            { label: "Report Incident", icon: "warning-outline" as const, route: "/(driver)/incident", color: "bg-rose-50", textColor: "text-rose-700" },
+          ].map((item) => (
+            <TouchableOpacity
+              key={item.label}
+              onPress={() => router.push(item.route as never)}
+              className={`${item.color} rounded-3xl p-5 flex-row items-center gap-4`}
+            >
+              <View className="w-12 h-12 rounded-2xl bg-white items-center justify-center">
+                <Ionicons name={item.icon} size={22} color={Colors.navy} />
+              </View>
+              <Text className={`${item.textColor} font-bold text-base flex-1`}>{item.label}</Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.onSurfaceSubtle} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+function TransportAdminDashboard() {
+  const router = useRouter();
+  const user = useQuery(api.users.current);
+
+  return (
+    <ScrollView className="flex-1 bg-slate-50" showsVerticalScrollIndicator={false}>
+      <View className="px-5 pt-6 pb-24">
+        <View className="mb-6">
+          <Text className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-1">
+            Transport Admin Portal
+          </Text>
+          <Text className="text-2xl font-black text-slate-950 tracking-tight">
+            Hello, {user?.firstName ?? "Admin"}
+          </Text>
+        </View>
+        <View className="gap-3">
+          {[
+            { label: "Manage Routes", icon: "map-outline" as const, route: "/(transport_admin)/routes", color: "bg-indigo-50", textColor: "text-indigo-700" },
+            { label: "Bus Assignments", icon: "bus-outline" as const, route: "/(transport_admin)/buses", color: "bg-sky-50", textColor: "text-sky-700" },
+            { label: "Booking Requests", icon: "ticket-outline" as const, route: "/(transport_admin)/bookings", color: "bg-emerald-50", textColor: "text-emerald-700" },
+            { label: "Notify Parents", icon: "megaphone-outline" as const, route: "/(transport_admin)/notify", color: "bg-amber-50", textColor: "text-amber-700" },
+          ].map((item) => (
+            <TouchableOpacity
+              key={item.label}
+              onPress={() => router.push(item.route as never)}
+              className={`${item.color} rounded-3xl p-5 flex-row items-center gap-4`}
+            >
+              <View className="w-12 h-12 rounded-2xl bg-white items-center justify-center">
+                <Ionicons name={item.icon} size={22} color={Colors.navy} />
+              </View>
+              <Text className={`${item.textColor} font-bold text-base flex-1`}>{item.label}</Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.onSurfaceSubtle} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
+function ParentDashboard() {
+  const router = useRouter();
+  const user = useQuery(api.users.current);
+
+  return (
+    <ScrollView className="flex-1 bg-slate-50" showsVerticalScrollIndicator={false}>
+      <View className="px-5 pt-6 pb-24">
+        <View className="mb-6">
+          <Text className="text-xs font-black uppercase tracking-widest text-teal-600 mb-1">
+            Parent Portal
+          </Text>
+          <Text className="text-2xl font-black text-slate-950 tracking-tight">
+            Hello, {user?.firstName ?? "Parent"}
+          </Text>
+        </View>
+        <View className="gap-3">
+          {[
+            { label: "My Children", icon: "people-outline" as const, route: "/(parent)/children", color: "bg-teal-50", textColor: "text-teal-700" },
+            { label: "Academic Progress", icon: "bar-chart-outline" as const, route: "/(parent)/progress", color: "bg-sky-50", textColor: "text-sky-700" },
+            { label: "Book Transport", icon: "bus-outline" as const, route: "/(parent)/transport", color: "bg-emerald-50", textColor: "text-emerald-700" },
+            { label: "Messages & Notices", icon: "chatbubbles-outline" as const, route: "/(parent)/messages", color: "bg-violet-50", textColor: "text-violet-700" },
+            { label: "Fee Statements", icon: "card-outline" as const, route: "/(parent)/fees", color: "bg-amber-50", textColor: "text-amber-700" },
+          ].map((item) => (
+            <TouchableOpacity
+              key={item.label}
+              onPress={() => router.push(item.route as never)}
+              className={`${item.color} rounded-3xl p-5 flex-row items-center gap-4`}
+            >
+              <View className="w-12 h-12 rounded-2xl bg-white items-center justify-center">
+                <Ionicons name={item.icon} size={22} color={Colors.navy} />
+              </View>
+              <Text className={`${item.textColor} font-bold text-base flex-1`}>{item.label}</Text>
+              <Ionicons name="chevron-forward" size={16} color={Colors.onSurfaceSubtle} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+}
+
 export default function DashboardScreen() {
   const user = useQuery(api.users.current);
 
@@ -344,6 +524,10 @@ export default function DashboardScreen() {
   }
 
   if (user?.role === "teacher") return <TeacherDashboard />;
+  if (user?.role === "coach") return <CoachDashboard />;
   if (user?.role === "admin") return <AdminDashboard />;
+  if (user?.role === "transport_admin") return <TransportAdminDashboard />;
+  if (user?.role === "driver") return <DriverDashboard />;
+  if (user?.role === "parent") return <ParentDashboard />;
   return <StudentDashboard />;
 }

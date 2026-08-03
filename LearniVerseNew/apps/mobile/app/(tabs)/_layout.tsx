@@ -28,7 +28,7 @@ export default function TabLayout() {
   const role = user?.role;
 
   // Teacher-specific tabs
-  if (role === "teacher") {
+  if (role === "teacher" || role === "coach") {
     return (
       <Tabs
         screenOptions={{
@@ -68,7 +68,7 @@ export default function TabLayout() {
   }
 
   // Admin-specific tabs — redirect to admin section
-  if (role === "admin") {
+  if (role === "admin" || role === "transport_admin" || role === "driver") {
     return (
       <Tabs
         screenOptions={{

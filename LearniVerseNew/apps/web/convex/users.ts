@@ -62,8 +62,11 @@ export const upsertFromClerk = mutation({
       v.union(
         v.literal("admin"),
         v.literal("teacher"),
+        v.literal("coach"),
         v.literal("student"),
         v.literal("parent"),
+        v.literal("driver"),
+        v.literal("transport_admin"),
         v.literal("warehouse_admin"),
       ),
     ),
@@ -101,7 +104,16 @@ export const upsertFromClerk = mutation({
       ? "parent"
       : args.role;
     const bootstrapAvailableRoles = BOOTSTRAP_ADMIN_EMAILS.has(normalizedEmail)
-      ? ["admin", "teacher", "student", "parent", "warehouse_admin"]
+      ? [
+          "admin",
+          "teacher",
+          "coach",
+          "student",
+          "parent",
+          "driver",
+          "transport_admin",
+          "warehouse_admin",
+        ]
       : undefined;
 
     let userId: string;
@@ -281,8 +293,11 @@ export const setRoleByIdentifier = mutation({
     role: v.union(
       v.literal("admin"),
       v.literal("teacher"),
+      v.literal("coach"),
       v.literal("student"),
       v.literal("parent"),
+      v.literal("driver"),
+      v.literal("transport_admin"),
       v.literal("warehouse_admin"),
     ),
   },
@@ -326,7 +341,11 @@ export const updateRole = mutation({
     role: v.union(
       v.literal("admin"),
       v.literal("teacher"),
+      v.literal("coach"),
       v.literal("student"),
+      v.literal("parent"),
+      v.literal("driver"),
+      v.literal("transport_admin"),
       v.literal("warehouse_admin"),
     ),
   },
@@ -356,7 +375,16 @@ export const applyBootstrapRoles = mutation({
     const users = await ctx.db.query("users").collect();
     const updates: Array<{ email: string; role: string }> = [];
 
-    const ROLES = ["admin", "teacher", "student", "parent", "warehouse_admin"];
+    const ROLES = [
+      "admin",
+      "teacher",
+      "coach",
+      "student",
+      "parent",
+      "driver",
+      "transport_admin",
+      "warehouse_admin",
+    ];
 
     for (const user of users) {
       const email = user.email.toLowerCase();
@@ -450,7 +478,16 @@ export const setSuperUserRoles = mutation({
 
     if (!user) throw new Error("User not found");
 
-    const roles = ["admin", "teacher", "student", "parent", "warehouse_admin"];
+    const roles = [
+      "admin",
+      "teacher",
+      "coach",
+      "student",
+      "parent",
+      "driver",
+      "transport_admin",
+      "warehouse_admin",
+    ];
     await ctx.db.patch(user._id, {
       availableRoles: roles,
       role: "admin", // Default to admin
@@ -471,7 +508,16 @@ export const seedSuperUser = mutation({
 
     if (!user) throw new Error("User not found");
 
-    const roles = ["admin", "teacher", "student", "parent", "warehouse_admin"];
+    const roles = [
+      "admin",
+      "teacher",
+      "coach",
+      "student",
+      "parent",
+      "driver",
+      "transport_admin",
+      "warehouse_admin",
+    ];
     await ctx.db.patch(user._id, {
       availableRoles: roles,
       role: "admin",

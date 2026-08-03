@@ -16,6 +16,7 @@ import type * as bookings from "../bookings.js";
 import type * as calendar from "../calendar.js";
 import type * as classes from "../classes.js";
 import type * as cleanup from "../cleanup.js";
+import type * as coach from "../coach.js";
 import type * as courses from "../courses.js";
 import type * as enrollments from "../enrollments.js";
 import type * as faculties from "../faculties.js";
@@ -50,6 +51,7 @@ import type * as teacherBookings from "../teacherBookings.js";
 import type * as teachers from "../teachers.js";
 import type * as timeSlots from "../timeSlots.js";
 import type * as timetable from "../timetable.js";
+import type * as transport from "../transport.js";
 import type * as users from "../users.js";
 
 import type {
@@ -67,6 +69,7 @@ declare const fullApi: ApiFromModules<{
   calendar: typeof calendar;
   classes: typeof classes;
   cleanup: typeof cleanup;
+  coach: typeof coach;
   courses: typeof courses;
   enrollments: typeof enrollments;
   faculties: typeof faculties;
@@ -101,6 +104,7 @@ declare const fullApi: ApiFromModules<{
   teachers: typeof teachers;
   timeSlots: typeof timeSlots;
   timetable: typeof timetable;
+  transport: typeof transport;
   users: typeof users;
 }>;
 

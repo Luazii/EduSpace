@@ -13,8 +13,11 @@ export default defineSchema({
     role: v.union(
       v.literal("admin"),
       v.literal("teacher"),
+      v.literal("coach"),
       v.literal("student"),
       v.literal("parent"),
+      v.literal("driver"),
+      v.literal("transport_admin"),
       v.literal("warehouse_admin"),
     ),
     isActive: v.boolean(),
@@ -511,7 +514,7 @@ export default defineSchema({
     userId: v.id("users"),
     title: v.string(),
     body: v.string(),
-    type: v.union(v.literal("grade"), v.literal("enrollment"), v.literal("deadline"), v.literal("system"), v.literal("booking"), v.literal("announcement"), v.literal("meeting")),
+    type: v.union(v.literal("grade"), v.literal("enrollment"), v.literal("deadline"), v.literal("system"), v.literal("booking"), v.literal("announcement"), v.literal("meeting"), v.literal("transport")),
     link: v.optional(v.string()),
     isRead: v.boolean(),
     createdAt: v.number(),
@@ -654,6 +657,88 @@ export default defineSchema({
     .index("by_student", ["studentUserId"])
     .index("by_sport_and_student", ["sportId", "studentUserId"]),
 
+  transportRoutes: defineTable({
+    routeCode: v.string(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    serviceType: v.union(v.literal("school_run"), v.literal("event"), v.literal("special")),
+    capacity: v.optional(v.number()),
+    driverUserId: v.optional(v.id("users")),
+    busLabel: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_route_code", ["routeCode"])
+    .index("by_driver", ["driverUserId"])
+    .index("by_service_type", ["serviceType"]),
+
+  transportRouteStops: defineTable({
+    routeId: v.id("transportRoutes"),
+    label: v.string(),
+    address: v.string(),
+    stopOrder: v.number(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_route", ["routeId"])
+    .index("by_route_and_order", ["routeId", "stopOrder"]),
+
+  transportBookings: defineTable({
+    routeId: v.id("transportRoutes"),
+    learnerUserId: v.id("users"),
+    requestedByUserId: v.id("users"),
+    pickupStopId: v.optional(v.id("transportRouteStops")),
+    dropoffStopId: v.optional(v.id("transportRouteStops")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("cancelled"),
+    ),
+    notes: v.optional(v.string()),
+    approvedByUserId: v.optional(v.id("users")),
+    approvedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_route", ["routeId"])
+    .index("by_learner", ["learnerUserId"])
+    .index("by_requested_by", ["requestedByUserId"])
+    .index("by_route_and_status", ["routeId", "status"]),
+
+  transportScans: defineTable({
+    routeId: v.id("transportRoutes"),
+    bookingId: v.optional(v.id("transportBookings")),
+    learnerUserId: v.id("users"),
+    driverUserId: v.id("users"),
+    scanType: v.union(v.literal("board"), v.literal("dropoff")),
+    scannedAt: v.number(),
+    locationText: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  })
+    .index("by_route", ["routeId"])
+    .index("by_learner", ["learnerUserId"])
+    .index("by_driver", ["driverUserId"])
+    .index("by_route_and_scan_type", ["routeId", "scanType"]),
+
+  transportIncidents: defineTable({
+    routeId: v.id("transportRoutes"),
+    reportedByUserId: v.id("users"),
+    title: v.string(),
+    description: v.string(),
+    status: v.union(v.literal("open"), v.literal("investigating"), v.literal("resolved")),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_route", ["routeId"])
+    .index("by_reporter", ["reportedByUserId"])
+    .index("by_status", ["status"]),
+
   attendance: defineTable({
     courseId: v.id("courses"),
     studentUserId: v.id("users"),
@@ -704,4 +789,97 @@ export default defineSchema({
     .index("by_student_type",  ["studentUserId", "type"])
     .index("by_awarder",       ["awardedByUserId"])
     .index("by_course",        ["courseId"]),
+
+  // ── Sports & Extracurriculars ───────────────────────────────────────────
+  sportsTeams: defineTable({
+    sportId: v.id("sports"),
+    name: v.string(), // e.g. "U14A", "1st XV"
+    coachUserId: v.optional(v.id("users")),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_sport", ["sportId"]),
+
+  teamMemberships: defineTable({
+    teamId: v.id("sportsTeams"),
+    studentUserId: v.id("users"),
+    role: v.optional(v.string()), // e.g., "captain", "player"
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    joinedAt: v.number(),
+  })
+    .index("by_team", ["teamId"])
+    .index("by_student", ["studentUserId"])
+    .index("by_team_and_student", ["teamId", "studentUserId"]),
+
+  trainingSessions: defineTable({
+    teamId: v.id("sportsTeams"),
+    title: v.string(),
+    startTime: v.number(),
+    endTime: v.number(),
+    venue: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    status: v.union(v.literal("scheduled"), v.literal("completed"), v.literal("cancelled")),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_team", ["teamId"]),
+
+  sportsAttendance: defineTable({
+    sessionId: v.id("trainingSessions"),
+    studentUserId: v.id("users"),
+    status: v.union(v.literal("present"), v.literal("absent"), v.literal("late"), v.literal("excused")),
+    markedByUserId: v.id("users"),
+    markedAt: v.number(),
+    notes: v.optional(v.string()),
+  })
+    .index("by_session", ["sessionId"])
+    .index("by_student", ["studentUserId"])
+    .index("by_session_and_student", ["sessionId", "studentUserId"]),
+
+  matchFixtures: defineTable({
+    teamId: v.id("sportsTeams"),
+    opponentName: v.string(),
+    venue: v.string(),
+    isHomeFixture: v.boolean(),
+    matchTime: v.number(),
+    status: v.union(v.literal("scheduled"), v.literal("completed"), v.literal("cancelled")),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_team", ["teamId"]),
+
+  matchResults: defineTable({
+    fixtureId: v.id("matchFixtures"),
+    ourScore: v.number(),
+    opponentScore: v.number(),
+    result: v.union(v.literal("win"), v.literal("loss"), v.literal("draw")),
+    matchReport: v.optional(v.string()),
+    recordedByUserId: v.id("users"),
+    recordedAt: v.number(),
+  }).index("by_fixture", ["fixtureId"]),
+
+  sportsReports: defineTable({
+    studentUserId: v.id("users"),
+    coachUserId: v.id("users"),
+    sportId: v.id("sports"),
+    evaluationDate: v.number(),
+    performanceScore: v.optional(v.number()), // e.g. 1-10
+    comments: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_student", ["studentUserId"])
+    .index("by_coach", ["coachUserId"])
+    .index("by_sport", ["sportId"]),
+
+  // ── Transport Additions ───────────────────────────────────────────────
+  busAssignments: defineTable({
+    routeId: v.id("transportRoutes"),
+    driverUserId: v.id("users"),
+    busLabel: v.string(),
+    assignmentDate: v.string(), // YYYY-MM-DD
+    status: v.union(v.literal("active"), v.literal("completed")),
+    assignedByUserId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_route", ["routeId"])
+    .index("by_driver", ["driverUserId"])
+    .index("by_date", ["assignmentDate"]),
 });
