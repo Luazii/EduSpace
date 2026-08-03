@@ -15,6 +15,7 @@ export default function CoachLayout() {
       <Stack.Screen name="attendance" options={{ title: "Attendance" }} />
       <Stack.Screen name="fixtures" options={{ title: "Match Fixtures" }} />
       <Stack.Screen name="reports" options={{ title: "Performance Reports" }} />
+      <Stack.Screen name="venues/index" options={{ title: "Venues", headerShown: false }} />
     </Stack>
   );
 }

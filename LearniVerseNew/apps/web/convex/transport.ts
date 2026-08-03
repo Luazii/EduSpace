@@ -100,6 +100,7 @@ async function getRouteSummary(ctx: QueryCtx | MutationCtx, route: any) {
 
   return {
     ...route,
+    // @ts-expect-error - driver is definitely a user
     driverName: driver?.fullName ?? driver?.email ?? null,
     stops,
     totalBookings: bookings.length,
@@ -146,6 +147,7 @@ export const listMyBookings = query({
     } else if (user.role === "parent") {
       const learners = await getLinkedLearners(ctx, user._id);
       for (const learner of learners) {
+        if (!learner) continue;
         const learnerBookings = await ctx.db
           .query("transportBookings")
           .withIndex("by_learner", (q) => q.eq("learnerUserId", learner.studentId))
@@ -535,5 +537,50 @@ export const reportIncident = mutation({
     );
 
     return incidentId;
+  },
+});
+
+export const scanBusPassengerByQR = mutation({
+  args: {
+    routeId: v.id("transportRoutes"),
+    learnerUserId: v.id("users"),
+    scanType: v.union(v.literal("board"), v.literal("dropoff")),
+    locationText: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (user.role !== "driver" && !isTransportAdminish(user.role)) {
+      throw new Error("Only drivers and transport admins can record scans.");
+    }
+
+    const route = await ctx.db.get(args.routeId);
+    if (!route) throw new Error("Route not found.");
+
+    // Check if the learner is actually booked on this route
+    const bookings = await ctx.db
+      .query("transportBookings")
+      .withIndex("by_route", (q) => q.eq("routeId", args.routeId))
+      .filter((q) => q.eq(q.field("learnerUserId"), args.learnerUserId))
+      .collect();
+
+    const activeBooking = bookings.find(b => b.status === "approved" || b.status === "pending");
+    
+    if (!activeBooking) {
+      throw new Error("This student is not booked on this route.");
+    }
+
+    const learner = await ctx.db.get(args.learnerUserId);
+
+    await ctx.db.insert("transportScans", {
+      routeId: args.routeId,
+      bookingId: activeBooking._id,
+      learnerUserId: args.learnerUserId,
+      driverUserId: user._id,
+      scanType: args.scanType,
+      scannedAt: Date.now(),
+      locationText: args.locationText?.trim() || undefined,
+    });
+
+    return learner;
   },
 });

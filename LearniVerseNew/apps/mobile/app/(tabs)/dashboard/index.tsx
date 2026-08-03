@@ -38,13 +38,21 @@ function StudentDashboard() {
     <ScrollView className="flex-1 bg-slate-50" showsVerticalScrollIndicator={false}>
       <View className="px-5 pt-6 pb-24">
         {/* Header greeting */}
-        <View className="mb-6">
-          <Text className="text-xs font-black uppercase tracking-widest text-sky-600 mb-1">
-            EduSpace
-          </Text>
-          <Text className="text-2xl font-black text-slate-950 tracking-tight">
-            {user ? `Hello, ${user.firstName || "Student"}` : "Dashboard"}
-          </Text>
+        <View className="mb-6 flex-row items-center justify-between">
+          <View>
+            <Text className="text-xs font-black uppercase tracking-widest text-sky-600 mb-1">
+              EduSpace
+            </Text>
+            <Text className="text-2xl font-black text-slate-950 tracking-tight">
+              {user ? `Hello, ${user.firstName || "Student"}` : "Dashboard"}
+            </Text>
+          </View>
+          <TouchableOpacity 
+            onPress={() => router.push("/(student)/id")}
+            className="w-12 h-12 bg-sky-100 rounded-2xl items-center justify-center border border-sky-200"
+          >
+            <Ionicons name="qr-code-outline" size={24} color="#0369a1" />
+          </TouchableOpacity>
         </View>
 
         {/* Live sessions banner */}
@@ -390,6 +398,7 @@ function CoachDashboard() {
             { label: "Attendance", icon: "checkmark-circle-outline" as const, route: "/(coach)/attendance", color: "bg-sky-50", textColor: "text-sky-700" },
             { label: "Match Fixtures", icon: "trophy-outline" as const, route: "/(coach)/fixtures", color: "bg-violet-50", textColor: "text-violet-700" },
             { label: "Performance Reports", icon: "document-text-outline" as const, route: "/(coach)/reports", color: "bg-rose-50", textColor: "text-rose-700" },
+            { label: "Venues", icon: "location-outline" as const, route: "/(coach)/venues", color: "bg-teal-50", textColor: "text-teal-700" },
           ].map((item) => (
             <TouchableOpacity
               key={item.label}

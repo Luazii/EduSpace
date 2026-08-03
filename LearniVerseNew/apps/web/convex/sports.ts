@@ -153,3 +153,59 @@ export const withdraw = mutation({
     await ctx.db.patch(args.registrationId, { status: "withdrawn" });
   },
 });
+
+export const markAttendanceByQR = mutation({
+  args: {
+    sessionId: v.id("trainingSessions"),
+    learnerUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (user.role !== "coach" && user.role !== "admin") {
+      throw new Error("Only coaches and admins can record attendance.");
+    }
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) throw new Error("Session not found.");
+
+    // Check if the learner is actually on the team
+    const membership = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_team_and_student", (q) => 
+        q.eq("teamId", session.teamId).eq("studentUserId", args.learnerUserId)
+      )
+      .first();
+
+    if (!membership || membership.status !== "active") {
+      throw new Error("This student is not active on this sports team.");
+    }
+
+    const learner = await ctx.db.get(args.learnerUserId);
+
+    // Check if already marked
+    const existing = await ctx.db
+      .query("sportsAttendance")
+      .withIndex("by_session_and_student", (q) => 
+        q.eq("sessionId", args.sessionId).eq("studentUserId", args.learnerUserId)
+      )
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        status: "present",
+        markedByUserId: user._id,
+        markedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("sportsAttendance", {
+        sessionId: args.sessionId,
+        studentUserId: args.learnerUserId,
+        status: "present",
+        markedByUserId: user._id,
+        markedAt: Date.now(),
+      });
+    }
+
+    return learner;
+  },
+});

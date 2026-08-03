@@ -43,9 +43,19 @@ export default function DriverScanScreen() {
     <View className="flex-1 bg-slate-50">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="p-5 pb-24">
-          <View className="mb-6">
-            <Text className="text-2xl font-black text-slate-950 tracking-tight">Scan Boarding</Text>
-            <Text className="text-slate-500 text-sm mt-1">Manually board or drop-off passengers</Text>
+          <View className="flex-row items-center justify-between mb-6">
+            <View className="flex-1 pr-4">
+              <Text className="text-2xl font-black text-slate-950 tracking-tight">Scan Boarding</Text>
+              <Text className="text-slate-500 text-sm mt-1">Scan IDs or manually board passengers</Text>
+            </View>
+            {approvedBookings.length > 0 && (
+              <TouchableOpacity 
+                onPress={() => router.push(`/(driver)/scanner?routeId=${approvedBookings[0].routeId}&scanType=board` as never)}
+                className="w-12 h-12 bg-slate-900 rounded-2xl items-center justify-center shadow-sm"
+              >
+                <Ionicons name="qr-code-outline" size={24} color="white" />
+              </TouchableOpacity>
+            )}
           </View>
 
           {approvedBookings.length === 0 ? (

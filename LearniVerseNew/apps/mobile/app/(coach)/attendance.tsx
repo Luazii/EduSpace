@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from "react-native";
+import { useRouter } from "expo-router";
 import { useQuery, useMutation } from "convex/react";
 import { useState } from "react";
 import { api } from "@/convex/_generated/api";
@@ -102,6 +103,7 @@ function SessionSelector({ teamId, onClose }: { teamId: Id<"sportsTeams">; onClo
 }
 
 function AttendanceMarker({ sessionId, teamId, onClose }: { sessionId: Id<"trainingSessions">; teamId: Id<"sportsTeams">; onClose: () => void }) {
+  const router = useRouter();
   const roster = useQuery(api.coach.getTeamRoster, { teamId });
   const attendance = useQuery(api.coach.getAttendanceForSession, { sessionId });
   const mark = useMutation(api.coach.markAttendance);
@@ -118,7 +120,12 @@ function AttendanceMarker({ sessionId, teamId, onClose }: { sessionId: Id<"train
           <Text className="text-sky-600 font-bold">Back</Text>
         </TouchableOpacity>
         <Text className="text-xl font-black text-slate-900">Mark Register</Text>
-        <View className="w-12" /> {/* Spacer */}
+        <TouchableOpacity 
+          onPress={() => router.push(`/(coach)/training/scanner?sessionId=${sessionId}` as never)}
+          className="w-10 h-10 bg-sky-100 rounded-full items-center justify-center border border-sky-200"
+        >
+          <Ionicons name="qr-code-outline" size={20} color="#0369a1" />
+        </TouchableOpacity>
       </View>
 
       {roster === undefined || attendance === undefined ? (

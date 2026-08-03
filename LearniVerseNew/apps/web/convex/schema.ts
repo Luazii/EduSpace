@@ -791,6 +791,26 @@ export default defineSchema({
     .index("by_course",        ["courseId"]),
 
   // ── Sports & Extracurriculars ───────────────────────────────────────────
+  sportsVenues: defineTable({
+    name: v.string(),
+    location: v.optional(v.string()),
+    capacity: v.optional(v.number()),
+    isActive: v.boolean(),
+  }).index("by_name", ["name"]),
+
+  sportsVenueBookings: defineTable({
+    venueId: v.id("sportsVenues"),
+    coachUserId: v.id("users"),
+    title: v.string(),
+    startTime: v.number(),
+    endTime: v.number(),
+    status: v.union(v.literal("active"), v.literal("cancelled")),
+    createdAt: v.number(),
+  })
+    .index("by_venue", ["venueId"])
+    .index("by_coach", ["coachUserId"])
+    .index("by_venue_and_time", ["venueId", "startTime"]),
+
   sportsTeams: defineTable({
     sportId: v.id("sports"),
     name: v.string(), // e.g. "U14A", "1st XV"

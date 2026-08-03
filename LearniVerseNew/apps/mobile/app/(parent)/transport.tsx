@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput } from "react-native";
+import { useRouter } from "expo-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Colors } from "@/constants/colors";
@@ -9,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 
 export default function ParentTransportScreen() {
+  const router = useRouter();
   const routes = useQuery(api.transport.listRoutes) ?? [];
   const bookings = useQuery(api.transport.listMyBookings) ?? [];
   const learners = useQuery(api.transport.listMyLearners) ?? [];
@@ -186,16 +188,28 @@ export default function ParentTransportScreen() {
                     <Text className="text-slate-500 text-xs mt-1">{booking.route?.routeCode} • {booking.route?.name}</Text>
                     <Text className="text-slate-400 text-[10px] mt-1">{format(new Date(booking.createdAt), "MMM d, h:mm a")}</Text>
                   </View>
-                  <View className={`px-2.5 py-1.5 rounded-md ${
-                    booking.status === 'approved' ? 'bg-emerald-50' : 
-                    booking.status === 'rejected' ? 'bg-rose-50' : 'bg-amber-50'
-                  }`}>
-                    <Text className={`text-[10px] font-black uppercase tracking-widest ${
-                      booking.status === 'approved' ? 'text-emerald-700' : 
-                      booking.status === 'rejected' ? 'text-rose-700' : 'text-amber-700'
+                  <View className="items-end gap-2">
+                    <View className={`px-2.5 py-1.5 rounded-md ${
+                      booking.status === 'approved' ? 'bg-emerald-50' : 
+                      booking.status === 'rejected' ? 'bg-rose-50' : 'bg-amber-50'
                     }`}>
-                      {booking.status}
-                    </Text>
+                      <Text className={`text-[10px] font-black uppercase tracking-widest ${
+                        booking.status === 'approved' ? 'text-emerald-700' : 
+                        booking.status === 'rejected' ? 'text-rose-700' : 'text-amber-700'
+                      }`}>
+                        {booking.status}
+                      </Text>
+                    </View>
+                    
+                    {booking.status === 'approved' && booking.route && (
+                      <TouchableOpacity 
+                        onPress={() => router.push(`/(parent)/transport/track/${booking.routeId}?routeCode=${booking.route?.routeCode}` as never)}
+                        className="bg-slate-900 px-3 py-1.5 rounded-lg flex-row items-center gap-1"
+                      >
+                        <Ionicons name="location" size={12} color="white" />
+                        <Text className="text-white text-[10px] font-bold uppercase tracking-widest">Track</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               ))

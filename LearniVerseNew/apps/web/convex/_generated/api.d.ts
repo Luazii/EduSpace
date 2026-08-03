@@ -44,6 +44,7 @@ import type * as rooms from "../rooms.js";
 import type * as seed from "../seed.js";
 import type * as seedOmni from "../seedOmni.js";
 import type * as sports from "../sports.js";
+import type * as sportsVenues from "../sportsVenues.js";
 import type * as studySessions from "../studySessions.js";
 import type * as submissionComments from "../submissionComments.js";
 import type * as submissions from "../submissions.js";
@@ -98,6 +99,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   seedOmni: typeof seedOmni;
   sports: typeof sports;
+  sportsVenues: typeof sportsVenues;
   studySessions: typeof studySessions;
   submissionComments: typeof submissionComments;
   submissions: typeof submissions;
