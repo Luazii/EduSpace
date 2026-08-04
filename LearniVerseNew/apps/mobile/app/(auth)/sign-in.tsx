@@ -10,10 +10,13 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useSignIn } from "@clerk/clerk-expo";
+import { useSignIn, useOAuth } from "@clerk/clerk-expo";
 import { Link, useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/colors";
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -23,6 +26,24 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const { createdSessionId, setActive: setOAuthActive } = await startOAuthFlow();
+      if (createdSessionId && setOAuthActive) {
+        await setOAuthActive({ session: createdSessionId });
+        router.replace("/(tabs)/dashboard");
+      }
+    } catch (err: any) {
+      if (err?.message?.includes("already signed in") || err?.errors?.[0]?.code === "session_exists") {
+        router.replace("/(tabs)/dashboard");
+      } else {
+        console.error("OAuth error", err);
+      }
+    }
+  };
 
   async function handleSignIn() {
     if (!isLoaded || !email.trim() || !password) return;
@@ -124,6 +145,20 @@ export default function SignInScreen() {
               ) : (
                 <Text className="text-white text-base font-bold">Sign In</Text>
               )}
+            </TouchableOpacity>
+
+            <View className="flex-row items-center my-4">
+              <View className="flex-1 h-[1px] bg-white/10" />
+              <Text className="text-slate-400 font-bold px-4">OR</Text>
+              <View className="flex-1 h-[1px] bg-white/10" />
+            </View>
+
+            <TouchableOpacity
+              onPress={handleGoogleSignIn}
+              className="bg-white/5 border border-white/10 rounded-2xl py-4 items-center flex-row justify-center"
+            >
+              <Ionicons name="logo-google" size={20} color="white" />
+              <Text className="text-white text-base font-bold ml-3">Continue with Google</Text>
             </TouchableOpacity>
           </View>
 

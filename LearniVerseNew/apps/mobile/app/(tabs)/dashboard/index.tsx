@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { api } from "@/convex/_generated/api";
 import { Ionicons } from "@expo/vector-icons";
-// @ts-expect-error
+
 import { format } from "date-fns";
 import { Colors } from "@/constants/colors";
 
@@ -118,21 +118,7 @@ function StudentDashboard() {
               )}
             </View>
 
-            <TouchableOpacity
-              onPress={() => router.push("/transport")}
-              className="bg-emerald-600 rounded-3xl p-5 flex-row items-center gap-4 mb-4"
-            >
-              <View className="w-12 h-12 rounded-2xl bg-white/20 items-center justify-center">
-                <Ionicons name="bus-outline" size={22} color="white" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-white font-bold text-base">Transport Hub</Text>
-                <Text className="text-white/70 text-xs mt-0.5">
-                  Book routes, track scans, and report incidents
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="white" />
-            </TouchableOpacity>
+
 
             <TouchableOpacity
               onPress={() => router.push("/(events)/index")}
@@ -288,7 +274,7 @@ function TeacherDashboard() {
             { label: "Grade Book", icon: "bar-chart-outline" as const, route: "/(teacher)/gradebook/index", color: "bg-emerald-50", textColor: "text-emerald-700" },
             { label: "Behaviour Records", icon: "medal-outline" as const, route: "/(teacher)/behaviour/index", color: "bg-amber-50", textColor: "text-amber-700" },
             { label: "Reports", icon: "document-text-outline" as const, route: "/(teacher)/reports/index", color: "bg-rose-50", textColor: "text-rose-700" },
-            { label: "Transport Hub", icon: "bus-outline" as const, route: "/transport", color: "bg-cyan-50", textColor: "text-cyan-700" },
+
           ].map((item) => (
             <TouchableOpacity
               key={item.label}
@@ -348,7 +334,7 @@ function AdminDashboard() {
             { label: "Admissions Center", icon: "person-add-outline" as const, route: "/(admin)/enrollments/index", desc: "Review enrollment applications" },
             { label: "User Directory", icon: "people-outline" as const, route: "/(admin)/users/index", desc: "Manage students & staff" },
             { label: "Subject Catalog", icon: "book-outline" as const, route: "/(admin)/courses/index", desc: "Create & manage subjects" },
-            { label: "Transport Hub", icon: "bus-outline" as const, route: "/transport", desc: "Routes, bookings & incidents" },
+            { label: "Transport Hub", icon: "bus-outline" as const, route: "/(transport_admin)/routes", desc: "Routes, bookings & incidents" },
             { label: "Fee Office", icon: "card-outline" as const, route: "/(admin)/fees/index", desc: "Invoices & payments" },
             { label: "Timetable", icon: "calendar-outline" as const, route: "/(admin)/timetable/index", desc: "Manage class schedules" },
             { label: "Communications", icon: "megaphone-outline" as const, route: "/(admin)/communications/index", desc: "Announcements & notices" },

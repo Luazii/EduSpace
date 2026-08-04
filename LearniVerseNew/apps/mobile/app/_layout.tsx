@@ -63,7 +63,7 @@ export default function RootLayout() {
                 <Stack.Screen name="(transport_admin)" />
                 <Stack.Screen name="(parent)" />
                 <Stack.Screen name="(student)" />
-                <Stack.Screen name="profile/index" options={{ presentation: "modal", headerShown: true, title: "Profile" }} />
+
                 <Stack.Screen name="notifications/index" options={{ presentation: "modal", headerShown: true, title: "Notifications" }} />
                 <Stack.Screen name="announcements/index" options={{ headerShown: true, title: "Announcements" }} />
                 <Stack.Screen name="payments/index" options={{ headerShown: true, title: "Payments" }} />

@@ -52,11 +52,22 @@ export default function TabLayout() {
             tabBarIcon: ({ color }) => <TabBarIcon name="home-outline" color={color} />,
           }}
         />
+        {role === "teacher" ? (
+          <Tabs.Screen
+            name="courses/index"
+            options={{
+              title: "My Courses",
+              tabBarIcon: ({ color }) => <TabBarIcon name="book-outline" color={color} />,
+            }}
+          />
+        ) : (
+          <Tabs.Screen name="courses/index" options={{ href: null }} />
+        )}
         <Tabs.Screen
-          name="courses/index"
+          name="profile"
           options={{
-            title: "My Courses",
-            tabBarIcon: ({ color }) => <TabBarIcon name="book-outline" color={color} />,
+            title: "Profile",
+            tabBarIcon: ({ color }) => <TabBarIcon name="person-outline" color={color} />,
           }}
         />
         {/* Hide student-only tabs */}
@@ -68,7 +79,7 @@ export default function TabLayout() {
   }
 
   // Admin-specific tabs — redirect to admin section
-  if (role === "admin" || role === "transport_admin" || role === "driver") {
+  if (role === "admin" || role === "transport_admin" || role === "driver" || role === "parent") {
     return (
       <Tabs
         screenOptions={{
@@ -92,11 +103,22 @@ export default function TabLayout() {
             tabBarIcon: ({ color }) => <TabBarIcon name="grid-outline" color={color} />,
           }}
         />
+        {role === "admin" ? (
+          <Tabs.Screen
+            name="courses/index"
+            options={{
+              title: "Subjects",
+              tabBarIcon: ({ color }) => <TabBarIcon name="book-outline" color={color} />,
+            }}
+          />
+        ) : (
+          <Tabs.Screen name="courses/index" options={{ href: null }} />
+        )}
         <Tabs.Screen
-          name="courses/index"
+          name="profile"
           options={{
-            title: "Subjects",
-            tabBarIcon: ({ color }) => <TabBarIcon name="book-outline" color={color} />,
+            title: "Profile",
+            tabBarIcon: ({ color }) => <TabBarIcon name="person-outline" color={color} />,
           }}
         />
         <Tabs.Screen name="study/index" options={{ href: null }} />
@@ -130,13 +152,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="home-outline" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="courses/index"
-        options={{
-          title: "Courses",
-          tabBarIcon: ({ color }) => <TabBarIcon name="book-outline" color={color} />,
-        }}
-      />
+      <Tabs.Screen name="courses/index" options={{ href: null }} />
       <Tabs.Screen
         name="study/index"
         options={{
@@ -156,6 +172,13 @@ export default function TabLayout() {
         options={{
           title: "Bookings",
           tabBarIcon: ({ color }) => <TabBarIcon name="calendar-outline" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color }) => <TabBarIcon name="person-outline" color={color} />,
         }}
       />
     </Tabs>

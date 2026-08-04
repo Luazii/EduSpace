@@ -18,6 +18,9 @@ export default function AdminLayout() {
       <Stack.Screen name="timetable/index" options={{ title: "Timetable" }} />
       <Stack.Screen name="communications/index" options={{ title: "Communications" }} />
       <Stack.Screen name="performance/index" options={{ title: "Performance" }} />
+      <Stack.Screen name="events/index" options={{ title: "Events Management" }} />
+      <Stack.Screen name="events/create" options={{ presentation: "modal", title: "New Event" }} />
+      <Stack.Screen name="events/scanner" options={{ title: "Ticket Scanner" }} />
     </Stack>
   );
 }
