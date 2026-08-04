@@ -23,8 +23,7 @@
           "backgroundColor": "#0F172A",
           "resizeMode": "contain"
         }
-      ],
-      "expo-status-bar"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -40,9 +39,23 @@
       },
       "package": "com.eduspace.mobile"
     },
+    "platforms": ["ios", "android"],
     "web": {
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f3362f36-5011-4dd1-866b-05e759251773"
+      }
+    },
+    "owner": "luazii",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f3362f36-5011-4dd1-866b-05e759251773"
     }
   }
 }

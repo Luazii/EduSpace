@@ -15,10 +15,12 @@
     "type-check": "turbo run type-check"
   },
   "dependencies": {
-    "@swc/helpers": "^0.5.15"
+    "@swc/helpers": "^0.5.15",
+    "tailwindcss": "^3.4.17"
   },
   "overrides": {
-    "next": "~15.5.14"
+    "next": "~15.5.14",
+    "tailwindcss": "^3.4.17"
   },
   "devDependencies": {
     "turbo": "latest"
