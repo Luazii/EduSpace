@@ -20,6 +20,8 @@ import {
   Bell,
   Trophy,
   CalendarDays,
+  Bus,
+  Ticket,
 } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { format } from "date-fns";
@@ -112,6 +114,20 @@ export default function AdminPage() {
       body: "Track merits and demerits across all learners.",
       icon: CheckCircle2,
       color: "bg-emerald-50 text-emerald-600"
+    },
+    {
+      href: "/admin/transport",
+      title: "Transport Hub",
+      body: "Manage bus routes, bookings, driver assignments, and incidents.",
+      icon: Bus,
+      color: "bg-cyan-50 text-cyan-600"
+    },
+    {
+      href: "/events",
+      title: "Events & Tickets",
+      body: "Create events, manage ticket sales, and scan attendees.",
+      icon: Ticket,
+      color: "bg-rose-50 text-rose-600"
     }
   ];
 
