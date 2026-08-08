@@ -1,57 +1,61 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* ─── Design Tokens: The Academic Luminary ─── */
-@theme {
-  /* Typography */
-  --font-headline: "Plus Jakarta Sans", sans-serif;
-  --font-body: "Manrope", sans-serif;
-  --font-sans: "Manrope", "Segoe UI", sans-serif;
+@layer base {
+  :root {
+    /* Typography */
+    --font-headline: "Plus Jakarta Sans", sans-serif;
+    --font-body: "Manrope", sans-serif;
+    --font-sans: "Manrope", "Segoe UI", sans-serif;
 
-  /* Primary — Navy */
-  --color-primary: #40589c;
-  --color-primary-dim: #344c8f;
-  --color-primary-fixed: #8ea6f0;
-  --color-primary-container: #8ea6f0;
-  --color-on-primary: #f1f2ff;
-  --color-on-primary-container: #022568;
-  --color-inverse-primary: #8ea6f0;
+    /* Primary — Navy */
+    --color-primary: #40589c;
+    --color-primary-dim: #344c8f;
+    --color-primary-fixed: #8ea6f0;
+    --color-primary-container: #8ea6f0;
+    --color-on-primary: #f1f2ff;
+    --color-on-primary-container: #022568;
+    --color-inverse-primary: #8ea6f0;
 
-  /* Secondary — Teal */
-  --color-secondary: #006668;
-  --color-secondary-dim: #00595b;
-  --color-secondary-container: #5af8fb;
-  --color-on-secondary: #befeff;
-  --color-on-secondary-container: #005b5d;
+    /* Secondary — Teal */
+    --color-secondary: #006668;
+    --color-secondary-dim: #00595b;
+    --color-secondary-container: #5af8fb;
+    --color-on-secondary: #befeff;
+    --color-on-secondary-container: #005b5d;
 
-  /* Tertiary — Purple */
-  --color-tertiary: #4a40e0;
-  --color-tertiary-dim: #3d30d4;
-  --color-tertiary-container: #aaa8ff;
-  --color-on-tertiary: #f4f1ff;
-  --color-on-tertiary-container: #1d00a6;
+    /* Tertiary — Purple */
+    --color-tertiary: #4a40e0;
+    --color-tertiary-dim: #3d30d4;
+    --color-tertiary-container: #aaa8ff;
+    --color-on-tertiary: #f4f1ff;
+    --color-on-tertiary-container: #1d00a6;
 
-  /* Surfaces */
-  --color-background: #f5f7f9;
-  --color-surface: #f5f7f9;
-  --color-surface-bright: #f5f7f9;
-  --color-surface-dim: #d0d5d8;
-  --color-surface-variant: #d9dde0;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #eef1f3;
-  --color-surface-container: #e5e9eb;
-  --color-surface-container-high: #dfe3e6;
-  --color-surface-container-highest: #d9dde0;
-  --color-on-surface: #2c2f31;
-  --color-on-surface-variant: #595c5e;
-  --color-inverse-surface: #0b0f10;
-  --color-inverse-on-surface: #9a9d9f;
+    /* Surfaces */
+    --color-background: #f5f7f9;
+    --color-surface: #f5f7f9;
+    --color-surface-bright: #f5f7f9;
+    --color-surface-dim: #d0d5d8;
+    --color-surface-variant: #d9dde0;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #eef1f3;
+    --color-surface-container: #e5e9eb;
+    --color-surface-container-high: #dfe3e6;
+    --color-surface-container-highest: #d9dde0;
+    --color-on-surface: #2c2f31;
+    --color-on-surface-variant: #595c5e;
+    --color-inverse-surface: #0b0f10;
+    --color-inverse-on-surface: #9a9d9f;
 
-  /* Semantic */
-  --color-error: #b31b25;
-  --color-error-container: #fb5151;
-  --color-on-error: #ffefee;
-  --color-outline: #747779;
-  --color-outline-variant: #abadaf;
+    /* Semantic */
+    --color-error: #b31b25;
+    --color-error-container: #fb5151;
+    --color-on-error: #ffefee;
+    --color-outline: #747779;
+    --color-outline-variant: #abadaf;
+  }
 }
 
 /* ─── Signature Utilities ─── */

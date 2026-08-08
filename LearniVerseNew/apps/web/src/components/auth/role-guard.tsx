@@ -8,7 +8,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 
 type RoleGuardProps = {
-  allowedRoles: Array<"admin" | "teacher" | "student" | "parent" | "warehouse_admin">;
+  allowedRoles: Array<"admin" | "teacher" | "student" | "parent" | "warehouse_admin" | "coach" | "driver" | "transport_admin">;
   redirectTo?: string;
   children: React.ReactNode;
 };
