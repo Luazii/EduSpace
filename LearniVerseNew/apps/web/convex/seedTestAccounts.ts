@@ -180,44 +180,65 @@ export const seedTestAccounts = mutation({
       });
     }
 
-    // ── 5. Coach: a sport + a team they coach ────────────────────────────
-    let sport = await ctx.db
-      .query("sports")
-      .withIndex("by_name", (q) => q.eq("name", "Football"))
-      .first();
-    let sportId: Id<"sports">;
-    if (!sport) {
-      sportId = await ctx.db.insert("sports", {
-        name: "Football",
-        category: "Team Sport",
-        coachName: "John Coachman",
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      });
-    } else {
-      sportId = sport._id;
+    // ── 5. Coach: sports + teams they coach, each with the seeded student
+    // on the roster (so "My Teams" isn't just an assignment with nobody on it) ──
+    async function ensureCoachTeam(sportName: string, teamName: string, createSportIfMissing: boolean) {
+      let sport = await ctx.db
+        .query("sports")
+        .withIndex("by_name", (q) => q.eq("name", sportName))
+        .first();
+      if (!sport && createSportIfMissing) {
+        const sportId = await ctx.db.insert("sports", {
+          name: sportName,
+          category: "Team Sport",
+          coachName: "John Coachman",
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+        sport = (await ctx.db.get(sportId))!;
+      }
+      if (!sport) return; // e.g. "girls rugby" not created yet — nothing to attach to
+
+      let team = await ctx.db
+        .query("sportsTeams")
+        .withIndex("by_sport", (q) => q.eq("sportId", sport!._id))
+        .first();
+      if (!team) {
+        const teamId = await ctx.db.insert("sportsTeams", {
+          sportId: sport._id,
+          name: teamName,
+          coachUserId: coachId,
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+        team = (await ctx.db.get(teamId))!;
+      } else if (team.coachUserId !== coachId) {
+        // Always resync, not just when unset — a stale coachUserId (e.g. from
+        // an earlier Clerk-instance switch that reissued this user's _id)
+        // would otherwise sit there forever pointing at a dead user document.
+        await ctx.db.patch(team._id, { coachUserId: coachId, updatedAt: now });
+      }
+
+      const existingMembership = await ctx.db
+        .query("teamMemberships")
+        .withIndex("by_team_and_student", (q) => q.eq("teamId", team!._id).eq("studentUserId", studentId))
+        .first();
+      if (!existingMembership) {
+        await ctx.db.insert("teamMemberships", {
+          teamId: team._id,
+          studentUserId: studentId,
+          status: "active",
+          joinedAt: now,
+        });
+      } else if (existingMembership.status !== "active") {
+        await ctx.db.patch(existingMembership._id, { status: "active" });
+      }
     }
 
-    const existingTeam = await ctx.db
-      .query("sportsTeams")
-      .withIndex("by_sport", (q) => q.eq("sportId", sportId))
-      .first();
-    if (!existingTeam) {
-      await ctx.db.insert("sportsTeams", {
-        sportId,
-        name: "1st XI",
-        coachUserId: coachId,
-        isActive: true,
-        createdAt: now,
-        updatedAt: now,
-      });
-    } else if (existingTeam.coachUserId !== coachId) {
-      // Always resync, not just when unset — a stale coachUserId (e.g. from
-      // an earlier Clerk-instance switch that reissued this user's _id)
-      // would otherwise sit there forever pointing at a dead user document.
-      await ctx.db.patch(existingTeam._id, { coachUserId: coachId, updatedAt: now });
-    }
+    await ensureCoachTeam("Football", "1st XI", true);
+    await ensureCoachTeam("girls rugby", "Girls Rugby 1st Team", false);
 
     // ── 6. Driver + transport_admin: a route they're linked to ──────────
     const existingRoute = await ctx.db
