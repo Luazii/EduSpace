@@ -6,14 +6,44 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useState } from "react";
 import { Trophy, Users, MapPin, Clock, User, Plus, CheckCircle2 } from "lucide-react";
 
+const DAY_OPTIONS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function formatSchedule(days: string[], time: string) {
+  if (days.length === 0) return undefined;
+  const ordered = DAY_OPTIONS.filter((d) => days.includes(d));
+  const dayPart =
+    ordered.length <= 1
+      ? ordered.join("")
+      : ordered.length === 2
+      ? ordered.join(" & ")
+      : `${ordered.slice(0, -1).join(", ")} & ${ordered[ordered.length - 1]}`;
+  return time ? `${dayPart} ${time}` : dayPart;
+}
+
 export default function AdminSportsPage() {
   const sports = useQuery(api.sports.listAll);
+  const venues = useQuery(api.sportsVenues.listVenues, { includeInactive: true });
+  const allUsers = useQuery(api.users.list);
   const createSport = useMutation(api.sports.create);
   const updateSport = useMutation(api.sports.update);
+  const createVenue = useMutation(api.sportsVenues.createVenue);
 
-  const [form, setForm] = useState({ name: "", category: "", description: "", coachName: "", venue: "", schedule: "", maxCapacity: "" });
+  const coaches = (allUsers ?? []).filter((u) => u.role === "coach");
+  const coachLabel = (u: (typeof coaches)[number]) => u.fullName ?? [u.firstName, u.lastName].filter(Boolean).join(" ") ?? u.email;
+
+  const [form, setForm] = useState({ name: "", category: "", description: "", coachName: "", venue: "", maxCapacity: "" });
+  const [scheduleDays, setScheduleDays] = useState<string[]>([]);
+  const [scheduleTime, setScheduleTime] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const toggleDay = (day: string) => {
+    setScheduleDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
+  };
+
+  const [showVenueForm, setShowVenueForm] = useState(false);
+  const [venueForm, setVenueForm] = useState({ name: "", location: "", capacity: "" });
+  const [venueSaving, setVenueSaving] = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,16 +54,36 @@ export default function AdminSportsPage() {
         name: form.name.trim(),
         category: form.category.trim() || undefined,
         description: form.description.trim() || undefined,
-        coachName: form.coachName.trim() || undefined,
-        venue: form.venue.trim() || undefined,
-        schedule: form.schedule.trim() || undefined,
+        coachName: form.coachName || undefined,
+        venue: form.venue || undefined,
+        schedule: formatSchedule(scheduleDays, scheduleTime),
         maxCapacity: form.maxCapacity ? Number(form.maxCapacity) : undefined,
       });
-      setForm({ name: "", category: "", description: "", coachName: "", venue: "", schedule: "", maxCapacity: "" });
+      setForm({ name: "", category: "", description: "", coachName: "", venue: "", maxCapacity: "" });
+      setScheduleDays([]);
+      setScheduleTime("");
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCreateVenue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!venueForm.name.trim()) return;
+    setVenueSaving(true);
+    try {
+      await createVenue({
+        name: venueForm.name.trim(),
+        location: venueForm.location.trim() || undefined,
+        capacity: venueForm.capacity ? Number(venueForm.capacity) : undefined,
+      });
+      setForm((p) => ({ ...p, venue: venueForm.name.trim() }));
+      setVenueForm({ name: "", location: "", capacity: "" });
+      setShowVenueForm(false);
+    } finally {
+      setVenueSaving(false);
     }
   };
 
@@ -62,9 +112,6 @@ export default function AdminSportsPage() {
               {[
                 { key: "name", label: "Sport name *", placeholder: "e.g. Football" },
                 { key: "category", label: "Category", placeholder: "e.g. Team Sport" },
-                { key: "coachName", label: "Coach", placeholder: "Coach full name" },
-                { key: "venue", label: "Venue", placeholder: "e.g. Main field" },
-                { key: "schedule", label: "Schedule", placeholder: "e.g. Tue & Thu 14:00" },
                 { key: "maxCapacity", label: "Max capacity", placeholder: "Leave blank for unlimited" },
               ].map((f) => (
                 <div key={f.key}>
@@ -78,6 +125,91 @@ export default function AdminSportsPage() {
                   />
                 </div>
               ))}
+
+              {/* Coach — chosen from existing coach accounts, not typed */}
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-600">Coach</label>
+                <select
+                  value={form.coachName}
+                  onChange={(e) => setForm((prev) => ({ ...prev, coachName: e.target.value }))}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/10"
+                >
+                  <option value="">Unassigned</option>
+                  {coaches.map((c) => (
+                    <option key={c._id} value={coachLabel(c)}>{coachLabel(c)}</option>
+                  ))}
+                </select>
+                {coaches.length === 0 && (
+                  <p className="mt-1 text-[10px] text-slate-400">No coach accounts exist yet — create one under Admin → Users.</p>
+                )}
+              </div>
+
+              {/* Schedule — day-of-week picker + time selector, not typed */}
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-600">Schedule</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {DAY_OPTIONS.map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => toggleDay(day)}
+                      className={`rounded-xl px-2.5 py-1.5 text-[10px] font-black transition ${
+                        scheduleDays.includes(day)
+                          ? "bg-sky-600 text-white"
+                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="time"
+                  value={scheduleTime}
+                  onChange={(e) => setScheduleTime(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/10"
+                />
+                {(scheduleDays.length > 0 || scheduleTime) && (
+                  <p className="mt-1 text-[10px] font-bold text-sky-700">{formatSchedule(scheduleDays, scheduleTime) ?? "Pick a day"}</p>
+                )}
+              </div>
+
+              {/* Venue — chosen from existing registered venues, not typed */}
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-600">Venue</label>
+                  <button type="button" onClick={() => setShowVenueForm((v) => !v)} className="text-[10px] font-bold text-sky-600 hover:text-sky-800">
+                    {showVenueForm ? "Cancel" : "+ New venue"}
+                  </button>
+                </div>
+                {showVenueForm ? (
+                  <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <input type="text" value={venueForm.name} onChange={(e) => setVenueForm((p) => ({ ...p, name: e.target.value }))} placeholder="Venue name *" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-sky-500 focus:outline-none" />
+                    <input type="text" value={venueForm.location} onChange={(e) => setVenueForm((p) => ({ ...p, location: e.target.value }))} placeholder="Location (optional)" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-sky-500 focus:outline-none" />
+                    <input type="number" value={venueForm.capacity} onChange={(e) => setVenueForm((p) => ({ ...p, capacity: e.target.value }))} placeholder="Capacity (optional)" className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-sky-500 focus:outline-none" />
+                    <button type="button" onClick={handleCreateVenue} disabled={venueSaving || !venueForm.name.trim()} className="w-full rounded-xl bg-sky-600 py-2 text-[10px] font-black text-white hover:bg-sky-700 disabled:opacity-50">
+                      {venueSaving ? "Adding…" : "Add venue"}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      value={form.venue}
+                      onChange={(e) => setForm((prev) => ({ ...prev, venue: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/10"
+                    >
+                      <option value="">No venue</option>
+                      {(venues ?? []).map((v) => (
+                        <option key={v._id} value={v.name}>{v.name}</option>
+                      ))}
+                    </select>
+                    {(venues ?? []).length === 0 && (
+                      <p className="mt-1 text-[10px] text-slate-400">No venues registered yet — use "+ New venue" to add one.</p>
+                    )}
+                  </>
+                )}
+              </div>
+
               <div>
                 <label className="mb-1 block text-xs font-bold text-slate-600">Description</label>
                 <textarea
