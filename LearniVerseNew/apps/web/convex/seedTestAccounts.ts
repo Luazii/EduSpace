@@ -313,6 +313,34 @@ export const seedTestAccounts = mutation({
       }
     }
 
+    // ── 5c. A ticketed sports event (UC07) — upcoming, priced, so the
+    // seeded parent/student have something real to buy against. ──────────
+    if (footballTeamId) {
+      const footballSport = await ctx.db
+        .query("sports")
+        .withIndex("by_name", (q) => q.eq("name", "Football"))
+        .first();
+      const existingTicketedEvent = await ctx.db
+        .query("events")
+        .filter((q) => q.eq(q.field("title"), "1st XI vs Northside Academy"))
+        .first();
+      if (!existingTicketedEvent) {
+        await ctx.db.insert("events", {
+          title: "1st XI vs Northside Academy",
+          description: "Home derby — gates open 30 min before kickoff.",
+          eventDate: now + 5 * 24 * 60 * 60 * 1000, // 5 days from now
+          location: "Main Field",
+          capacity: 200,
+          ticketPrice: 50,
+          sportId: footballSport?._id,
+          isActive: true,
+          createdByUserId: coachId,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
     // ── 6. Driver + transport_admin: a route they're linked to ──────────
     const existingRoute = await ctx.db
       .query("transportRoutes")
@@ -443,6 +471,48 @@ export const seedTestAccounts = mutation({
           note: "Seed data",
           createdAt: now,
         });
+      }
+    }
+
+    // ── 7b. A sample delivery (UC01) — warehouse stock assigned to the
+    // seeded driver, ready to acknowledge/deliver immediately. ───────────
+    const uniformItem = await ctx.db
+      .query("inventoryItems")
+      .withIndex("by_name", (q) => q.eq("name", "PE Uniform (Medium)"))
+      .first();
+    if (uniformItem) {
+      const existingDelivery = await ctx.db
+        .query("deliveries")
+        .withIndex("by_driver", (q) => q.eq("driverUserId", driverId))
+        .filter((q) => q.eq(q.field("recipientLabel"), "Grade 9A"))
+        .first();
+      if (!existingDelivery) {
+        const deliveryQty = Math.min(2, uniformItem.quantityOnHand);
+        if (deliveryQty > 0) {
+          await ctx.db.patch(uniformItem._id, {
+            quantityOnHand: uniformItem.quantityOnHand - deliveryQty,
+            updatedAt: now,
+          });
+          await ctx.db.insert("inventoryTransactions", {
+            itemId: uniformItem._id,
+            type: "issue",
+            quantityDelta: -deliveryQty,
+            issuedToLabel: "Delivery: Grade 9A",
+            performedByUserId: warehouseAdminId,
+            note: "Seed data",
+            createdAt: now,
+          });
+          await ctx.db.insert("deliveries", {
+            itemId: uniformItem._id,
+            quantity: deliveryQty,
+            recipientLabel: "Grade 9A",
+            driverUserId: driverId,
+            status: "pending",
+            createdByUserId: warehouseAdminId,
+            notes: "Seed data — ready to acknowledge",
+            createdAt: now,
+          });
+        }
       }
     }
 

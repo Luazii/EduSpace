@@ -13,7 +13,7 @@ import {
 import { format } from "date-fns";
 import { QrScanner } from "@/components/qr-scanner";
 
-type Tab = "teams" | "training" | "fixtures" | "attendance" | "venues" | "evaluations";
+type Tab = "teams" | "training" | "fixtures" | "attendance" | "venues" | "evaluations" | "reports";
 
 export default function CoachSportsPage() {
   const user = useQuery(api.users.current);
@@ -63,6 +63,7 @@ export default function CoachSportsPage() {
     { key: "attendance", label: "Attendance", icon: ClipboardCheck },
     { key: "venues", label: "Venue Booking", icon: MapPin },
     { key: "evaluations", label: "Evaluations", icon: Star },
+    { key: "reports", label: "Reports", icon: BarChart3 },
   ];
 
   const selectedTeam = teams?.find((t) => t._id === selectedTeamId) ?? teams?.[0] ?? null;
@@ -124,6 +125,7 @@ export default function CoachSportsPage() {
       {tab === "attendance" && selectedTeam && <AttendanceTab teamId={selectedTeam._id} teamName={selectedTeam.name} />}
       {tab === "venues" && <VenuesTab venues={venues ?? []} bookings={venueBookings ?? []} />}
       {tab === "evaluations" && selectedTeam && <EvaluationsTab teamId={selectedTeam._id} teamName={selectedTeam.name} />}
+      {tab === "reports" && selectedTeam && <ReportsTab teamId={selectedTeam._id} />}
 
       {!selectedTeam && tab !== "teams" && tab !== "venues" && (
         <div className="flex flex-col items-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-16 text-center">
@@ -611,12 +613,58 @@ function FixturesTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamName
   const venues = useQuery(api.sportsVenues.listVenues, {});
   const createFixture = useMutation(api.coach.createFixture);
   const recordResult = useMutation(api.coach.recordResult);
+  const createSportsEvent = useMutation(api.events.createSportsEvent);
+  const scanTicketMut = useMutation(api.events.scanTicket);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ opponent: "", venue: "", venueId: "", isHome: true, date: "", time: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scoringId, setScoringId] = useState<Id<"matchFixtures"> | null>(null);
   const [scores, setScores] = useState({ ours: "", theirs: "", report: "" });
+
+  const [ticketFixtureId, setTicketFixtureId] = useState<Id<"matchFixtures"> | null>(null);
+  const [ticketForm, setTicketForm] = useState({ price: "", capacity: "" });
+  const [ticketSaving, setTicketSaving] = useState(false);
+  const [ticketDone, setTicketDone] = useState<string | null>(null);
+
+  const [scannerOn, setScannerOn] = useState(false);
+  const [scanResult, setScanResult] = useState<{ text: string; ok: boolean } | null>(null);
+  const lastScan = useRef<{ code: string; at: number } | null>(null);
+
+  const handleSellTickets = async (fixture: any) => {
+    setTicketSaving(true);
+    try {
+      await createSportsEvent({
+        title: `${teamName} vs ${fixture.opponentName}`,
+        description: `${fixture.isHomeFixture ? "Home" : "Away"} fixture — ${teamName} vs ${fixture.opponentName}.`,
+        eventDate: fixture.matchTime,
+        location: fixture.venue,
+        capacity: ticketForm.capacity ? Number(ticketForm.capacity) : undefined,
+        ticketPrice: ticketForm.price ? Number(ticketForm.price) : undefined,
+        fixtureId: fixture._id,
+      });
+      setTicketDone(fixture._id);
+      setTicketFixtureId(null);
+      setTicketForm({ price: "", capacity: "" });
+    } finally {
+      setTicketSaving(false);
+    }
+  };
+
+  const handleScan = useCallback(
+    async (code: string) => {
+      const now = Date.now();
+      if (lastScan.current && lastScan.current.code === code && now - lastScan.current.at < 5000) return;
+      lastScan.current = { code, at: now };
+      try {
+        const result = await scanTicketMut({ ticketCode: code });
+        setScanResult({ text: `✓ ${result.attendeeName} — ${result.eventName}`, ok: true });
+      } catch (err) {
+        setScanResult({ text: err instanceof Error ? err.message : "Scan failed.", ok: false });
+      }
+    },
+    [scanTicketMut],
+  );
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -755,7 +803,7 @@ function FixturesTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamName
                     <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{f.venue}</span>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right space-y-2">
                   {f.result ? (
                     <div>
                       <span className={`inline-block rounded-full px-3 py-1 text-xs font-black ${f.result.result === "win" ? "bg-emerald-100 text-emerald-700" : f.result.result === "loss" ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-700"}`}>
@@ -763,10 +811,34 @@ function FixturesTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamName
                       </span>
                     </div>
                   ) : f.status === "scheduled" ? (
-                    <button onClick={() => { setScoringId(f._id); setScores({ ours: "", theirs: "", report: "" }); }} className="rounded-2xl bg-sky-600 px-4 py-2 text-[10px] font-black text-white hover:bg-sky-700">Record Score</button>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <button onClick={() => { setScoringId(f._id); setScores({ ours: "", theirs: "", report: "" }); }} className="rounded-2xl bg-sky-600 px-4 py-2 text-[10px] font-black text-white hover:bg-sky-700">Record Score</button>
+                      {ticketDone === f._id ? (
+                        <span className="text-[10px] font-bold text-emerald-600">✓ Ticketed event created</span>
+                      ) : (
+                        <button onClick={() => { setTicketFixtureId(f._id); setTicketForm({ price: "", capacity: "" }); }} className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2 text-[10px] font-black text-violet-700 hover:bg-violet-100">Sell Tickets</button>
+                      )}
+                    </div>
                   ) : null}
                 </div>
               </div>
+
+              {ticketFixtureId === f._id && (
+                <div className="mt-4 border-t border-slate-100 pt-4 flex flex-wrap items-end gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Ticket Price (R, blank = free)</label>
+                    <input type="number" min="0" value={ticketForm.price} onChange={(e) => setTicketForm(p => ({ ...p, price: e.target.value }))} placeholder="e.g. 50" className="w-32 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Capacity (blank = unlimited)</label>
+                    <input type="number" min="1" value={ticketForm.capacity} onChange={(e) => setTicketForm(p => ({ ...p, capacity: e.target.value }))} placeholder="e.g. 200" className="w-32 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none" />
+                  </div>
+                  <button onClick={() => handleSellTickets(f)} disabled={ticketSaving} className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50">
+                    {ticketSaving ? "Creating…" : "Create Ticketed Event"}
+                  </button>
+                  <button onClick={() => setTicketFixtureId(null)} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50">Cancel</button>
+                </div>
+              )}
 
               {scoringId === f._id && (
                 <div className="mt-4 border-t border-slate-100 pt-4 flex flex-wrap items-end gap-3">
@@ -790,6 +862,28 @@ function FixturesTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamName
           ))}
         </div>
       )}
+
+      {/* UC-07 gate entry: scan tickets sold for this team's fixtures */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="flex items-center gap-2 text-sm font-black text-slate-950">
+            <QrCode className="h-4 w-4 text-violet-600" /> Scan Tickets at the Gate
+          </h4>
+          <button
+            onClick={() => { setScannerOn((v) => !v); setScanResult(null); }}
+            className="rounded-xl bg-violet-600 px-3 py-1.5 text-[10px] font-black text-white hover:bg-violet-700"
+          >
+            {scannerOn ? "Stop Camera" : "Start Camera"}
+          </button>
+        </div>
+        {scanResult && (
+          <div className={`mb-3 flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold ${scanResult.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}>
+            {scanResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+            {scanResult.text}
+          </div>
+        )}
+        <QrScanner active={scannerOn} onScan={handleScan} />
+      </div>
     </div>
   );
 }
@@ -990,6 +1084,102 @@ function EvaluationsTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamN
             </button>
           </form>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────────────── UC-09: Season Report ───────────────────────────── */
+
+function ReportsTab({ teamId }: { teamId: Id<"sportsTeams"> }) {
+  const report = useQuery(api.coach.generateSeasonReport, { teamId });
+
+  if (report === undefined) {
+    return <div className="flex justify-center py-16"><div className="h-8 w-8 animate-spin rounded-full border-4 border-sky-600 border-t-transparent" /></div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between print:hidden">
+        <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-violet-600" /> Season Report
+        </h2>
+        <button onClick={() => window.print()} className="flex items-center gap-1.5 rounded-2xl bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-slate-800">
+          <FileText className="h-3.5 w-3.5" /> Print / Save as PDF
+        </button>
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm space-y-8">
+        <div className="border-b border-slate-100 pb-6">
+          <p className="text-[10px] font-black uppercase tracking-widest text-violet-600">{report.sportName}</p>
+          <h1 className="text-2xl font-black text-slate-950">{report.teamName} — Season Report</h1>
+          <p className="mt-1 text-xs text-slate-500">Coach: {report.coachName} · Generated {format(report.generatedAt, "d MMM yyyy, HH:mm")}</p>
+        </div>
+
+        {/* Standings */}
+        <div>
+          <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-slate-500">Standings</h3>
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-7">
+            {[
+              { label: "Played", value: report.standings.played },
+              { label: "Won", value: report.standings.wins },
+              { label: "Drawn", value: report.standings.draws },
+              { label: "Lost", value: report.standings.losses },
+              { label: "GF", value: report.standings.goalsFor },
+              { label: "GA", value: report.standings.goalsAgainst },
+              { label: "Points", value: report.standings.points },
+            ].map((s) => (
+              <div key={s.label} className="rounded-2xl bg-slate-50 py-3 text-center">
+                <p className="text-lg font-black text-slate-950">{s.value}</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Roster performance */}
+        <div>
+          <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-slate-500">
+            Roster Performance ({report.roster.length} athletes · {report.trainingSessionsHeld} sessions held)
+          </h3>
+          <div className="overflow-hidden rounded-2xl border border-slate-200">
+            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 bg-slate-50 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              <span>Athlete</span>
+              <span>Attendance</span>
+              <span>Evaluations</span>
+              <span>Avg Score</span>
+            </div>
+            {report.roster.map((r) => (
+              <div key={r.studentUserId} className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center border-t border-slate-100 px-4 py-2.5">
+                <span className="text-sm font-bold text-slate-800">{r.fullName}</span>
+                <span className="text-xs text-slate-600">{r.attendanceRate != null ? `${r.attendanceRate}%` : "—"} ({r.sessionsAttended}/{r.sessionsScheduled})</span>
+                <span className="text-xs text-slate-600">{r.evaluationCount}</span>
+                <span className="text-xs font-bold text-slate-800">{r.avgScore ?? "—"}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Fixture history */}
+        <div>
+          <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-slate-500">Fixture History</h3>
+          {report.fixtureHistory.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">No completed fixtures yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {report.fixtureHistory.map((f, i) => (
+                <div key={i} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2 text-xs">
+                  <span className="font-bold text-slate-800">{f.isHomeFixture ? "vs" : "@"} {f.opponentName} · {format(f.matchTime, "d MMM yyyy")}</span>
+                  {f.result && (
+                    <span className={`font-black ${f.result.result === "win" ? "text-emerald-600" : f.result.result === "loss" ? "text-rose-600" : "text-slate-500"}`}>
+                      {f.result.ourScore}–{f.result.opponentScore} ({f.result.result.toUpperCase()})
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

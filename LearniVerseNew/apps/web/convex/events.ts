@@ -1,5 +1,16 @@
-import { v } from "convex/values";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { ConvexError, v } from "convex/values";
+import {
+  mutation,
+  query,
+  action,
+  internalMutation,
+  internalQuery,
+  type MutationCtx,
+  type QueryCtx,
+  type ActionCtx,
+} from "./_generated/server";
+import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 // Utility: get current user
 async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
@@ -13,6 +24,20 @@ async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
 
   if (!user) throw new Error("No user record found.");
   return user;
+}
+
+async function getCurrentUserForAction(ctx: ActionCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("You must be signed in to perform this action.");
+  const user = await ctx.runQuery(internal.events.internalGetUserByClerkId, {
+    clerkUserId: identity.subject,
+  });
+  if (!user) throw new Error("No application user record exists for this session.");
+  return user;
+}
+
+function generateTicketCode() {
+  return `TKT-${Math.random().toString(36).substring(2, 9).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
 }
 
 // Queries
@@ -99,6 +124,41 @@ export const createEvent = mutation({
   }
 });
 
+export const createSportsEvent = mutation({
+  args: {
+    title: v.string(),
+    description: v.string(),
+    eventDate: v.number(),
+    location: v.string(),
+    capacity: v.optional(v.number()),
+    ticketPrice: v.optional(v.number()),
+    sportId: v.optional(v.id("sports")),
+    fixtureId: v.optional(v.id("matchFixtures")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (user.role !== "coach" && user.role !== "admin") {
+      throw new Error("Only coaches and admins can create sports events.");
+    }
+
+    const now = Date.now();
+    return await ctx.db.insert("events", {
+      title: args.title.trim(),
+      description: args.description.trim(),
+      eventDate: args.eventDate,
+      location: args.location.trim(),
+      capacity: args.capacity,
+      ticketPrice: args.ticketPrice,
+      sportId: args.sportId,
+      fixtureId: args.fixtureId,
+      isActive: true,
+      createdByUserId: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
 export const getTicket = mutation({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
@@ -148,7 +208,9 @@ export const scanTicket = mutation({
   args: { ticketCode: v.string() },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    if (user.role !== "admin") throw new Error("Only admins can scan tickets.");
+    if (user.role !== "admin" && user.role !== "coach") {
+      throw new Error("Only admins and coaches can scan tickets.");
+    }
 
     const ticket = await ctx.db
       .query("eventTickets")
@@ -162,9 +224,13 @@ export const scanTicket = mutation({
     if (ticket.status === "scanned") {
       throw new Error("Ticket has already been scanned.");
     }
-    
+
     if (ticket.status === "cancelled") {
       throw new Error("Ticket is cancelled and no longer valid.");
+    }
+
+    if (ticket.paymentStatus === "pending" || ticket.paymentStatus === "failed") {
+      throw new Error("This ticket's payment hasn't been completed yet.");
     }
 
     const event = await ctx.db.get(ticket.eventId);
@@ -182,4 +248,209 @@ export const scanTicket = mutation({
       eventName: event?.title ?? "Event",
     };
   }
+});
+
+// ── Paid ticket checkout (Paystack) — mirrors convex/payments.ts's
+// initializeCheckout/verifyTransaction pattern for enrollment payments. ────
+
+export const initializeTicketCheckout = action({
+  args: {
+    eventId: v.id("events"),
+    origin: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserForAction(ctx);
+    const event = await ctx.runQuery(internal.events.internalGetEventForPayment, { eventId: args.eventId });
+    if (!event || !event.isActive) throw new Error("Event not available.");
+    if (!event.ticketPrice || event.ticketPrice <= 0) {
+      throw new Error("This event doesn't require payment — use getTicket instead.");
+    }
+
+    const existing = await ctx.runQuery(internal.events.internalGetMyTicketForEvent, {
+      eventId: args.eventId,
+      userId: user._id,
+    });
+    if (existing && existing.status !== "cancelled" && existing.paymentStatus !== "failed") {
+      throw new Error("You already have a ticket for this event.");
+    }
+
+    if (event.capacity != null) {
+      const activeCount = await ctx.runQuery(internal.events.internalCountActiveTickets, { eventId: args.eventId });
+      if (activeCount >= event.capacity) throw new Error("Event is fully booked.");
+    }
+
+    const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecret) throw new ConvexError("PAYSTACK_SECRET_KEY is not configured yet.");
+
+    const reference = `eduspace-ticket-${args.eventId}-${Date.now()}`;
+
+    const response = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${paystackSecret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: user.email,
+        amount: Math.round(event.ticketPrice * 100),
+        reference,
+        callback_url: `${args.origin}/events/callback?eventId=${args.eventId}`,
+        metadata: { eventId: args.eventId, userId: user._id },
+      }),
+    });
+
+    const result = (await response.json()) as {
+      status: boolean;
+      message?: string;
+      data?: { authorization_url: string; access_code: string; reference: string };
+    };
+
+    if (!result.status || !result.data) {
+      throw new Error(result.message ?? "Unable to initialize Paystack checkout.");
+    }
+
+    await ctx.runMutation(internal.events.internalRecordInitializedTicket, {
+      eventId: args.eventId,
+      userId: user._id,
+      amount: event.ticketPrice,
+      reference: result.data.reference,
+    });
+
+    return { authorizationUrl: result.data.authorization_url, reference: result.data.reference };
+  },
+});
+
+export const verifyTicketPayment = action({
+  args: { reference: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserForAction(ctx);
+
+    const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecret) throw new ConvexError("PAYSTACK_SECRET_KEY is not configured yet.");
+
+    const response = await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(args.reference)}`,
+      { headers: { Authorization: `Bearer ${paystackSecret}` } },
+    );
+
+    const result = (await response.json()) as {
+      status: boolean;
+      message?: string;
+      data?: { status?: string };
+    };
+
+    if (!result.status || !result.data) {
+      throw new Error(result.message ?? "Unable to verify payment with Paystack.");
+    }
+
+    const isSuccess = result.data.status === "success";
+
+    await ctx.runMutation(internal.events.internalRecordTicketVerification, {
+      reference: args.reference,
+      userId: user._id,
+      status: isSuccess ? "paid" : "failed",
+    });
+
+    return { ok: isSuccess, status: result.data.status ?? "unknown" };
+  },
+});
+
+export const internalGetUserByClerkId = internalQuery({
+  args: { clerkUserId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .first();
+  },
+});
+
+export const internalGetEventForPayment = internalQuery({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => ctx.db.get(args.eventId),
+});
+
+export const internalGetMyTicketForEvent = internalQuery({
+  args: { eventId: v.id("events"), userId: v.id("users") },
+  handler: async (ctx, args) =>
+    ctx.db
+      .query("eventTickets")
+      .withIndex("by_event_user", (q) => q.eq("eventId", args.eventId).eq("userId", args.userId))
+      .first(),
+});
+
+export const internalCountActiveTickets = internalQuery({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const tickets = await ctx.db
+      .query("eventTickets")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    return tickets.filter((t) => t.status !== "cancelled" && t.paymentStatus !== "failed").length;
+  },
+});
+
+export const internalRecordInitializedTicket = internalMutation({
+  args: {
+    eventId: v.id("events"),
+    userId: v.id("users"),
+    amount: v.number(),
+    reference: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("eventTickets")
+      .withIndex("by_event_user", (q) => q.eq("eventId", args.eventId).eq("userId", args.userId))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        status: "valid",
+        amount: args.amount,
+        paymentStatus: "pending",
+        paymentReference: args.reference,
+      });
+    } else {
+      await ctx.db.insert("eventTickets", {
+        eventId: args.eventId,
+        userId: args.userId,
+        ticketCode: generateTicketCode(),
+        status: "valid",
+        amount: args.amount,
+        paymentStatus: "pending",
+        paymentReference: args.reference,
+        createdAt: Date.now(),
+      });
+    }
+  },
+});
+
+export const internalRecordTicketVerification = internalMutation({
+  args: {
+    reference: v.string(),
+    userId: v.id("users"),
+    status: v.union(v.literal("paid"), v.literal("failed")),
+  },
+  handler: async (ctx, args) => {
+    const ticket = await ctx.db
+      .query("eventTickets")
+      .withIndex("by_reference", (q) => q.eq("paymentReference", args.reference))
+      .first();
+    if (!ticket) throw new Error("No ticket found for this payment reference.");
+
+    await ctx.db.patch(ticket._id, { paymentStatus: args.status });
+
+    if (args.status === "paid") {
+      const event = await ctx.db.get(ticket.eventId);
+      await ctx.db.insert("notifications", {
+        userId: args.userId,
+        title: "Ticket payment confirmed",
+        body: `Your ticket for ${event?.title ?? "the event"} is ready — find it under My Tickets.`,
+        type: "system",
+        link: "/events",
+        isRead: false,
+        createdAt: Date.now(),
+      });
+    }
+  },
 });

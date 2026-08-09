@@ -1,30 +1,48 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Ticket, Calendar, MapPin, Users, CheckCircle2, XCircle,
-  Plus, QrCode, Clock, ArrowRight
+  Plus, QrCode, Clock, ArrowRight, CreditCard
 } from "lucide-react";
 import { format } from "date-fns";
+import QRCodeLib from "qrcode";
+
+function TicketQrImage({ code }: { code: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    if (canvasRef.current) void QRCodeLib.toCanvas(canvasRef.current, code, { width: 160, margin: 2 });
+  }, [code]);
+  return <canvas ref={canvasRef} />;
+}
 
 export default function EventsPage() {
   const user = useQuery(api.users.current);
   const events = useQuery(api.events.listEvents, {});
   const myTickets = useQuery(api.events.listMyTickets);
   const getTicketMut = useMutation(api.events.getTicket);
+  const initTicketCheckout = useAction(api.events.initializeTicketCheckout);
 
   const [loading, setLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [viewTicket, setViewTicket] = useState<string | null>(null);
 
-  const handleGetTicket = async (eventId: Id<"events">) => {
-    setLoading(eventId);
+  const handleGetTicket = async (event: any) => {
+    setLoading(event._id);
     setMessage(null);
     try {
-      await getTicketMut({ eventId });
+      if (event.ticketPrice && event.ticketPrice > 0) {
+        const { authorizationUrl } = await initTicketCheckout({
+          eventId: event._id,
+          origin: window.location.origin,
+        });
+        window.location.href = authorizationUrl;
+        return;
+      }
+      await getTicketMut({ eventId: event._id });
       setMessage({ text: "Ticket secured! Check 'My Tickets' below.", ok: true });
     } catch (e) {
       setMessage({ text: e instanceof Error ? e.message : "Failed to get ticket.", ok: false });
@@ -42,7 +60,9 @@ export default function EventsPage() {
   }
 
   const hasTicket = (eventId: Id<"events">) =>
-    myTickets?.some((t) => t.eventId === eventId && t.status !== "cancelled");
+    myTickets?.some(
+      (t) => t.eventId === eventId && t.status !== "cancelled" && t.paymentStatus !== "pending" && t.paymentStatus !== "failed",
+    );
 
   const upcomingEvents = events.filter((e) => e.eventDate >= Date.now());
   const pastEvents = events.filter((e) => e.eventDate < Date.now());
@@ -111,6 +131,12 @@ export default function EventsPage() {
                         <span>Capacity: {event.capacity}</span>
                       </div>
                     )}
+                    {!!event.ticketPrice && (
+                      <div className="flex items-center gap-2 font-bold text-slate-700">
+                        <CreditCard className="h-3.5 w-3.5 text-slate-400" />
+                        <span>R{event.ticketPrice}</span>
+                      </div>
+                    )}
                   </div>
 
                   {owned ? (
@@ -119,11 +145,11 @@ export default function EventsPage() {
                     </div>
                   ) : (
                     <button
-                      onClick={() => handleGetTicket(event._id)}
+                      onClick={() => handleGetTicket(event)}
                       disabled={loading === event._id}
                       className="w-full rounded-2xl bg-rose-600 py-2.5 text-xs font-bold text-white transition hover:bg-rose-700 disabled:opacity-50"
                     >
-                      {loading === event._id ? "Processing…" : "Get Ticket"}
+                      {loading === event._id ? "Processing…" : event.ticketPrice ? `Buy Ticket — R${event.ticketPrice}` : "Get Ticket"}
                     </button>
                   )}
                 </div>
@@ -163,11 +189,15 @@ export default function EventsPage() {
 
                 {/* QR Code area */}
                 <div className="border-t border-dashed border-slate-200 bg-slate-50 p-5">
-                  {viewTicket === ticket._id ? (
+                  {ticket.paymentStatus === "pending" ? (
+                    <p className="text-center text-xs font-bold text-amber-600">Payment pending — complete checkout to unlock this ticket.</p>
+                  ) : ticket.paymentStatus === "failed" ? (
+                    <p className="text-center text-xs font-bold text-rose-600">Payment failed — try purchasing again from the event above.</p>
+                  ) : viewTicket === ticket._id ? (
                     <div className="text-center">
                       <div className="inline-flex flex-col items-center rounded-2xl bg-white border border-slate-200 p-6 shadow-sm">
-                        <QrCode className="h-24 w-24 text-slate-800 mb-3" />
-                        <p className="text-xs font-mono font-bold text-slate-700 tracking-widest">{ticket.ticketCode}</p>
+                        <TicketQrImage code={ticket.ticketCode} />
+                        <p className="mt-3 text-xs font-mono font-bold text-slate-700 tracking-widest">{ticket.ticketCode}</p>
                       </div>
                       <p className="mt-3 text-[10px] text-slate-400">Present this QR code at the entrance</p>
                     </div>

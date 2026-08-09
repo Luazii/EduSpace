@@ -796,3 +796,82 @@ export const scanBusPassengerByQR = mutation({
     return learner;
   },
 });
+
+// ── UC-14: Bus GPS location ─────────────────────────────────────────────────
+// Haversine distance between two lat/lng points, in kilometers.
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export const pingLocation = mutation({
+  args: {
+    routeId: v.id("transportRoutes"),
+    latitude: v.number(),
+    longitude: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const route = await ctx.db.get(args.routeId);
+    if (!route) throw new Error("Route not found.");
+    if (route.driverUserId !== user._id && !isTransportAdminish(user.role)) {
+      throw new Error("You are not assigned to this route.");
+    }
+
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("busLocations")
+      .withIndex("by_route", (q) => q.eq("routeId", args.routeId))
+      .first();
+
+    // Real physics from consecutive pings — not simulated: speed derived
+    // from Haversine distance between the last two recorded positions and
+    // the elapsed time between them.
+    let speedKmh: number | null = null;
+    if (existing) {
+      const distanceKm = haversineKm(existing.latitude, existing.longitude, args.latitude, args.longitude);
+      const elapsedHours = (now - existing.recordedAt) / (1000 * 60 * 60);
+      if (elapsedHours > 0) speedKmh = Math.round((distanceKm / elapsedHours) * 10) / 10;
+
+      await ctx.db.patch(existing._id, {
+        driverUserId: user._id,
+        latitude: args.latitude,
+        longitude: args.longitude,
+        recordedAt: now,
+      });
+    } else {
+      await ctx.db.insert("busLocations", {
+        routeId: args.routeId,
+        driverUserId: user._id,
+        latitude: args.latitude,
+        longitude: args.longitude,
+        recordedAt: now,
+      });
+    }
+
+    return { speedKmh };
+  },
+});
+
+export const getRouteLocation = query({
+  args: { routeId: v.id("transportRoutes") },
+  handler: async (ctx, args) => {
+    await getCurrentUser(ctx);
+    const location = await ctx.db
+      .query("busLocations")
+      .withIndex("by_route", (q) => q.eq("routeId", args.routeId))
+      .first();
+    if (!location) return null;
+    return {
+      latitude: location.latitude,
+      longitude: location.longitude,
+      recordedAt: location.recordedAt,
+      mapsUrl: `https://www.google.com/maps?q=${location.latitude},${location.longitude}`,
+    };
+  },
+});

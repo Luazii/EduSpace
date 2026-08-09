@@ -21,6 +21,25 @@ async function requireWarehouseAdmin(ctx: QueryCtx | MutationCtx) {
   return user;
 }
 
+async function requireDriver(ctx: QueryCtx | MutationCtx) {
+  const user = await getCurrentUser(ctx);
+  if (user.role !== "driver" && user.role !== "admin") {
+    throw new Error("Unauthorized: Driver access required.");
+  }
+  return user;
+}
+
+async function notifyUser(ctx: MutationCtx, userId: Id<"users">, title: string, body: string) {
+  await ctx.db.insert("notifications", {
+    userId,
+    title,
+    body,
+    type: "system",
+    isRead: false,
+    createdAt: Date.now(),
+  });
+}
+
 // ── Items ─────────────────────────────────────────────────────────────────
 
 export const listItems = query({
@@ -235,6 +254,161 @@ export const listTransactions = query({
           performedByName: performer?.fullName ?? performer?.email ?? "Unknown",
         };
       }),
+    );
+  },
+});
+
+// ── UC-01: Deliveries — warehouse stock -> driver -> recipient ─────────────
+
+export const createDelivery = mutation({
+  args: {
+    itemId: v.id("inventoryItems"),
+    quantity: v.number(),
+    recipientLabel: v.string(),
+    recipientUserId: v.optional(v.id("users")),
+    driverUserId: v.id("users"),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireWarehouseAdmin(ctx);
+    if (args.quantity <= 0) throw new Error("Quantity must be positive.");
+
+    const item = await ctx.db.get(args.itemId);
+    if (!item) throw new Error("Item not found.");
+    if (item.quantityOnHand < args.quantity) {
+      throw new Error(`Not enough stock — only ${item.quantityOnHand} on hand.`);
+    }
+
+    const driver = await ctx.db.get(args.driverUserId);
+    if (!driver || driver.role !== "driver") throw new Error("Selected user is not a driver.");
+
+    const now = Date.now();
+    await ctx.db.patch(args.itemId, {
+      quantityOnHand: item.quantityOnHand - args.quantity,
+      updatedAt: now,
+    });
+
+    await ctx.db.insert("inventoryTransactions", {
+      itemId: args.itemId,
+      type: "issue",
+      quantityDelta: -args.quantity,
+      issuedToLabel: `Delivery: ${args.recipientLabel.trim()}`,
+      performedByUserId: user._id,
+      note: args.notes?.trim() || undefined,
+      createdAt: now,
+    });
+
+    const deliveryId = await ctx.db.insert("deliveries", {
+      itemId: args.itemId,
+      quantity: args.quantity,
+      recipientLabel: args.recipientLabel.trim(),
+      recipientUserId: args.recipientUserId,
+      driverUserId: args.driverUserId,
+      status: "pending",
+      createdByUserId: user._id,
+      notes: args.notes?.trim() || undefined,
+      createdAt: now,
+    });
+
+    await notifyUser(
+      ctx,
+      args.driverUserId,
+      "New delivery assigned",
+      `${args.quantity}x ${item.name} for ${args.recipientLabel.trim()} — pick up from the warehouse to begin.`,
+    );
+
+    return deliveryId;
+  },
+});
+
+export const listMyDeliveries = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireDriver(ctx);
+    const deliveries = await ctx.db
+      .query("deliveries")
+      .withIndex("by_driver", (q) => q.eq("driverUserId", user._id))
+      .collect();
+
+    const statusOrder: Record<string, number> = { pending: 0, acknowledged: 1, delivered: 2, cancelled: 3 };
+    return Promise.all(
+      deliveries
+        .sort((a, b) => (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9) || b.createdAt - a.createdAt)
+        .map(async (d) => {
+          const item = await ctx.db.get(d.itemId);
+          return { ...d, itemName: item?.name ?? "Unknown item" };
+        }),
+    );
+  },
+});
+
+export const acknowledgeDelivery = mutation({
+  args: { deliveryId: v.id("deliveries") },
+  handler: async (ctx, args) => {
+    const user = await requireDriver(ctx);
+    const delivery = await ctx.db.get(args.deliveryId);
+    if (!delivery || delivery.driverUserId !== user._id) throw new Error("Delivery not found.");
+    if (delivery.status !== "pending") throw new Error("This delivery has already been acknowledged.");
+
+    const now = Date.now();
+    await ctx.db.patch(args.deliveryId, { status: "acknowledged", acknowledgedAt: now });
+
+    const item = await ctx.db.get(delivery.itemId);
+    await notifyUser(
+      ctx,
+      delivery.createdByUserId,
+      "Delivery receipt acknowledged",
+      `${user.fullName ?? user.email} picked up ${delivery.quantity}x ${item?.name ?? "item"} for ${delivery.recipientLabel}.`,
+    );
+  },
+});
+
+export const updateDeliveryStatus = mutation({
+  args: { deliveryId: v.id("deliveries"), status: v.union(v.literal("delivered"), v.literal("cancelled")) },
+  handler: async (ctx, args) => {
+    const user = await requireDriver(ctx);
+    const delivery = await ctx.db.get(args.deliveryId);
+    if (!delivery || delivery.driverUserId !== user._id) throw new Error("Delivery not found.");
+    if (delivery.status === "delivered" || delivery.status === "cancelled") {
+      throw new Error("This delivery is already finalized.");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(args.deliveryId, {
+      status: args.status,
+      deliveredAt: args.status === "delivered" ? now : undefined,
+    });
+
+    if (args.status === "delivered") {
+      const item = await ctx.db.get(delivery.itemId);
+      const notifyTarget = delivery.recipientUserId ?? delivery.createdByUserId;
+      await notifyUser(
+        ctx,
+        notifyTarget,
+        "Delivery completed",
+        `${delivery.quantity}x ${item?.name ?? "item"} has been delivered to ${delivery.recipientLabel}.`,
+      );
+    }
+  },
+});
+
+export const listAllDeliveries = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireWarehouseAdmin(ctx);
+    const deliveries = await ctx.db.query("deliveries").collect();
+    return Promise.all(
+      deliveries
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .map(async (d) => {
+          const item = await ctx.db.get(d.itemId);
+          const driver = await ctx.db.get(d.driverUserId);
+          return {
+            ...d,
+            itemName: item?.name ?? "Unknown item",
+            driverName: driver?.fullName ?? driver?.email ?? "Unknown driver",
+          };
+        }),
     );
   },
 });

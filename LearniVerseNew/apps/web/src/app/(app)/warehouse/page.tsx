@@ -6,12 +6,12 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { useState } from "react";
 import {
   Package, Plus, ArrowDownToLine, ArrowUpFromLine, History,
-  Shield, AlertTriangle,
+  Shield, AlertTriangle, Truck,
 } from "lucide-react";
 import { format } from "date-fns";
 
 type Tab = "inventory" | "history";
-type ModalKind = "add" | "receive" | "issue" | null;
+type ModalKind = "add" | "receive" | "issue" | "deliver" | null;
 
 export default function WarehousePage() {
   const user = useQuery(api.users.current);
@@ -21,10 +21,12 @@ export default function WarehousePage() {
   // until we know the user is actually allowed to run them.
   const items = useQuery(api.warehouse.listItems, isWarehouseAdmin ? {} : "skip");
   const transactions = useQuery(api.warehouse.listTransactions, isWarehouseAdmin ? {} : "skip");
+  const allUsers = useQuery(api.users.list);
 
   const createItem = useMutation(api.warehouse.createItem);
   const receiveStock = useMutation(api.warehouse.receiveStock);
   const issueItem = useMutation(api.warehouse.issueItem);
+  const createDelivery = useMutation(api.warehouse.createDelivery);
 
   const [tab, setTab] = useState<Tab>("inventory");
   const [modal, setModal] = useState<ModalKind>(null);
@@ -33,6 +35,7 @@ export default function WarehousePage() {
 
   const [addForm, setAddForm] = useState({ name: "", category: "", sku: "", unit: "", reorderLevel: "", initialQuantity: "" });
   const [moveForm, setMoveForm] = useState({ quantity: "", note: "", issuedToLabel: "" });
+  const [deliverForm, setDeliverForm] = useState({ quantity: "", recipientLabel: "", driverUserId: "", notes: "" });
 
   // Loading state — items/transactions are only ever undefined-while-loading
   // for a warehouse admin; for everyone else they're intentionally skipped.
@@ -56,11 +59,14 @@ export default function WarehousePage() {
 
   const activeItem = (items ?? []).find((i) => i._id === activeItemId);
 
+  const drivers = (allUsers ?? []).filter((u) => u.role === "driver");
+
   const closeModal = () => {
     setModal(null);
     setActiveItemId(null);
     setAddForm({ name: "", category: "", sku: "", unit: "", reorderLevel: "", initialQuantity: "" });
     setMoveForm({ quantity: "", note: "", issuedToLabel: "" });
+    setDeliverForm({ quantity: "", recipientLabel: "", driverUserId: "", notes: "" });
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -112,6 +118,26 @@ export default function WarehousePage() {
       closeModal();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to issue stock.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeliver = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeItemId || !deliverForm.quantity || !deliverForm.recipientLabel.trim() || !deliverForm.driverUserId) return;
+    setSaving(true);
+    try {
+      await createDelivery({
+        itemId: activeItemId,
+        quantity: Number(deliverForm.quantity),
+        recipientLabel: deliverForm.recipientLabel.trim(),
+        driverUserId: deliverForm.driverUserId as Id<"users">,
+        notes: deliverForm.notes.trim() || undefined,
+      });
+      closeModal();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to create delivery.");
     } finally {
       setSaving(false);
     }
@@ -203,6 +229,13 @@ export default function WarehousePage() {
                       className="rounded-xl bg-sky-50 p-2 text-sky-700 hover:bg-sky-100"
                     >
                       <ArrowUpFromLine className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => { setActiveItemId(item._id); setModal("deliver"); }}
+                      title="Send for delivery"
+                      className="rounded-xl bg-amber-50 p-2 text-amber-700 hover:bg-amber-100"
+                    >
+                      <Truck className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
@@ -324,6 +357,38 @@ export default function WarehousePage() {
             </div>
             <button type="submit" disabled={saving || !moveForm.quantity} className="w-full rounded-2xl bg-sky-600 py-3 text-sm font-black text-white transition hover:bg-sky-700 disabled:opacity-50">
               {saving ? "Saving…" : "Issue Stock"}
+            </button>
+          </form>
+        </Modal>
+      )}
+
+      {/* Deliver modal — UC-01: warehouse -> driver -> recipient */}
+      {modal === "deliver" && activeItem && (
+        <Modal title={`Send for Delivery — ${activeItem.name}`} onClose={closeModal}>
+          <form onSubmit={handleDeliver} className="space-y-4">
+            <p className="text-xs text-slate-500">Currently {activeItem.quantityOnHand} {activeItem.unit ?? ""} on hand.</p>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-600">Quantity *</label>
+              <input autoFocus type="number" min={1} max={activeItem.quantityOnHand} value={deliverForm.quantity} onChange={(e) => setDeliverForm((p) => ({ ...p, quantity: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-600">Recipient *</label>
+              <input value={deliverForm.recipientLabel} onChange={(e) => setDeliverForm((p) => ({ ...p, recipientLabel: e.target.value }))} placeholder="e.g. Grade 10A" className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-600">Driver *</label>
+              <select value={deliverForm.driverUserId} onChange={(e) => setDeliverForm((p) => ({ ...p, driverUserId: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none">
+                <option value="">Select driver…</option>
+                {drivers.map((d) => <option key={d._id} value={d._id}>{d.fullName ?? d.email}</option>)}
+              </select>
+              {drivers.length === 0 && <p className="mt-1 text-[10px] text-slate-400">No driver accounts exist yet.</p>}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-slate-600">Note</label>
+              <input value={deliverForm.notes} onChange={(e) => setDeliverForm((p) => ({ ...p, notes: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-amber-500 focus:outline-none" />
+            </div>
+            <button type="submit" disabled={saving || !deliverForm.quantity || !deliverForm.recipientLabel.trim() || !deliverForm.driverUserId} className="w-full rounded-2xl bg-amber-600 py-3 text-sm font-black text-white transition hover:bg-amber-700 disabled:opacity-50">
+              {saving ? "Assigning…" : "Send for Delivery"}
             </button>
           </form>
         </Modal>

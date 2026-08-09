@@ -617,3 +617,111 @@ export const listReports = query({
     ).then(list => list.sort((a, b) => b.evaluationDate - a.evaluationDate));
   },
 });
+
+// ── UC-09: Season report ────────────────────────────────────────────────────
+// Aggregates everything a coach would want in a printable end-of-season
+// summary: standings, per-athlete attendance/evaluation stats, and the
+// fixture history — all computed from real data, not typed by hand.
+export const generateSeasonReport = query({
+  args: { teamId: v.id("sportsTeams") },
+  handler: async (ctx, args) => {
+    await requireCoach(ctx);
+
+    const team = await ctx.db.get(args.teamId);
+    if (!team) throw new Error("Team not found.");
+    const sport = await ctx.db.get(team.sportId);
+    const coach = team.coachUserId ? await ctx.db.get(team.coachUserId) : null;
+
+    const [members, sessions, fixtures] = await Promise.all([
+      ctx.db
+        .query("teamMemberships")
+        .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+        .filter((q) => q.eq(q.field("status"), "active"))
+        .collect(),
+      ctx.db
+        .query("trainingSessions")
+        .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+        .filter((q) => q.eq(q.field("status"), "completed"))
+        .collect(),
+      ctx.db
+        .query("matchFixtures")
+        .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+        .collect(),
+    ]);
+
+    // Standings — same aggregation as getTeamStandings, inlined so this is
+    // one self-contained report query.
+    const completedFixtures = fixtures.filter((f) => f.status === "completed");
+    const results = await Promise.all(
+      completedFixtures.map((f) =>
+        ctx.db.query("matchResults").withIndex("by_fixture", (q) => q.eq("fixtureId", f._id)).first(),
+      ),
+    );
+    const standings = { played: 0, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
+    for (const r of results) {
+      if (!r) continue;
+      standings.played++;
+      standings.goalsFor += r.ourScore;
+      standings.goalsAgainst += r.opponentScore;
+      if (r.result === "win") { standings.wins++; standings.points += 3; }
+      else if (r.result === "draw") { standings.draws++; standings.points += 1; }
+      else standings.losses++;
+    }
+
+    // Per-athlete stats.
+    const roster = await Promise.all(
+      members.map(async (m) => {
+        const student = await ctx.db.get(m.studentUserId);
+        const attendanceRows = await Promise.all(
+          sessions.map((s) =>
+            ctx.db
+              .query("sportsAttendance")
+              .withIndex("by_session_and_student", (q) => q.eq("sessionId", s._id).eq("studentUserId", m.studentUserId))
+              .first(),
+          ),
+        );
+        const attended = attendanceRows.filter((a) => a && (a.status === "present" || a.status === "late")).length;
+
+        const evaluations = await ctx.db
+          .query("sportsReports")
+          .withIndex("by_student", (q) => q.eq("studentUserId", m.studentUserId))
+          .filter((q) => q.eq(q.field("sportId"), team.sportId))
+          .collect();
+        const scored = evaluations.filter((e) => e.performanceScore != null);
+        const avgScore = scored.length > 0
+          ? Math.round((scored.reduce((sum, e) => sum + (e.performanceScore ?? 0), 0) / scored.length) * 10) / 10
+          : null;
+
+        return {
+          studentUserId: m.studentUserId,
+          fullName: student?.fullName ?? student?.email ?? "Unknown",
+          sessionsScheduled: sessions.length,
+          sessionsAttended: attended,
+          attendanceRate: sessions.length > 0 ? Math.round((attended / sessions.length) * 100) : null,
+          evaluationCount: evaluations.length,
+          avgScore,
+        };
+      }),
+    );
+
+    const fixtureHistory = await Promise.all(
+      completedFixtures
+        .sort((a, b) => b.matchTime - a.matchTime)
+        .map(async (f) => {
+          const result = await ctx.db.query("matchResults").withIndex("by_fixture", (q) => q.eq("fixtureId", f._id)).first();
+          return { opponentName: f.opponentName, matchTime: f.matchTime, isHomeFixture: f.isHomeFixture, result };
+        }),
+    );
+
+    return {
+      teamName: team.name,
+      sportName: sport?.name ?? "Unknown",
+      coachName: coach?.fullName ?? coach?.email ?? "Unassigned",
+      generatedAt: Date.now(),
+      standings: { ...standings, goalDifference: standings.goalsFor - standings.goalsAgainst },
+      trainingSessionsHeld: sessions.length,
+      roster: roster.sort((a, b) => (b.attendanceRate ?? -1) - (a.attendanceRate ?? -1)),
+      fixtureHistory,
+    };
+  },
+});

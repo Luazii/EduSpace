@@ -925,6 +925,10 @@ export default defineSchema({
     createdByUserId: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
+    // Sports ticketing link — optional, unset for generic school events.
+    sportId: v.optional(v.id("sports")),
+    fixtureId: v.optional(v.id("matchFixtures")),
+    ticketPrice: v.optional(v.number()), // Rand; unset/0 = free (existing getTicket flow)
   }),
   eventTickets: defineTable({
     eventId: v.id("events"),
@@ -934,10 +938,41 @@ export default defineSchema({
     scannedAt: v.optional(v.number()),
     scannedByUserId: v.optional(v.id("users")),
     createdAt: v.number(),
+    // Paid-ticket fields — unset for free events.
+    amount: v.optional(v.number()),
+    paymentStatus: v.optional(v.union(v.literal("free"), v.literal("pending"), v.literal("paid"), v.literal("failed"))),
+    paymentReference: v.optional(v.string()),
   }).index("by_event", ["eventId"])
     .index("by_user", ["userId"])
     .index("by_code", ["ticketCode"])
-    .index("by_event_user", ["eventId", "userId"]),
+    .index("by_event_user", ["eventId", "userId"])
+    .index("by_reference", ["paymentReference"]),
+
+  // ── Bus live location — one row per route, upserted on each driver ping ───
+  busLocations: defineTable({
+    routeId: v.id("transportRoutes"),
+    driverUserId: v.id("users"),
+    latitude: v.number(),
+    longitude: v.number(),
+    recordedAt: v.number(),
+  }).index("by_route", ["routeId"]),
+
+  // ── Deliveries — warehouse stock -> driver -> recipient ───────────────────
+  deliveries: defineTable({
+    itemId: v.id("inventoryItems"),
+    quantity: v.number(),
+    recipientLabel: v.string(), // e.g. "Grade 10A" or a person's name
+    recipientUserId: v.optional(v.id("users")), // set when resolvable, for direct notification
+    driverUserId: v.id("users"),
+    status: v.union(v.literal("pending"), v.literal("acknowledged"), v.literal("delivered"), v.literal("cancelled")),
+    createdByUserId: v.id("users"),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    acknowledgedAt: v.optional(v.number()),
+    deliveredAt: v.optional(v.number()),
+  })
+    .index("by_driver", ["driverUserId"])
+    .index("by_status", ["status"]),
 
   // ── Warehouse / Inventory ────────────────────────────────────────────────
   inventoryItems: defineTable({

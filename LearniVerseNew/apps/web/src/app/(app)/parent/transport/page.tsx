@@ -6,9 +6,45 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useState } from "react";
 import {
   Bus, MapPin, Users, CheckCircle2, XCircle, Clock,
-  Route, Navigation, Shield, ChevronDown
+  Route, Navigation, Shield, ChevronDown, ExternalLink
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
+
+function LiveTrackingPanel({ routeId }: { routeId: Id<"transportRoutes"> }) {
+  const location = useQuery(api.transport.getRouteLocation, { routeId });
+
+  if (location === undefined) {
+    return <div className="mt-4 flex justify-center rounded-2xl bg-slate-50 border border-slate-200 p-6"><div className="h-5 w-5 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" /></div>;
+  }
+
+  if (location === null) {
+    return (
+      <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-200 p-6 text-center">
+        <Navigation className="mx-auto mb-2 h-5 w-5 text-slate-300" />
+        <p className="text-xs text-slate-400">The driver hasn't started sharing their live location yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-200 p-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Navigation className="h-4 w-4 text-sky-600 animate-pulse" />
+        <span className="text-xs font-black text-slate-700">Live Bus Location</span>
+      </div>
+      <p className="text-xs text-slate-600">{location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}</p>
+      <p className="mt-1 text-[10px] text-slate-400">Updated {formatDistanceToNow(location.recordedAt, { addSuffix: true })}</p>
+      <a
+        href={location.mapsUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-[10px] font-bold text-sky-700 hover:bg-sky-100"
+      >
+        <ExternalLink className="h-3 w-3" /> Open in Maps
+      </a>
+    </div>
+  );
+}
 
 export default function ParentTransportPage() {
   const user = useQuery(api.users.current);
@@ -193,41 +229,8 @@ export default function ParentTransportPage() {
                   )}
                 </div>
 
-                {/* UC-14: Live Tracking simulation */}
-                {trackingRoute === b._id && (
-                  <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-200 p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Navigation className="h-4 w-4 text-sky-600 animate-pulse" />
-                      <span className="text-xs font-black text-slate-700">Live Bus Tracking</span>
-                    </div>
-                    {/* Simulated route progress */}
-                    <div className="relative">
-                      {(b.route as any)?.stops?.length ? (
-                        <div className="space-y-0">
-                          {((b.route as any).stops as any[]).map((stop: any, i: number, arr: any[]) => (
-                            <div key={stop._id || i} className="flex items-start gap-3">
-                              <div className="flex flex-col items-center">
-                                <div className={`h-4 w-4 rounded-full border-2 ${i === 0 ? "bg-emerald-500 border-emerald-500" : i < Math.floor(arr.length * 0.6) ? "bg-sky-500 border-sky-500" : "bg-slate-200 border-slate-300"}`} />
-                                {i < arr.length - 1 && <div className={`w-0.5 h-8 ${i < Math.floor(arr.length * 0.6) ? "bg-sky-300" : "bg-slate-200"}`} />}
-                              </div>
-                              <div className="pb-6">
-                                <p className={`text-xs font-bold ${i < Math.floor(arr.length * 0.6) ? "text-slate-800" : "text-slate-400"}`}>{stop.label}</p>
-                                <p className="text-[10px] text-slate-400">{stop.address}</p>
-                                {i === Math.floor(arr.length * 0.6) && (
-                                  <span className="inline-flex items-center gap-1 mt-1 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-700">
-                                    <Bus className="h-2.5 w-2.5" /> Bus is here • ETA next stop: ~5 min
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400">No stop information available for this route.</p>
-                      )}
-                    </div>
-                  </div>
-                )}
+                {/* UC-14: real live tracking — driver's actual last GPS ping, not a simulation */}
+                {trackingRoute === b._id && <LiveTrackingPanel routeId={b.routeId} />}
               </div>
             ))}
           </div>
