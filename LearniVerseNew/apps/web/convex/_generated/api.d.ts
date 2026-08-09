@@ -18,6 +18,7 @@ import type * as classes from "../classes.js";
 import type * as cleanup from "../cleanup.js";
 import type * as coach from "../coach.js";
 import type * as courses from "../courses.js";
+import type * as debug from "../debug.js";
 import type * as enrollments from "../enrollments.js";
 import type * as events from "../events.js";
 import type * as faculties from "../faculties.js";
@@ -76,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   cleanup: typeof cleanup;
   coach: typeof coach;
   courses: typeof courses;
+  debug: typeof debug;
   enrollments: typeof enrollments;
   events: typeof events;
   faculties: typeof faculties;
