@@ -190,7 +190,7 @@ function StudentCard({ link }: { link: any }) {
               <CheckCircle2 className="h-3 w-3" /> Enrolled
             </span>
             <p className="mt-2 text-xs font-bold text-slate-400">View Performance Report</p>
-            <Link href="/parent/fees" onClick={(e) => e.stopPropagation()} className="mt-1 text-xs font-bold text-indigo-600 hover:underline">School Fees →</Link>
+            <Link href="/parent/fees" onClick={(e: React.MouseEvent) => e.stopPropagation()} className="mt-1 text-xs font-bold text-indigo-600 hover:underline">School Fees →</Link>
           </div>
         </div>
       </Link>
