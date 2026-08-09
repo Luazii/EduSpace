@@ -42,10 +42,18 @@ export const getRouteInfo = query({
 export const forceAssignDriver = mutation({
   args: { routeId: v.id("transportRoutes") },
   handler: async (ctx, args) => {
-    const driver = await ctx.db.query("users").filter(q => q.eq(q.field("role"), "driver")).first();
+    const driver = await ctx.db.get("jx7d8bnsjdsh97xwd4qnvmm1q98c4aej" as any);
     if (!driver) throw new Error("No driver found");
     
     await ctx.db.patch(args.routeId, { driverUserId: driver._id });
     return `Route assigned to ${driver.email}`;
+  }
+});
+
+export const listDrivers = query({
+  args: {},
+  handler: async (ctx) => {
+    const drivers = await ctx.db.query("users").filter(q => q.eq(q.field("role"), "driver")).collect();
+    return drivers.map(d => ({ id: d._id, email: d.email, clerkId: d.clerkUserId, createdAt: d.createdAt }));
   }
 });
