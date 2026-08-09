@@ -1,4 +1,5 @@
 import { query, mutation } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 
 export const getStudentId = query({
@@ -42,7 +43,7 @@ export const getRouteInfo = query({
 export const forceAssignDriver = mutation({
   args: { routeId: v.id("transportRoutes") },
   handler: async (ctx, args) => {
-    const driver = await ctx.db.get("jx7d8bnsjdsh97xwd4qnvmm1q98c4aej" as any);
+    const driver = await ctx.db.get("jx7d8bnsjdsh97xwd4qnvmm1q98c4aej" as Id<"users">);
     if (!driver) throw new Error("No driver found");
     
     await ctx.db.patch(args.routeId, { driverUserId: driver._id });
