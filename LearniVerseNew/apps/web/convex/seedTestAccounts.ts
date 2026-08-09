@@ -212,7 +212,10 @@ export const seedTestAccounts = mutation({
         createdAt: now,
         updatedAt: now,
       });
-    } else if (!existingTeam.coachUserId) {
+    } else if (existingTeam.coachUserId !== coachId) {
+      // Always resync, not just when unset — a stale coachUserId (e.g. from
+      // an earlier Clerk-instance switch that reissued this user's _id)
+      // would otherwise sit there forever pointing at a dead user document.
       await ctx.db.patch(existingTeam._id, { coachUserId: coachId, updatedAt: now });
     }
 
@@ -238,7 +241,7 @@ export const seedTestAccounts = mutation({
       });
     } else {
       routeId = existingRoute._id;
-      if (!existingRoute.driverUserId) {
+      if (existingRoute.driverUserId !== driverId) {
         await ctx.db.patch(existingRoute._id, { driverUserId: driverId, updatedAt: now });
       }
     }
@@ -262,6 +265,57 @@ export const seedTestAccounts = mutation({
         createdAt: now,
         updatedAt: now,
       });
+    }
+
+    // ── 6c. Enroll the seeded student in the full Grade 9 subject load ───
+    const existingStudentProfileForGrade = await ctx.db
+      .query("studentProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", studentId))
+      .first();
+    if (existingStudentProfileForGrade && existingStudentProfileForGrade.qualificationId !== "Grade 9") {
+      await ctx.db.patch(existingStudentProfileForGrade._id, { qualificationId: "Grade 9", updatedAt: now });
+    }
+
+    const GRADE9_COURSE_CODES = ["MATH-G9", "ENG-G9", "CA-G9", "LO-G9", "EMS-G9", "TECH-G9", "SS-G9", "NS-G9", "FAL-G9"];
+    const grade9CourseIds: Id<"courses">[] = [];
+    for (const code of GRADE9_COURSE_CODES) {
+      const course = await ctx.db
+        .query("courses")
+        .withIndex("by_course_code", (q) => q.eq("courseCode", code))
+        .first();
+      if (course) grade9CourseIds.push(course._id);
+    }
+
+    if (grade9CourseIds.length > 0) {
+      const existingEnrollments = await ctx.db
+        .query("enrollments")
+        .withIndex("by_student", (q) => q.eq("studentUserId", studentId))
+        .collect();
+      const alreadyEnrolledCourseIds = new Set(existingEnrollments.map((e) => e.courseId));
+      const missingCourseIds = grade9CourseIds.filter((id) => !alreadyEnrolledCourseIds.has(id));
+
+      if (missingCourseIds.length > 0) {
+        const applicationId = await ctx.db.insert("enrollmentApplications", {
+          studentUserId: studentId,
+          studentEmail: "student@eduspaceqa.com",
+          gradeLabel: "Grade 9",
+          selectedCourseIds: grade9CourseIds,
+          status: "approved",
+          paymentStatus: "paid",
+          notes: "Seed data — auto-enrolled in Grade 9",
+          createdAt: now,
+          updatedAt: now,
+        });
+        for (const courseId of missingCourseIds) {
+          await ctx.db.insert("enrollments", {
+            studentUserId: studentId,
+            courseId,
+            applicationId,
+            enrolledAt: now,
+            status: "active",
+          });
+        }
+      }
     }
 
     // ── 7. Warehouse admin: a few sample inventory items ─────────────────
