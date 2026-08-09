@@ -7,7 +7,7 @@ export const seedNewRoles = mutation({
     
     // Seed Coach
     await ctx.db.insert("users", {
-      clerkUserId: "seed_coach_1",
+      clerkUserId: "seed_placeholder_coach_1",
       email: "coach@eduspace.test",
       firstName: "John",
       lastName: "Coachman",
@@ -21,7 +21,7 @@ export const seedNewRoles = mutation({
 
     // Seed Driver
     await ctx.db.insert("users", {
-      clerkUserId: "seed_driver_1",
+      clerkUserId: "seed_placeholder_driver_1",
       email: "driver@eduspace.test",
       firstName: "Dave",
       lastName: "Wheels",
@@ -35,7 +35,7 @@ export const seedNewRoles = mutation({
 
     // Seed Transport Admin
     await ctx.db.insert("users", {
-      clerkUserId: "seed_transport_admin_1",
+      clerkUserId: "seed_placeholder_transport_admin_1",
       email: "transport@eduspace.test",
       firstName: "Sarah",
       lastName: "Logistics",

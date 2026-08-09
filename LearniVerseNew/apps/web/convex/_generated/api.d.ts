@@ -44,6 +44,7 @@ import type * as rooms from "../rooms.js";
 import type * as seed from "../seed.js";
 import type * as seedOmni from "../seedOmni.js";
 import type * as seedRoles from "../seedRoles.js";
+import type * as seedTestAccounts from "../seedTestAccounts.js";
 import type * as sports from "../sports.js";
 import type * as sportsVenues from "../sportsVenues.js";
 import type * as studySessions from "../studySessions.js";
@@ -100,6 +101,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   seedOmni: typeof seedOmni;
   seedRoles: typeof seedRoles;
+  seedTestAccounts: typeof seedTestAccounts;
   sports: typeof sports;
   sportsVenues: typeof sportsVenues;
   studySessions: typeof studySessions;
