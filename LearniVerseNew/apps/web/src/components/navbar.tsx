@@ -21,6 +21,10 @@ export function Navbar() {
   const isTeacher = role === "teacher";
   const isStudent = role === "student";
   const isParent = role === "parent";
+  const isCoach = role === "coach";
+  const isDriver = role === "driver";
+  const isTransportAdmin = role === "transport_admin";
+  const isWarehouseAdmin = role === "warehouse_admin";
 
   const isEnrolled = (activeCourses?.length ?? 0) > 0;
   const showStudentDashboard = isStudent && isEnrolled;
@@ -32,6 +36,14 @@ export function Navbar() {
     ? "/teacher"
     : isParent
     ? "/parent/dashboard"
+    : isCoach
+    ? "/sports"
+    : isDriver
+    ? "/driver"
+    : isTransportAdmin
+    ? "/transport-admin"
+    : isWarehouseAdmin
+    ? "/warehouse"
     : "/dashboard";
 
   const links = [
@@ -47,7 +59,7 @@ export function Navbar() {
     {
       href: dashboardHref,
       label: "Dashboard",
-      show: isAdmin || isTeacher || isParent || showStudentDashboard,
+      show: isAdmin || isTeacher || isParent || isCoach || isDriver || isTransportAdmin || isWarehouseAdmin || showStudentDashboard,
     },
     // Profile — everyone sees this if authenticated
     { href: "/profile", label: "Profile", show: true },

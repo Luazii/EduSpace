@@ -32,6 +32,10 @@ export function MobileNav() {
   const isTeacher = role === "teacher";
   const isStudent = role === "student";
   const isParent = role === "parent";
+  const isCoach = role === "coach";
+  const isDriver = role === "driver";
+  const isTransportAdmin = role === "transport_admin";
+  const isWarehouseAdmin = role === "warehouse_admin";
   const isEnrolled = (activeCourses?.length ?? 0) > 0;
 
   const dashboardHref = isAdmin
@@ -40,26 +44,36 @@ export function MobileNav() {
     ? "/teacher"
     : isParent
     ? "/parent/dashboard"
+    : isCoach
+    ? "/sports"
+    : isDriver
+    ? "/driver"
+    : isTransportAdmin
+    ? "/transport-admin"
+    : isWarehouseAdmin
+    ? "/warehouse"
     : "/dashboard";
+
+  const isOtherPortalRole = isCoach || isDriver || isTransportAdmin || isWarehouseAdmin;
 
   const items: NavItem[] = [
     {
       href: dashboardHref,
       label: "Home",
       icon: <LayoutDashboard className="h-3.5 w-3.5" />,
-      show: isAdmin || isTeacher || isParent || (isStudent && isEnrolled),
+      show: isAdmin || isTeacher || isParent || isOtherPortalRole || (isStudent && isEnrolled),
     },
     {
       href: isParent ? "/apply" : "/courses",
       label: isParent ? "Apply" : "Classroom",
       icon: isParent ? <GraduationCap className="h-3.5 w-3.5" /> : <BookOpen className="h-3.5 w-3.5" />,
-      show: true,
+      show: !isOtherPortalRole,
     },
     {
       href: isAdmin ? "/admin/enrollments" : "/apply",
       label: isAdmin ? "Applications" : "Enrol",
       icon: <GraduationCap className="h-3.5 w-3.5" />,
-      show: !isTeacher && !isParent,
+      show: !isTeacher && !isParent && !isOtherPortalRole,
     },
     {
       href: isTeacher ? "/bookings/with" : "/bookings/teachers",

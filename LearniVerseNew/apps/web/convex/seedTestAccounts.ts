@@ -135,6 +135,7 @@ export const seedTestAccounts = mutation({
     const coachId = byRole.get("coach")!;
     const driverId = byRole.get("driver")!;
     const transportAdminId = byRole.get("transport_admin")!;
+    const warehouseAdminId = byRole.get("warehouse_admin")!;
 
     // ── 2. Teacher profile ───────────────────────────────────────────────
     const existingTeacherProfile = await ctx.db
@@ -236,6 +237,40 @@ export const seedTestAccounts = mutation({
       });
     } else if (!existingRoute.driverUserId) {
       await ctx.db.patch(existingRoute._id, { driverUserId: driverId, updatedAt: now });
+    }
+
+    // ── 7. Warehouse admin: a few sample inventory items ─────────────────
+    const SAMPLE_ITEMS = [
+      { name: "Grade 8 Maths Textbook", category: "Textbook", unit: "pcs", quantityOnHand: 120, reorderLevel: 20 },
+      { name: "PE Uniform (Medium)", category: "Uniform", unit: "pcs", quantityOnHand: 8, reorderLevel: 15 },
+      { name: "Rugby Balls", category: "Equipment", unit: "pcs", quantityOnHand: 24, reorderLevel: 6 },
+      { name: "A4 Printer Paper", category: "Supplies", unit: "box", quantityOnHand: 3, reorderLevel: 5 },
+    ];
+    for (const sample of SAMPLE_ITEMS) {
+      const existingItem = await ctx.db
+        .query("inventoryItems")
+        .withIndex("by_name", (q) => q.eq("name", sample.name))
+        .first();
+      if (!existingItem) {
+        const itemId = await ctx.db.insert("inventoryItems", {
+          name: sample.name,
+          category: sample.category,
+          unit: sample.unit,
+          quantityOnHand: sample.quantityOnHand,
+          reorderLevel: sample.reorderLevel,
+          isActive: true,
+          createdAt: now,
+          updatedAt: now,
+        });
+        await ctx.db.insert("inventoryTransactions", {
+          itemId,
+          type: "receive",
+          quantityDelta: sample.quantityOnHand,
+          performedByUserId: warehouseAdminId,
+          note: "Seed data",
+          createdAt: now,
+        });
+      }
     }
 
     return {

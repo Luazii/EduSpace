@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 
 
@@ -12,8 +13,25 @@ import { api } from "../../../../convex/_generated/api";
 import { Clock, Bell, Calendar, PlayCircle, AlertCircle, Megaphone, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 
+// Roles with their own dedicated portal — /dashboard is a student-oriented
+// view and isn't meaningful for them, so bounce straight to their real page
+// instead of showing an empty generic dashboard (e.g. after landing here
+// straight off sign-in, before the nav even has a link for their role).
+const ROLE_REDIRECTS: Record<string, string> = {
+  coach: "/sports",
+  driver: "/driver",
+  transport_admin: "/transport-admin",
+  warehouse_admin: "/warehouse",
+};
+
 export default function DashboardPage() {
+  const router = useRouter();
   const user = useQuery(api.users.current);
+  const redirectHref = user ? ROLE_REDIRECTS[user.role] : undefined;
+
+  useEffect(() => {
+    if (redirectHref) router.replace(redirectHref);
+  }, [redirectHref, router]);
   const activeCourses = useQuery(api.enrollments.listMyActiveCourses);
   const applications = useQuery(api.enrollments.listMine) ?? [];
   const deadlines = useQuery(api.enrollments.listAllMyDeadlines) ?? [];
@@ -35,6 +53,14 @@ export default function DashboardPage() {
   
   if (user?.role === "teacher") {
     return <TeacherDashboard />;
+  }
+
+  if (redirectHref) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-sky-600 border-t-transparent" />
+      </div>
+    );
   }
 
   const enrolled = activeCourses && activeCourses.length > 0;

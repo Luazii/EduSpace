@@ -926,4 +926,31 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_code", ["ticketCode"])
     .index("by_event_user", ["eventId", "userId"]),
+
+  // ── Warehouse / Inventory ────────────────────────────────────────────────
+  inventoryItems: defineTable({
+    name: v.string(),
+    category: v.optional(v.string()), // e.g. "Textbook", "Uniform", "Equipment", "Supplies"
+    sku: v.optional(v.string()),
+    unit: v.optional(v.string()), // e.g. "pcs", "box"
+    quantityOnHand: v.number(),
+    reorderLevel: v.optional(v.number()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_name", ["name"])
+    .index("by_category", ["category"]),
+
+  inventoryTransactions: defineTable({
+    itemId: v.id("inventoryItems"),
+    type: v.union(v.literal("receive"), v.literal("issue"), v.literal("adjust")),
+    quantityDelta: v.number(), // signed: +N receive/adjust-up, -N issue/adjust-down
+    issuedToLabel: v.optional(v.string()), // freeform recipient, e.g. "Grade 10A" — not every recipient has an account
+    performedByUserId: v.id("users"),
+    note: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_item", ["itemId"])
+    .index("by_created_at", ["createdAt"]),
 });

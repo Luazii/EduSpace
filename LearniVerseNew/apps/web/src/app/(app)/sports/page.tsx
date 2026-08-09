@@ -16,16 +16,18 @@ type Tab = "teams" | "training" | "fixtures" | "attendance" | "venues" | "evalua
 
 export default function CoachSportsPage() {
   const user = useQuery(api.users.current);
-  const teams = useQuery(api.coach.listMyTeams);
+  const isCoachOrAdmin = user?.role === "coach" || user?.role === "admin";
+  const teams = useQuery(api.coach.listMyTeams, isCoachOrAdmin ? {} : "skip");
   const sports = useQuery(api.sports.listAll);
-  const venues = useQuery(api.sportsVenues.listVenues, {});
-  const venueBookings = useQuery(api.sportsVenues.listBookings, {});
+  const venues = useQuery(api.sportsVenues.listVenues, isCoachOrAdmin ? {} : "skip");
+  const venueBookings = useQuery(api.sportsVenues.listBookings, isCoachOrAdmin ? {} : "skip");
 
   const [tab, setTab] = useState<Tab>("teams");
   const [selectedTeamId, setSelectedTeamId] = useState<Id<"sportsTeams"> | null>(null);
 
-  // Loading state
-  if (user === undefined || teams === undefined) {
+  // Loading state — teams is only ever undefined-while-loading for coach/admin;
+  // for everyone else it's intentionally skipped, so don't wait on it here.
+  if (user === undefined || (isCoachOrAdmin && teams === undefined)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
@@ -33,7 +35,6 @@ export default function CoachSportsPage() {
     );
   }
 
-  const isCoachOrAdmin = user?.role === "coach" || user?.role === "admin";
   if (!isCoachOrAdmin) {
     return (
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 py-14">

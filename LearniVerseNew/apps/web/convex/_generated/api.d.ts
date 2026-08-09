@@ -57,6 +57,7 @@ import type * as timeSlots from "../timeSlots.js";
 import type * as timetable from "../timetable.js";
 import type * as transport from "../transport.js";
 import type * as users from "../users.js";
+import type * as warehouse from "../warehouse.js";
 
 import type {
   ApiFromModules,
@@ -114,6 +115,7 @@ declare const fullApi: ApiFromModules<{
   timetable: typeof timetable;
   transport: typeof transport;
   users: typeof users;
+  warehouse: typeof warehouse;
 }>;
 
 /**
