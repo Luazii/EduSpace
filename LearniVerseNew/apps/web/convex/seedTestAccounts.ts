@@ -221,8 +221,9 @@ export const seedTestAccounts = mutation({
       .query("transportRoutes")
       .withIndex("by_route_code", (q) => q.eq("routeCode", "TEST-RT-01"))
       .first();
+    let routeId: Id<"transportRoutes">;
     if (!existingRoute) {
-      await ctx.db.insert("transportRoutes", {
+      routeId = await ctx.db.insert("transportRoutes", {
         routeCode: "TEST-RT-01",
         name: "Test School Run",
         description: "Seeded test route",
@@ -235,8 +236,32 @@ export const seedTestAccounts = mutation({
         createdAt: now,
         updatedAt: now,
       });
-    } else if (!existingRoute.driverUserId) {
-      await ctx.db.patch(existingRoute._id, { driverUserId: driverId, updatedAt: now });
+    } else {
+      routeId = existingRoute._id;
+      if (!existingRoute.driverUserId) {
+        await ctx.db.patch(existingRoute._id, { driverUserId: driverId, updatedAt: now });
+      }
+    }
+
+    // ── 6b. Book the seeded student onto that route, approved, so the
+    // driver's boarding scanner has something real to scan ──────────────
+    const existingBooking = await ctx.db
+      .query("transportBookings")
+      .withIndex("by_route", (q) => q.eq("routeId", routeId))
+      .filter((q) => q.eq(q.field("learnerUserId"), studentId))
+      .first();
+    if (!existingBooking) {
+      await ctx.db.insert("transportBookings", {
+        routeId,
+        learnerUserId: studentId,
+        requestedByUserId: parentId,
+        status: "approved",
+        approvedByUserId: transportAdminId,
+        approvedAt: now,
+        notes: "Seed data",
+        createdAt: now,
+        updatedAt: now,
+      });
     }
 
     // ── 7. Warehouse admin: a few sample inventory items ─────────────────
