@@ -17,22 +17,32 @@ type Tab = "teams" | "training" | "fixtures" | "attendance" | "venues" | "evalua
 export default function CoachSportsPage() {
   const user = useQuery(api.users.current);
   const isCoachOrAdmin = user?.role === "coach" || user?.role === "admin";
+  const isStudent = user?.role === "student";
   const teams = useQuery(api.coach.listMyTeams, isCoachOrAdmin ? {} : "skip");
   const sports = useQuery(api.sports.listAll);
   const venues = useQuery(api.sportsVenues.listVenues, isCoachOrAdmin ? {} : "skip");
   const venueBookings = useQuery(api.sportsVenues.listBookings, isCoachOrAdmin ? {} : "skip");
+  const studentSports = useQuery(api.sports.listForStudent, isStudent ? {} : "skip");
 
   const [tab, setTab] = useState<Tab>("teams");
   const [selectedTeamId, setSelectedTeamId] = useState<Id<"sportsTeams"> | null>(null);
 
-  // Loading state — teams is only ever undefined-while-loading for coach/admin;
-  // for everyone else it's intentionally skipped, so don't wait on it here.
-  if (user === undefined || (isCoachOrAdmin && teams === undefined)) {
+  // Loading state — teams/studentSports are only ever undefined-while-loading
+  // for the role that actually queries them; everyone else skips them.
+  if (
+    user === undefined ||
+    (isCoachOrAdmin && teams === undefined) ||
+    (isStudent && studentSports === undefined)
+  ) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
       </div>
     );
+  }
+
+  if (isStudent) {
+    return <StudentSportsView sports={studentSports ?? []} />;
   }
 
   if (!isCoachOrAdmin) {
@@ -119,6 +129,104 @@ export default function CoachSportsPage() {
           <Trophy className="mb-4 h-12 w-12 text-slate-300" />
           <h3 className="font-bold text-slate-600">No team selected</h3>
           <p className="mt-1 text-sm text-slate-400">Create or select a team above to get started.</p>
+        </div>
+      )}
+    </main>
+  );
+}
+
+/* ───────────────────────────── Student: Browse & Register for Sports ───────────────────────────── */
+
+function StudentSportsView({ sports }: { sports: any[] }) {
+  const register = useMutation(api.sports.register);
+  const withdraw = useMutation(api.sports.withdraw);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const handleRegister = async (sportId: string) => {
+    setBusyId(sportId);
+    try {
+      await register({ sportId: sportId as Id<"sports"> });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to register.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleWithdraw = async (registrationId: string) => {
+    setBusyId(registrationId);
+    try {
+      await withdraw({ registrationId: registrationId as Id<"sportRegistrations"> });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-10 sm:px-10">
+      <header className="mb-8 border-b border-slate-100 pb-8">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">Sports</span>
+        </div>
+        <h1 className="text-4xl font-black tracking-tight text-slate-950">Pick a Sport to Play</h1>
+        <p className="mt-2 text-sm text-slate-500 max-w-2xl">Browse what's on offer and register for the ones you'd like to join.</p>
+      </header>
+
+      {sports.length === 0 ? (
+        <div className="flex flex-col items-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-16 text-center">
+          <Trophy className="mb-4 h-12 w-12 text-slate-300" />
+          <p className="font-bold text-slate-500">No sports available yet.</p>
+          <p className="mt-1 text-sm text-slate-400">Check back once the school has added some.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {sports.map((sport) => (
+            <div key={sport._id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md flex flex-col">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h3 className="font-black text-slate-950 text-lg">{sport.name}</h3>
+                  {sport.category && <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">{sport.category}</span>}
+                </div>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50">
+                  <Trophy className="h-5 w-5 text-emerald-600" />
+                </div>
+              </div>
+
+              {sport.description && <p className="text-xs text-slate-500 mb-3">{sport.description}</p>}
+
+              <div className="space-y-1 mb-4 text-xs text-slate-500">
+                {sport.coachName && <p className="flex items-center gap-1.5"><User className="h-3 w-3" />{sport.coachName}</p>}
+                {sport.venue && <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{sport.venue}</p>}
+                {sport.schedule && <p className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{sport.schedule}</p>}
+                <p className="flex items-center gap-1.5"><Users className="h-3 w-3" />{sport.enrolledCount} registered{sport.maxCapacity ? ` / ${sport.maxCapacity}` : ""}</p>
+              </div>
+
+              <div className="mt-auto">
+                {sport.isRegistered ? (
+                  <button
+                    onClick={() => handleWithdraw(sport.registrationId)}
+                    disabled={busyId === sport.registrationId}
+                    className="w-full flex items-center justify-center gap-1.5 rounded-2xl border border-emerald-200 bg-emerald-50 py-2.5 text-xs font-black text-emerald-700 transition hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {busyId === sport.registrationId ? "Withdrawing…" : "Registered — Withdraw"}
+                  </button>
+                ) : sport.isFull ? (
+                  <button disabled className="w-full rounded-2xl border border-slate-200 py-2.5 text-xs font-bold text-slate-400">
+                    Full
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleRegister(sport._id)}
+                    disabled={busyId === sport._id}
+                    className="w-full rounded-2xl bg-slate-950 py-2.5 text-xs font-black text-white transition hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    {busyId === sport._id ? "Registering…" : "Register"}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </main>
