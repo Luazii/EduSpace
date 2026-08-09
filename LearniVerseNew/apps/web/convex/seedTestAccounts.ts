@@ -38,6 +38,10 @@ import type { Id } from "./_generated/dataModel";
  * Re-running this mutation is safe/idempotent — it upserts by clerkUserId
  * and also sweeps any stray @eduspaceqa.com rows pointing at a stale
  * clerkUserId (e.g. left over from an instance switch).
+ *
+ * The seeded student's QR scan code (sports attendance + bus boarding) is
+ * fixed at "EDUSPACE01" — generate an image for it with any QR encoder, or
+ * just view it on their Profile page once signed in.
  */
 
 const ALL_ROLES = [
@@ -153,6 +157,10 @@ export const seedTestAccounts = mutation({
     }
 
     // ── 3. Student profile ───────────────────────────────────────────────
+    // Fixed (not random) scan code for the seed student — deterministic so
+    // it's easy to hand to a tester or hardcode in a QR image for demoing
+    // without having to sign in as the student first to generate one.
+    const SEED_STUDENT_SCAN_CODE = "EDUSPACE01";
     const existingStudentProfile = await ctx.db
       .query("studentProfiles")
       .withIndex("by_user_id", (q) => q.eq("userId", studentId))
@@ -161,9 +169,12 @@ export const seedTestAccounts = mutation({
       await ctx.db.insert("studentProfiles", {
         userId: studentId,
         studentNumber: "STU-TEST-01",
+        scanCode: SEED_STUDENT_SCAN_CODE,
         createdAt: now,
         updatedAt: now,
       });
+    } else if (!existingStudentProfile.scanCode) {
+      await ctx.db.patch(existingStudentProfile._id, { scanCode: SEED_STUDENT_SCAN_CODE, updatedAt: now });
     }
 
     // ── 4. Parent ↔ student link ─────────────────────────────────────────
@@ -235,10 +246,72 @@ export const seedTestAccounts = mutation({
       } else if (existingMembership.status !== "active") {
         await ctx.db.patch(existingMembership._id, { status: "active" });
       }
+
+      return team._id;
     }
 
-    await ensureCoachTeam("Football", "1st XI", true);
+    const footballTeamId = await ensureCoachTeam("Football", "1st XI", true);
     await ensureCoachTeam("girls rugby", "Girls Rugby 1st Team", false);
+
+    // ── 5b. Demo data for the newer sports use cases: a training session
+    // that already started (so scanning the student's QR code right now
+    // demonstrably logs "late", not "present"), and a completed fixture
+    // with a recorded result so team standings has something to show. ──
+    if (footballTeamId) {
+      const existingPastSession = await ctx.db
+        .query("trainingSessions")
+        .withIndex("by_team", (q) => q.eq("teamId", footballTeamId))
+        .filter((q) => q.eq(q.field("title"), "Fitness & Drills"))
+        .first();
+      if (!existingPastSession) {
+        await ctx.db.insert("trainingSessions", {
+          teamId: footballTeamId,
+          title: "Fitness & Drills",
+          startTime: now - 20 * 60 * 1000, // started 20 min ago — a scan now reads "late"
+          endTime: now + 40 * 60 * 1000,
+          venue: "Main Field",
+          status: "scheduled",
+          createdByUserId: coachId,
+          createdAt: now,
+        });
+      }
+
+      const existingCompletedFixture = await ctx.db
+        .query("matchFixtures")
+        .withIndex("by_team", (q) => q.eq("teamId", footballTeamId))
+        .filter((q) => q.eq(q.field("opponentName"), "Riverside High"))
+        .first();
+      let completedFixtureId = existingCompletedFixture?._id;
+      if (!existingCompletedFixture) {
+        completedFixtureId = await ctx.db.insert("matchFixtures", {
+          teamId: footballTeamId,
+          opponentName: "Riverside High",
+          venue: "Main Field",
+          isHomeFixture: true,
+          matchTime: now - 7 * 24 * 60 * 60 * 1000, // a week ago
+          status: "completed",
+          createdByUserId: coachId,
+          createdAt: now,
+        });
+      }
+      if (completedFixtureId) {
+        const existingResult = await ctx.db
+          .query("matchResults")
+          .withIndex("by_fixture", (q) => q.eq("fixtureId", completedFixtureId!))
+          .first();
+        if (!existingResult) {
+          await ctx.db.insert("matchResults", {
+            fixtureId: completedFixtureId,
+            ourScore: 3,
+            opponentScore: 1,
+            result: "win",
+            matchReport: "Strong first-half performance, seed data.",
+            recordedByUserId: coachId,
+            recordedAt: now,
+          });
+        }
+      }
+    }
 
     // ── 6. Driver + transport_admin: a route they're linked to ──────────
     const existingRoute = await ctx.db

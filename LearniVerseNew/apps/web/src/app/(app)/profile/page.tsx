@@ -4,7 +4,8 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 
 import { ProfileForm } from "@/components/profile/profile-form";
-import { UserCircle, ShieldCheck, Mail } from "lucide-react";
+import { StudentQrCode } from "@/components/student-qr-code";
+import { UserCircle, ShieldCheck, Mail, QrCode } from "lucide-react";
 
 export default function ProfilePage() {
   const user = useQuery(api.users.current);
@@ -34,6 +35,15 @@ export default function ProfilePage() {
 
           {/* Institutional Context Sidebar */}
           <aside className="space-y-8">
+            {user?.role === "student" && (
+              <div className="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm">
+                <div className="flex items-center gap-3 mb-6">
+                  <QrCode className="h-5 w-5 text-emerald-600" />
+                  <h3 className="font-bold text-sm uppercase tracking-widest text-slate-950">My QR Code</h3>
+                </div>
+                <StudentQrCode />
+              </div>
+            )}
             <div className="rounded-4xl border border-slate-200 bg-white p-8 shadow-sm">
               <div className="flex items-center gap-3 mb-6">
                 <ShieldCheck className="h-5 w-5 text-sky-600" />

@@ -46,9 +46,14 @@ export default defineSchema({
     dob: v.optional(v.number()),
     facultyId: v.optional(v.string()),
     qualificationId: v.optional(v.string()),
+    // Single scannable code used as the student's "ID card" for both sports
+    // attendance (QR scan at training) and bus boarding — one code, two use cases.
+    scanCode: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_user_id", ["userId"]),
+  })
+    .index("by_user_id", ["userId"])
+    .index("by_scan_code", ["scanCode"]),
 
   teacherProfiles: defineTable({
     userId: v.id("users"),
@@ -514,7 +519,7 @@ export default defineSchema({
     userId: v.id("users"),
     title: v.string(),
     body: v.string(),
-    type: v.union(v.literal("grade"), v.literal("enrollment"), v.literal("deadline"), v.literal("system"), v.literal("booking"), v.literal("announcement"), v.literal("meeting"), v.literal("transport")),
+    type: v.union(v.literal("grade"), v.literal("enrollment"), v.literal("deadline"), v.literal("system"), v.literal("booking"), v.literal("announcement"), v.literal("meeting"), v.literal("transport"), v.literal("sports")),
     link: v.optional(v.string()),
     isRead: v.boolean(),
     createdAt: v.number(),
@@ -665,6 +670,9 @@ export default defineSchema({
     capacity: v.optional(v.number()),
     driverUserId: v.optional(v.id("users")),
     busLabel: v.optional(v.string()),
+    // Recurring schedule, used to detect a driver double-booked across routes.
+    scheduleDays: v.optional(v.array(v.string())), // e.g. ["Mon", "Wed"]
+    scheduleTime: v.optional(v.string()), // "HH:MM"
     isActive: v.boolean(),
     createdByUserId: v.id("users"),
     createdAt: v.number(),
@@ -837,6 +845,9 @@ export default defineSchema({
     startTime: v.number(),
     endTime: v.number(),
     venue: v.optional(v.string()),
+    // Optional link to a real registered venue — lets us conflict-check against
+    // other bookings there. venue (string) stays for free-text/legacy display.
+    venueId: v.optional(v.id("sportsVenues")),
     notes: v.optional(v.string()),
     status: v.union(v.literal("scheduled"), v.literal("completed"), v.literal("cancelled")),
     createdByUserId: v.id("users"),
@@ -859,6 +870,7 @@ export default defineSchema({
     teamId: v.id("sportsTeams"),
     opponentName: v.string(),
     venue: v.string(),
+    venueId: v.optional(v.id("sportsVenues")),
     isHomeFixture: v.boolean(),
     matchTime: v.number(),
     status: v.union(v.literal("scheduled"), v.literal("completed"), v.literal("cancelled")),

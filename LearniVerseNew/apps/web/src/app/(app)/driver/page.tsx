@@ -3,14 +3,16 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Bus, Users, CheckCircle2, XCircle, AlertTriangle, QrCode,
-  Shield, ScanLine, Clock, MapPin, UserCheck
+  Shield, ScanLine, Clock, MapPin, UserCheck, ArrowDownToLine, ArrowUpFromLine,
 } from "lucide-react";
 import { format } from "date-fns";
+import { QrScanner } from "@/components/qr-scanner";
 
 type Tab = "scan" | "passengers" | "incident";
+type ScanType = "board" | "dropoff";
 
 export default function DriverPage() {
   const user = useQuery(api.users.current);
@@ -21,14 +23,17 @@ export default function DriverPage() {
 
   const [tab, setTab] = useState<Tab>("scan");
   const [selectedRouteId, setSelectedRouteId] = useState<string>("");
-  const [scanInput, setScanInput] = useState("");
+  const [scanType, setScanType] = useState<ScanType>("board");
+  const [scannerOn, setScannerOn] = useState(false);
   const [scanResult, setScanResult] = useState<{ text: string; ok: boolean } | null>(null);
-  const [scanLoading, setScanLoading] = useState(false);
+  const lastScan = useRef<{ code: string; at: number } | null>(null);
 
   // Incident form
   const [incForm, setIncForm] = useState({ routeId: "", title: "", description: "" });
   const [incSaving, setIncSaving] = useState(false);
   const [incSent, setIncSent] = useState(false);
+  const [gpsStatus, setGpsStatus] = useState<"idle" | "capturing" | "captured" | "denied">("idle");
+  const gpsCoords = useRef<{ latitude: number; longitude: number } | null>(null);
 
   if (user === undefined || routes === undefined) {
     return (
@@ -53,24 +58,42 @@ export default function DriverPage() {
 
   const routeBookings = (bookings ?? []).filter((b) => b.routeId === selectedRoute?._id && b.status === "approved");
 
-  const handleScan = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!scanInput.trim() || !selectedRoute) return;
-    setScanLoading(true);
-    setScanResult(null);
-    try {
-      const result = await scanMut({
-        routeId: selectedRoute._id as Id<"transportRoutes">,
-        learnerUserId: scanInput.trim() as Id<"users">,
-        scanType: "board" as const,
-      });
-      setScanResult({ text: `✓ ${(result as any)?.fullName ?? (result as any)?.firstName ?? "Student"} boarded successfully!`, ok: true });
-      setScanInput("");
-    } catch (e) {
-      setScanResult({ text: e instanceof Error ? e.message : "Scan failed.", ok: false });
-    } finally {
-      setScanLoading(false);
+  // html5-qrcode keeps firing while the same code stays in frame — debounce.
+  const handleScan = useCallback(
+    async (code: string) => {
+      if (!selectedRoute) return;
+      const now = Date.now();
+      if (lastScan.current && lastScan.current.code === code && now - lastScan.current.at < 5000) return;
+      lastScan.current = { code, at: now };
+      try {
+        const result = await scanMut({
+          routeId: selectedRoute._id as Id<"transportRoutes">,
+          scanCode: code,
+          scanType,
+        });
+        const verb = scanType === "board" ? "boarded" : "dropped off";
+        setScanResult({ text: `✓ ${(result as any)?.fullName ?? "Student"} ${verb} successfully!`, ok: true });
+      } catch (e) {
+        setScanResult({ text: e instanceof Error ? e.message : "Scan failed.", ok: false });
+      }
+    },
+    [selectedRoute, scanType, scanMut],
+  );
+
+  const captureGps = () => {
+    if (!navigator.geolocation) {
+      setGpsStatus("denied");
+      return;
     }
+    setGpsStatus("capturing");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        gpsCoords.current = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        setGpsStatus("captured");
+      },
+      () => setGpsStatus("denied"),
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
   };
 
   const handleIncident = async (e: React.FormEvent) => {
@@ -82,8 +105,12 @@ export default function DriverPage() {
         routeId: incForm.routeId as Id<"transportRoutes">,
         title: incForm.title.trim(),
         description: incForm.description.trim(),
+        latitude: gpsCoords.current?.latitude,
+        longitude: gpsCoords.current?.longitude,
       });
       setIncForm({ routeId: "", title: "", description: "" });
+      gpsCoords.current = null;
+      setGpsStatus("idle");
       setIncSent(true);
       setTimeout(() => setIncSent(false), 3000);
     } finally {
@@ -156,26 +183,46 @@ export default function DriverPage() {
           )}
 
           <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm max-w-lg">
-            <div className="flex flex-col items-center mb-6">
-              <div className="h-32 w-32 rounded-3xl bg-slate-100 flex items-center justify-center mb-4">
-                <QrCode className="h-16 w-16 text-slate-300" />
-              </div>
-              <p className="text-xs text-slate-500 text-center">Enter the student's QR code data or scan using a connected device.</p>
+            {/* Board / dropoff toggle */}
+            <div className="mb-6 flex rounded-2xl bg-slate-100 p-1">
+              <button
+                onClick={() => setScanType("board")}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition ${scanType === "board" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500"}`}
+              >
+                <ArrowUpFromLine className="h-3.5 w-3.5" /> Boarding
+              </button>
+              <button
+                onClick={() => setScanType("dropoff")}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition ${scanType === "dropoff" ? "bg-white text-slate-950 shadow-sm" : "text-slate-500"}`}
+              >
+                <ArrowDownToLine className="h-3.5 w-3.5" /> Drop-off
+              </button>
             </div>
 
-            <form onSubmit={handleScan} className="space-y-3">
-              <input
-                type="text"
-                value={scanInput}
-                onChange={(e) => setScanInput(e.target.value)}
-                placeholder="Enter QR code data or student ID…"
-                autoFocus
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-center focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/10"
-              />
-              <button type="submit" disabled={scanLoading || !scanInput.trim()} className="w-full rounded-2xl bg-sky-600 py-3 text-sm font-black text-white transition hover:bg-sky-700 disabled:opacity-50">
-                {scanLoading ? "Scanning…" : "Verify Boarding"}
-              </button>
-            </form>
+            {!scannerOn ? (
+              <div className="flex flex-col items-center">
+                <div className="h-32 w-32 rounded-3xl bg-slate-100 flex items-center justify-center mb-4">
+                  <QrCode className="h-16 w-16 text-slate-300" />
+                </div>
+                <p className="mb-4 text-xs text-slate-500 text-center">
+                  Scan each student's QR code as they {scanType === "board" ? "get on" : "get off"} the bus.
+                </p>
+                <button
+                  onClick={() => { setScannerOn(true); setScanResult(null); }}
+                  disabled={!selectedRoute}
+                  className="w-full rounded-2xl bg-sky-600 py-3 text-sm font-black text-white transition hover:bg-sky-700 disabled:opacity-50"
+                >
+                  Start Camera
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <QrScanner active={scannerOn} onScan={handleScan} />
+                <button onClick={() => setScannerOn(false)} className="w-full rounded-2xl border border-slate-200 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50">
+                  Stop Camera
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -222,7 +269,7 @@ export default function DriverPage() {
 
           {incSent && (
             <div className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
-              <CheckCircle2 className="h-4 w-4" /> Incident reported! Admin and parents have been notified.
+              <CheckCircle2 className="h-4 w-4" /> Incident reported! Admin, transport admin, and affected parents have been notified.
             </div>
           )}
 
@@ -244,6 +291,21 @@ export default function DriverPage() {
               <label className="mb-1 block text-xs font-bold text-slate-600">Description *</label>
               <textarea value={incForm.description} onChange={(e) => setIncForm(p => ({ ...p, description: e.target.value }))} rows={4} placeholder="Describe the breakdown or emergency situation in detail…" className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/10 resize-none" />
             </div>
+
+            <div>
+              <button
+                type="button"
+                onClick={captureGps}
+                className="flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                {gpsStatus === "captured" ? "Location captured ✓" : gpsStatus === "capturing" ? "Getting location…" : gpsStatus === "denied" ? "Location unavailable — retry" : "Attach current location"}
+              </button>
+              {gpsStatus === "captured" && gpsCoords.current && (
+                <p className="mt-1 text-[10px] text-slate-400">{gpsCoords.current.latitude.toFixed(5)}, {gpsCoords.current.longitude.toFixed(5)}</p>
+              )}
+            </div>
+
             <button type="submit" disabled={incSaving || !incForm.routeId || !incForm.title.trim() || !incForm.description.trim()} className="rounded-2xl bg-rose-600 px-6 py-2.5 text-xs font-black text-white transition hover:bg-rose-700 disabled:opacity-50">
               {incSaving ? "Reporting…" : "🚨 Report Emergency"}
             </button>

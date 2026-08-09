@@ -13,6 +13,7 @@ import { format } from "date-fns";
 type Tab = "routes" | "bookings" | "incidents";
 
 const SERVICE_TYPES = ["school_run", "event", "special"] as const;
+const DAY_OPTIONS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function TransportAdminPage() {
   const user = useQuery(api.users.current);
@@ -37,6 +38,13 @@ export default function TransportAdminPage() {
     driverUserId: "",
     busLabel: "",
   });
+  const [scheduleDays, setScheduleDays] = useState<string[]>([]);
+  const [scheduleTime, setScheduleTime] = useState("");
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const toggleDay = (day: string) => setScheduleDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
+
+  const [reassignRoute, setReassignRoute] = useState<Record<string, string>>({});
+  const [bookingError, setBookingError] = useState<string | null>(null);
 
   if (user === undefined || routes === undefined) {
     return (
@@ -67,6 +75,7 @@ export default function TransportAdminPage() {
     e.preventDefault();
     if (!form.routeCode.trim() || !form.name.trim()) return;
     setSaving(true);
+    setRouteError(null);
     try {
       await createRoute({
         routeCode: form.routeCode.trim(),
@@ -76,14 +85,28 @@ export default function TransportAdminPage() {
         capacity: form.capacity ? Number(form.capacity) : undefined,
         driverUserId: form.driverUserId ? (form.driverUserId as Id<"users">) : undefined,
         busLabel: form.busLabel.trim() || undefined,
+        scheduleDays: scheduleDays.length > 0 ? scheduleDays : undefined,
+        scheduleTime: scheduleTime || undefined,
         stops: [],
       });
       setForm({ routeCode: "", name: "", description: "", serviceType: "school_run", capacity: "", driverUserId: "", busLabel: "" });
+      setScheduleDays([]);
+      setScheduleTime("");
       setShowNewRoute(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to create route.");
+      setRouteError(err instanceof Error ? err.message : "Failed to create route.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleApprove = async (bookingId: Id<"transportBookings">) => {
+    setBookingError(null);
+    try {
+      const routeId = reassignRoute[bookingId];
+      await approveBooking({ bookingId, routeId: routeId ? (routeId as Id<"transportRoutes">) : undefined });
+    } catch (err) {
+      setBookingError(err instanceof Error ? err.message : "Failed to approve booking.");
     }
   };
 
@@ -167,6 +190,28 @@ export default function TransportAdminPage() {
                   <input type="number" value={form.capacity} onChange={(e) => setForm((p) => ({ ...p, capacity: e.target.value }))} placeholder="e.g. 40" className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-sky-500 focus:outline-none" />
                 </div>
               </div>
+
+              {/* Recurring schedule — used to catch a driver double-booked across routes */}
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-600">Schedule</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {DAY_OPTIONS.map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => toggleDay(day)}
+                      className={`rounded-xl px-2.5 py-1.5 text-[10px] font-black transition ${scheduleDays.includes(day) ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+                <input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-sky-500 focus:outline-none" />
+              </div>
+
+              {routeError && (
+                <p className="rounded-2xl bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-700">{routeError}</p>
+              )}
               <button type="submit" disabled={saving || !form.routeCode.trim() || !form.name.trim()} className="rounded-2xl bg-sky-600 px-6 py-2.5 text-xs font-black text-white transition hover:bg-sky-700 disabled:opacity-50">
                 {saving ? "Creating…" : "Create Route"}
               </button>
@@ -191,11 +236,16 @@ export default function TransportAdminPage() {
                       {route.isActive ? "Active" : "Inactive"}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mb-4">{route.driverName ?? "No driver assigned"} · {route.busLabel ?? "No bus"}</p>
+                  <p className="text-xs text-slate-500 mb-1">{route.driverName ?? "No driver assigned"} · {route.busLabel ?? "No bus"}</p>
+                  {route.scheduleDays?.length > 0 && (
+                    <p className="text-xs text-slate-500 mb-4">{route.scheduleDays.join(", ")} · {route.scheduleTime ?? "—"}</p>
+                  )}
                   <div className="flex gap-4 text-xs font-bold text-slate-600">
                     <span>{route.totalBookings} total</span>
                     <span className="text-amber-600">{route.pendingBookings} pending</span>
-                    <span className="text-emerald-600">{route.approvedBookings} approved</span>
+                    <span className={route.capacity != null && route.approvedBookings >= route.capacity ? "text-rose-600" : "text-emerald-600"}>
+                      {route.approvedBookings} approved{route.capacity != null ? ` / ${route.capacity}` : ""}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -211,18 +261,31 @@ export default function TransportAdminPage() {
             <h2 className="text-xl font-black text-slate-950 flex items-center gap-2 mb-4">
               <Clock className="h-5 w-5 text-amber-600" /> Pending Requests
             </h2>
+            {bookingError && (
+              <p className="mb-3 rounded-2xl bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-700">{bookingError}</p>
+            )}
             {pendingBookings.length === 0 ? (
               <p className="text-sm text-slate-500 italic">No pending booking requests.</p>
             ) : (
               <div className="space-y-3">
                 {pendingBookings.map((b: any) => (
-                  <div key={b._id} className="flex items-center justify-between rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div key={b._id} className="flex items-center justify-between rounded-3xl border border-slate-200 bg-white p-5 shadow-sm gap-4">
                     <div>
                       <p className="font-bold text-sm text-slate-900">{b.learner?.fullName ?? b.learner?.email ?? "—"}</p>
-                      <p className="text-xs text-slate-500">{b.route?.name ?? "—"} · requested by {b.requestedBy?.fullName ?? b.requestedBy?.email ?? "—"}</p>
+                      <p className="text-xs text-slate-500">Requested: {b.route?.name ?? "—"} · by {b.requestedBy?.fullName ?? b.requestedBy?.email ?? "—"}</p>
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => approveBooking({ bookingId: b._id })} className="flex items-center gap-1.5 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-black text-white hover:bg-emerald-700">
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={reassignRoute[b._id] ?? b.routeId}
+                        onChange={(e) => setReassignRoute((p) => ({ ...p, [b._id]: e.target.value }))}
+                        className="rounded-xl border border-slate-200 px-2 py-1.5 text-[10px] font-bold focus:border-sky-500 focus:outline-none"
+                        title="Assign to route"
+                      >
+                        {(routes ?? []).filter((r: any) => r.isActive).map((r: any) => (
+                          <option key={r._id} value={r._id}>{r.routeCode} ({r.approvedBookings}{r.capacity != null ? `/${r.capacity}` : ""})</option>
+                        ))}
+                      </select>
+                      <button onClick={() => handleApprove(b._id)} className="flex items-center gap-1.5 rounded-2xl bg-emerald-600 px-4 py-2 text-xs font-black text-white hover:bg-emerald-700">
                         <CheckCircle2 className="h-3.5 w-3.5" /> Approve
                       </button>
                       <button onClick={() => rejectBooking({ bookingId: b._id })} className="flex items-center gap-1.5 rounded-2xl bg-rose-50 px-4 py-2 text-xs font-black text-rose-700 hover:bg-rose-100">

@@ -560,3 +560,64 @@ export const updateProfile = mutation({
     return { success: true };
   },
 });
+
+// ── Scan code — one QR "ID card" per student, reused for sports attendance
+// and bus boarding scans. ──────────────────────────────────────────────────
+
+function randomScanCode() {
+  // Short, URL-safe, and typo-resistant enough for a printed/displayed card.
+  return Array.from({ length: 10 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 33)]).join("");
+}
+
+export const getMyScanCode = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+    if (!user) return null;
+    const profile = await ctx.db
+      .query("studentProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .first();
+    return profile?.scanCode ?? null;
+  },
+});
+
+export const ensureScanCode = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Must be signed in.");
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+    if (!user) throw new Error("User not found.");
+    if (user.role !== "student") throw new Error("Only students have a scan code.");
+
+    const profile = await ctx.db
+      .query("studentProfiles")
+      .withIndex("by_user_id", (q) => q.eq("userId", user._id))
+      .first();
+    if (!profile) throw new Error("No student profile found.");
+    if (profile.scanCode) return profile.scanCode;
+
+    // Astronomically unlikely to collide at this scale, but check anyway.
+    let code = randomScanCode();
+    while (
+      await ctx.db
+        .query("studentProfiles")
+        .withIndex("by_scan_code", (q) => q.eq("scanCode", code))
+        .first()
+    ) {
+      code = randomScanCode();
+    }
+
+    await ctx.db.patch(profile._id, { scanCode: code, updatedAt: Date.now() });
+    return code;
+  },
+});

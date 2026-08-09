@@ -3,14 +3,15 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Trophy, Users, MapPin, Clock, User, Plus, CheckCircle2, XCircle,
   Shield, Calendar, ClipboardCheck, Target, Star, ChevronRight,
-  CalendarDays, Dumbbell, Swords, BarChart3, FileText
+  CalendarDays, Dumbbell, Swords, BarChart3, FileText, QrCode, TrendingUp,
 } from "lucide-react";
 import { format } from "date-fns";
+import { QrScanner } from "@/components/qr-scanner";
 
 type Tab = "teams" | "training" | "fixtures" | "attendance" | "venues" | "evaluations";
 
@@ -122,7 +123,7 @@ export default function CoachSportsPage() {
       {tab === "fixtures" && selectedTeam && <FixturesTab teamId={selectedTeam._id} teamName={selectedTeam.name} />}
       {tab === "attendance" && selectedTeam && <AttendanceTab teamId={selectedTeam._id} teamName={selectedTeam.name} />}
       {tab === "venues" && <VenuesTab venues={venues ?? []} bookings={venueBookings ?? []} />}
-      {tab === "evaluations" && selectedTeam && <EvaluationsTab teamId={selectedTeam._id} teamName={selectedTeam.name} sports={sports ?? []} />}
+      {tab === "evaluations" && selectedTeam && <EvaluationsTab teamId={selectedTeam._id} teamName={selectedTeam.name} />}
 
       {!selectedTeam && tab !== "teams" && tab !== "venues" && (
         <div className="flex flex-col items-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-16 text-center">
@@ -353,28 +354,35 @@ function TeamRosterPanel({ teamId }: { teamId: Id<"sportsTeams"> }) {
 
 function TrainingTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamName: string }) {
   const sessions = useQuery(api.coach.listTrainingSessions, { teamId });
+  const venues = useQuery(api.sportsVenues.listVenues, {});
   const createSession = useMutation(api.coach.createTrainingSession);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: "", date: "", startTime: "", endTime: "", venue: "", notes: "" });
+  const [form, setForm] = useState({ title: "", date: "", startTime: "", endTime: "", venueId: "", notes: "" });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim() || !form.date || !form.startTime || !form.endTime) return;
     setSaving(true);
+    setError(null);
     try {
       const startMs = new Date(`${form.date}T${form.startTime}`).getTime();
       const endMs = new Date(`${form.date}T${form.endTime}`).getTime();
+      const venue = (venues ?? []).find((v) => v._id === form.venueId);
       await createSession({
         teamId,
         title: form.title.trim(),
         startTime: startMs,
         endTime: endMs,
-        venue: form.venue.trim() || undefined,
+        venue: venue?.name,
+        venueId: form.venueId ? (form.venueId as Id<"sportsVenues">) : undefined,
         notes: form.notes.trim() || undefined,
       });
-      setForm({ title: "", date: "", startTime: "", endTime: "", venue: "", notes: "" });
+      setForm({ title: "", date: "", startTime: "", endTime: "", venueId: "", notes: "" });
       setShowForm(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to schedule session — check for a time conflict.");
     } finally {
       setSaving(false);
     }
@@ -412,13 +420,19 @@ function TrainingTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamName
             </div>
             <div>
               <label className="mb-1 block text-xs font-bold text-slate-600">Venue</label>
-              <input type="text" value={form.venue} onChange={(e) => setForm(p => ({ ...p, venue: e.target.value }))} placeholder="e.g. Main Field" className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/10" />
+              <select value={form.venueId} onChange={(e) => setForm(p => ({ ...p, venueId: e.target.value }))} className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-sky-500 focus:outline-none">
+                <option value="">No venue selected</option>
+                {(venues ?? []).map((v) => <option key={v._id} value={v._id}>{v.name}</option>)}
+              </select>
             </div>
           </div>
           <div>
             <label className="mb-1 block text-xs font-bold text-slate-600">Notes</label>
             <textarea value={form.notes} onChange={(e) => setForm(p => ({ ...p, notes: e.target.value }))} rows={2} placeholder="Optional notes…" className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/10 resize-none" />
           </div>
+          {error && (
+            <p className="rounded-2xl bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-700">{error}</p>
+          )}
           <div className="flex gap-3">
             <button type="submit" disabled={saving} className="rounded-2xl bg-emerald-600 px-6 py-2.5 text-xs font-black text-white hover:bg-emerald-700 disabled:opacity-50">{saving ? "Scheduling…" : "Create Session"}</button>
             <button type="button" onClick={() => setShowForm(false)} className="rounded-2xl border border-slate-200 px-6 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
@@ -492,7 +506,11 @@ function AttendanceTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamNa
 function AttendanceRoster({ sessionId, roster }: { sessionId: Id<"trainingSessions">; roster: any[] }) {
   const attendance = useQuery(api.coach.getAttendanceForSession, { sessionId });
   const markMut = useMutation(api.coach.markAttendance);
+  const scanMut = useMutation(api.coach.markAttendanceByScanCode);
   const [loading, setLoading] = useState<string | null>(null);
+  const [scannerOn, setScannerOn] = useState(false);
+  const [scanResult, setScanResult] = useState<{ text: string; ok: boolean } | null>(null);
+  const lastScan = useRef<{ code: string; at: number } | null>(null);
 
   const getStatus = (studentId: Id<"users">) => {
     return attendance?.find((a) => a.studentUserId === studentId)?.status ?? null;
@@ -504,6 +522,23 @@ function AttendanceRoster({ sessionId, roster }: { sessionId: Id<"trainingSessio
     setLoading(null);
   };
 
+  // html5-qrcode keeps firing onScan while the same code stays in frame —
+  // debounce repeats of the same code within a few seconds.
+  const handleScan = useCallback(
+    async (code: string) => {
+      const now = Date.now();
+      if (lastScan.current && lastScan.current.code === code && now - lastScan.current.at < 5000) return;
+      lastScan.current = { code, at: now };
+      try {
+        const result = await scanMut({ sessionId, scanCode: code });
+        setScanResult({ text: `${result.fullName} — ${result.status === "late" ? "Late" : "Present"}`, ok: true });
+      } catch (err) {
+        setScanResult({ text: err instanceof Error ? err.message : "Scan failed.", ok: false });
+      }
+    },
+    [sessionId, scanMut],
+  );
+
   const statuses: Array<{ value: "present" | "absent" | "late" | "excused"; label: string; color: string }> = [
     { value: "present", label: "Present", color: "bg-emerald-600 text-white" },
     { value: "late", label: "Late", color: "bg-amber-500 text-white" },
@@ -512,7 +547,30 @@ function AttendanceRoster({ sessionId, roster }: { sessionId: Id<"trainingSessio
   ];
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden">
+    <div className="space-y-4">
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="flex items-center gap-2 text-sm font-black text-slate-950">
+            <QrCode className="h-4 w-4 text-indigo-600" /> Scan to Check In
+          </h4>
+          <button
+            onClick={() => { setScannerOn((v) => !v); setScanResult(null); }}
+            className="rounded-xl bg-indigo-600 px-3 py-1.5 text-[10px] font-black text-white hover:bg-indigo-700"
+          >
+            {scannerOn ? "Stop Camera" : "Start Camera"}
+          </button>
+        </div>
+        {scanResult && (
+          <div className={`mb-3 flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold ${scanResult.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"}`}>
+            {scanResult.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+            {scanResult.text}
+          </div>
+        )}
+        <QrScanner active={scannerOn} onScan={handleScan} />
+        {!scannerOn && <p className="text-xs text-slate-400">Late arrivals (past the grace window) are detected automatically from the scan time — no manual "Late" click needed.</p>}
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden">
       <div className="grid grid-cols-[1fr_auto] gap-4 bg-slate-50 px-6 py-3 text-xs font-bold uppercase tracking-widest text-slate-500">
         <span>Athlete</span>
         <span>Status</span>
@@ -540,6 +598,7 @@ function AttendanceRoster({ sessionId, roster }: { sessionId: Id<"trainingSessio
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -548,11 +607,14 @@ function AttendanceRoster({ sessionId, roster }: { sessionId: Id<"trainingSessio
 
 function FixturesTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamName: string }) {
   const fixtures = useQuery(api.coach.listFixtures, { teamId });
+  const standings = useQuery(api.coach.getTeamStandings, { teamId });
+  const venues = useQuery(api.sportsVenues.listVenues, {});
   const createFixture = useMutation(api.coach.createFixture);
   const recordResult = useMutation(api.coach.recordResult);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ opponent: "", venue: "", isHome: true, date: "", time: "" });
+  const [form, setForm] = useState({ opponent: "", venue: "", venueId: "", isHome: true, date: "", time: "" });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [scoringId, setScoringId] = useState<Id<"matchFixtures"> | null>(null);
   const [scores, setScores] = useState({ ours: "", theirs: "", report: "" });
 
@@ -560,16 +622,20 @@ function FixturesTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamName
     e.preventDefault();
     if (!form.opponent.trim() || !form.venue.trim() || !form.date || !form.time) return;
     setSaving(true);
+    setError(null);
     try {
       await createFixture({
         teamId,
         opponentName: form.opponent.trim(),
         venue: form.venue.trim(),
+        venueId: form.venueId ? (form.venueId as Id<"sportsVenues">) : undefined,
         isHomeFixture: form.isHome,
         matchTime: new Date(`${form.date}T${form.time}`).getTime(),
       });
-      setForm({ opponent: "", venue: "", isHome: true, date: "", time: "" });
+      setForm({ opponent: "", venue: "", venueId: "", isHome: true, date: "", time: "" });
       setShowForm(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create fixture — check for a scheduling conflict.");
     } finally {
       setSaving(false);
     }
@@ -607,7 +673,20 @@ function FixturesTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamName
             </div>
             <div>
               <label className="mb-1 block text-xs font-bold text-slate-600">Venue *</label>
-              <input type="text" value={form.venue} onChange={(e) => setForm(p => ({ ...p, venue: e.target.value }))} placeholder="e.g. Main Stadium" className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/10" />
+              <input type="text" value={form.venue} onChange={(e) => setForm(p => ({ ...p, venue: e.target.value, venueId: "" }))} placeholder="e.g. Main Stadium, or pick a registered venue below" className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/10" />
+              {(venues ?? []).length > 0 && (
+                <select
+                  value={form.venueId}
+                  onChange={(e) => {
+                    const v = (venues ?? []).find((x) => x._id === e.target.value);
+                    setForm((p) => ({ ...p, venueId: e.target.value, venue: v?.name ?? p.venue }));
+                  }}
+                  className="mt-1.5 w-full rounded-2xl border border-slate-200 px-4 py-2 text-xs focus:border-sky-500 focus:outline-none"
+                >
+                  <option value="">— or pick a registered venue (checks for conflicts) —</option>
+                  {(venues ?? []).map((v) => <option key={v._id} value={v._id}>{v.name}</option>)}
+                </select>
+              )}
             </div>
             <div>
               <label className="mb-1 block text-xs font-bold text-slate-600">Date *</label>
@@ -621,11 +700,37 @@ function FixturesTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamName
           <label className="flex items-center gap-2 text-xs font-bold text-slate-600">
             <input type="checkbox" checked={form.isHome} onChange={(e) => setForm(p => ({ ...p, isHome: e.target.checked }))} className="rounded" /> Home fixture
           </label>
+          {error && (
+            <p className="rounded-2xl bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-700">{error}</p>
+          )}
           <div className="flex gap-3">
             <button type="submit" disabled={saving} className="rounded-2xl bg-emerald-600 px-6 py-2.5 text-xs font-black text-white hover:bg-emerald-700 disabled:opacity-50">{saving ? "Creating…" : "Create Fixture"}</button>
             <button type="button" onClick={() => setShowForm(false)} className="rounded-2xl border border-slate-200 px-6 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
           </div>
         </form>
+      )}
+
+      {standings && standings.played > 0 && (
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-500">
+            <TrendingUp className="h-4 w-4 text-emerald-600" /> Season Standing
+          </h3>
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            {[
+              { label: "Played", value: standings.played },
+              { label: "Won", value: standings.wins },
+              { label: "Drawn", value: standings.draws },
+              { label: "Lost", value: standings.losses },
+              { label: "Goal Diff", value: standings.goalDifference > 0 ? `+${standings.goalDifference}` : standings.goalDifference },
+              { label: "Points", value: standings.points },
+            ].map((s) => (
+              <div key={s.label} className="rounded-2xl bg-slate-50 py-3 text-center">
+                <p className="text-lg font-black text-slate-950">{s.value}</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {fixtures === undefined ? (
@@ -776,7 +881,7 @@ function VenuesTab({ venues, bookings }: { venues: any[]; bookings: any[] }) {
 
 /* ───────────────────────────── UC-09 & UC-10: Evaluations / Reports ───────────────────────────── */
 
-function EvaluationsTab({ teamId, teamName, sports }: { teamId: Id<"sportsTeams">; teamName: string; sports: any[] }) {
+function EvaluationsTab({ teamId, teamName }: { teamId: Id<"sportsTeams">; teamName: string }) {
   const roster = useQuery(api.coach.getTeamRoster, { teamId });
   const createReport = useMutation(api.coach.createReport);
   const [selectedStudent, setSelectedStudent] = useState<Id<"users"> | null>(null);
@@ -784,17 +889,22 @@ function EvaluationsTab({ teamId, teamName, sports }: { teamId: Id<"sportsTeams"
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // sportId is resolved server-side from teamId — never trust a client-picked
+  // sportId (the old code hardcoded sports[0], tagging evaluations to the
+  // wrong sport for any team that wasn't first in the list).
+  const stats = useQuery(
+    api.coach.getAthleteStats,
+    selectedStudent ? { teamId, studentUserId: selectedStudent } : "skip",
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent || !form.comments.trim()) return;
     setSaving(true);
     try {
-      // Find the sport for this team
-      const sportId = sports[0]?._id; // fallback — in practice coach.ts resolves team→sport
-      if (!sportId) return;
       await createReport({
         studentUserId: selectedStudent,
-        sportId,
+        teamId,
         performanceScore: Number(form.score),
         comments: form.comments.trim(),
       });
@@ -842,6 +952,26 @@ function EvaluationsTab({ teamId, teamName, sports }: { teamId: Id<"sportsTeams"
         {selectedStudent && (
           <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-4 h-fit">
             <h3 className="font-black text-slate-950">Performance Evaluation</h3>
+
+            {stats && (
+              <div className="grid grid-cols-2 gap-3 rounded-2xl bg-amber-50 p-4 text-xs">
+                <div>
+                  <p className="font-black text-amber-800">
+                    {stats.attendanceRate != null ? `${stats.attendanceRate}%` : "—"}
+                  </p>
+                  <p className="text-[10px] text-amber-700">
+                    Attendance ({stats.sessionsAttended}/{stats.sessionsScheduled} sessions)
+                  </p>
+                </div>
+                <div>
+                  <p className="font-black text-amber-800">{stats.avgPastScore ?? "—"}</p>
+                  <p className="text-[10px] text-amber-700">
+                    Avg. past score ({stats.priorEvaluationCount} prior eval{stats.priorEvaluationCount === 1 ? "" : "s"})
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="mb-2 block text-xs font-bold text-slate-600">Performance Score (1–10)</label>
               <input type="range" min="1" max="10" value={form.score} onChange={(e) => setForm(p => ({ ...p, score: e.target.value }))} className="w-full accent-amber-500" />

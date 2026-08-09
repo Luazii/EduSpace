@@ -21,6 +21,32 @@ async function requireCoach(ctx: QueryCtx | MutationCtx) {
   return user;
 }
 
+// Two events overlap iff each starts before the other ends.
+function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
+  return aStart < bEnd && bStart < aEnd;
+}
+
+async function notifyTeam(ctx: MutationCtx, teamId: Id<"sportsTeams">, title: string, body: string) {
+  const members = await ctx.db
+    .query("teamMemberships")
+    .withIndex("by_team", (q) => q.eq("teamId", teamId))
+    .filter((q) => q.eq(q.field("status"), "active"))
+    .collect();
+  const now = Date.now();
+  await Promise.all(
+    members.map((m) =>
+      ctx.db.insert("notifications", {
+        userId: m.studentUserId,
+        title,
+        body,
+        type: "sports",
+        isRead: false,
+        createdAt: now,
+      }),
+    ),
+  );
+}
+
 // ── Teams & Memberships ──────────────────────────────────────────────────────────
 
 export const listMyTeams = query({
@@ -179,16 +205,53 @@ export const createTrainingSession = mutation({
     startTime: v.number(),
     endTime: v.number(),
     venue: v.optional(v.string()),
+    venueId: v.optional(v.id("sportsVenues")),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireCoach(ctx);
-    return ctx.db.insert("trainingSessions", {
+
+    if (args.endTime <= args.startTime) {
+      throw new Error("End time must be after start time.");
+    }
+
+    // Conflict: the team already has a scheduled session at an overlapping time.
+    const teamSessions = await ctx.db
+      .query("trainingSessions")
+      .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+      .filter((q) => q.eq(q.field("status"), "scheduled"))
+      .collect();
+    if (teamSessions.some((s) => overlaps(args.startTime, args.endTime, s.startTime, s.endTime))) {
+      throw new Error("This team already has a training session scheduled at an overlapping time.");
+    }
+
+    // Conflict: the venue (if a real registered venue was picked) is already booked.
+    if (args.venueId) {
+      const venueBookings = await ctx.db
+        .query("sportsVenueBookings")
+        .withIndex("by_venue", (q) => q.eq("venueId", args.venueId!))
+        .filter((q) => q.eq(q.field("status"), "active"))
+        .collect();
+      if (venueBookings.some((b) => overlaps(args.startTime, args.endTime, b.startTime, b.endTime))) {
+        throw new Error("The selected venue is already booked for this time slot.");
+      }
+    }
+
+    const sessionId = await ctx.db.insert("trainingSessions", {
       ...args,
       status: "scheduled",
       createdByUserId: user._id,
       createdAt: Date.now(),
     });
+
+    await notifyTeam(
+      ctx,
+      args.teamId,
+      "New training session scheduled",
+      `${args.title} — ${new Date(args.startTime).toLocaleString()}${args.venue ? ` at ${args.venue}` : ""}.`,
+    );
+
+    return sessionId;
   },
 });
 
@@ -240,6 +303,67 @@ export const markAttendance = mutation({
   },
 });
 
+// Grace period after a session's start time before a scan counts as "late".
+const LATE_GRACE_MS = 10 * 60 * 1000; // 10 minutes
+
+export const markAttendanceByScanCode = mutation({
+  args: {
+    sessionId: v.id("trainingSessions"),
+    scanCode: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const coach = await requireCoach(ctx);
+
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) throw new Error("Training session not found.");
+
+    const profile = await ctx.db
+      .query("studentProfiles")
+      .withIndex("by_scan_code", (q) => q.eq("scanCode", args.scanCode))
+      .first();
+    if (!profile) throw new Error("Unrecognized code — this student doesn't have a registered scan code.");
+
+    const membership = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_team_and_student", (q) => q.eq("teamId", session.teamId).eq("studentUserId", profile.userId))
+      .first();
+    if (!membership || membership.status !== "active") {
+      throw new Error("This student is not on the roster for this session's team.");
+    }
+
+    const scannedAt = Date.now();
+    // Computed, not manually chosen: on-time if scanned within the grace
+    // window of the session's actual start time, late otherwise.
+    const status: "present" | "late" = scannedAt <= session.startTime + LATE_GRACE_MS ? "present" : "late";
+
+    const existing = await ctx.db
+      .query("sportsAttendance")
+      .withIndex("by_session_and_student", (q) =>
+        q.eq("sessionId", args.sessionId).eq("studentUserId", profile.userId),
+      )
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { status, markedByUserId: coach._id, markedAt: scannedAt });
+    } else {
+      await ctx.db.insert("sportsAttendance", {
+        sessionId: args.sessionId,
+        studentUserId: profile.userId,
+        status,
+        markedByUserId: coach._id,
+        markedAt: scannedAt,
+      });
+    }
+
+    const student = await ctx.db.get(profile.userId);
+    return {
+      studentUserId: profile.userId,
+      fullName: student?.fullName ?? student?.email ?? "Student",
+      status,
+    };
+  },
+});
+
 // ── Match Fixtures & Results ────────────────────────────────────────────────────
 
 export const listFixtures = query({
@@ -263,22 +387,58 @@ export const listFixtures = query({
   },
 });
 
+const FIXTURE_DURATION_MS = 2 * 60 * 60 * 1000; // matches assumed to occupy ~2h for conflict purposes
+
 export const createFixture = mutation({
   args: {
     teamId: v.id("sportsTeams"),
     opponentName: v.string(),
     venue: v.string(),
+    venueId: v.optional(v.id("sportsVenues")),
     isHomeFixture: v.boolean(),
     matchTime: v.number(),
   },
   handler: async (ctx, args) => {
     const user = await requireCoach(ctx);
-    return ctx.db.insert("matchFixtures", {
+    const matchEnd = args.matchTime + FIXTURE_DURATION_MS;
+
+    // Conflict: the team already has a fixture around this time.
+    const teamFixtures = await ctx.db
+      .query("matchFixtures")
+      .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+      .filter((q) => q.eq(q.field("status"), "scheduled"))
+      .collect();
+    if (teamFixtures.some((f) => overlaps(args.matchTime, matchEnd, f.matchTime, f.matchTime + FIXTURE_DURATION_MS))) {
+      throw new Error("This team already has a fixture scheduled around this time.");
+    }
+
+    // Conflict: the venue (if a real registered venue was picked) is already booked.
+    if (args.venueId) {
+      const venueBookings = await ctx.db
+        .query("sportsVenueBookings")
+        .withIndex("by_venue", (q) => q.eq("venueId", args.venueId!))
+        .filter((q) => q.eq(q.field("status"), "active"))
+        .collect();
+      if (venueBookings.some((b) => overlaps(args.matchTime, matchEnd, b.startTime, b.endTime))) {
+        throw new Error("The selected venue is already booked around this time.");
+      }
+    }
+
+    const fixtureId = await ctx.db.insert("matchFixtures", {
       ...args,
       status: "scheduled",
       createdByUserId: user._id,
       createdAt: Date.now(),
     });
+
+    await notifyTeam(
+      ctx,
+      args.teamId,
+      "New fixture scheduled",
+      `vs ${args.opponentName} — ${new Date(args.matchTime).toLocaleString()} at ${args.venue} (${args.isHomeFixture ? "Home" : "Away"}).`,
+    );
+
+    return fixtureId;
   },
 });
 
@@ -324,19 +484,107 @@ export const recordResult = mutation({
   },
 });
 
+// League-table points: 3 for a win, 1 for a draw, 0 for a loss.
+export const getTeamStandings = query({
+  args: { teamId: v.id("sportsTeams") },
+  handler: async (ctx, args) => {
+    await requireCoach(ctx);
+    const fixtures = await ctx.db
+      .query("matchFixtures")
+      .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .collect();
+
+    const results = await Promise.all(
+      fixtures.map((f) =>
+        ctx.db
+          .query("matchResults")
+          .withIndex("by_fixture", (q) => q.eq("fixtureId", f._id))
+          .first(),
+      ),
+    );
+
+    const tally = { played: 0, wins: 0, losses: 0, draws: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
+    for (const r of results) {
+      if (!r) continue;
+      tally.played++;
+      tally.goalsFor += r.ourScore;
+      tally.goalsAgainst += r.opponentScore;
+      if (r.result === "win") { tally.wins++; tally.points += 3; }
+      else if (r.result === "draw") { tally.draws++; tally.points += 1; }
+      else tally.losses++;
+    }
+
+    return { ...tally, goalDifference: tally.goalsFor - tally.goalsAgainst };
+  },
+});
+
 // ── Performance Reports ─────────────────────────────────────────────────────────
+
+// Attendance rate + evaluation trend for one athlete on one team — used to
+// inform the evaluation form with real computed data instead of a bare
+// freeform field. Also derives sportId from the team server-side, so an
+// evaluation can never be filed against the wrong sport.
+export const getAthleteStats = query({
+  args: { teamId: v.id("sportsTeams"), studentUserId: v.id("users") },
+  handler: async (ctx, args) => {
+    await requireCoach(ctx);
+    const sessions = await ctx.db
+      .query("trainingSessions")
+      .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+      .filter((q) => q.eq(q.field("status"), "completed"))
+      .collect();
+
+    const attendanceRows = await Promise.all(
+      sessions.map((s) =>
+        ctx.db
+          .query("sportsAttendance")
+          .withIndex("by_session_and_student", (q) => q.eq("sessionId", s._id).eq("studentUserId", args.studentUserId))
+          .first(),
+      ),
+    );
+    const attended = attendanceRows.filter((a) => a && (a.status === "present" || a.status === "late")).length;
+    const attendanceRate = sessions.length > 0 ? Math.round((attended / sessions.length) * 100) : null;
+
+    const team = await ctx.db.get(args.teamId);
+    const priorReports = team
+      ? await ctx.db
+          .query("sportsReports")
+          .withIndex("by_student", (q) => q.eq("studentUserId", args.studentUserId))
+          .filter((q) => q.eq(q.field("sportId"), team.sportId))
+          .collect()
+      : [];
+    const scored = priorReports.filter((r) => r.performanceScore != null);
+    const avgPastScore = scored.length > 0
+      ? Math.round((scored.reduce((sum, r) => sum + (r.performanceScore ?? 0), 0) / scored.length) * 10) / 10
+      : null;
+
+    return {
+      sessionsScheduled: sessions.length,
+      sessionsAttended: attended,
+      attendanceRate,
+      priorEvaluationCount: priorReports.length,
+      avgPastScore,
+    };
+  },
+});
 
 export const createReport = mutation({
   args: {
     studentUserId: v.id("users"),
-    sportId: v.id("sports"),
+    teamId: v.id("sportsTeams"),
     performanceScore: v.optional(v.number()),
     comments: v.string(),
   },
   handler: async (ctx, args) => {
     const user = await requireCoach(ctx);
+    const team = await ctx.db.get(args.teamId);
+    if (!team) throw new Error("Team not found.");
     return ctx.db.insert("sportsReports", {
-      ...args,
+      studentUserId: args.studentUserId,
+      sportId: team.sportId, // resolved server-side — never trust a client-picked sportId
+      performanceScore: args.performanceScore,
+      comments: args.comments,
       coachUserId: user._id,
       evaluationDate: Date.now(),
       createdAt: Date.now(),

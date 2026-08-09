@@ -26,6 +26,100 @@ function isTransportAdminish(role: string) {
   return role === "admin" || role === "transport_admin";
 }
 
+function todayDateString() {
+  return new Date(Date.now()).toISOString().slice(0, 10);
+}
+
+function daysOverlap(a?: string[], b?: string[]) {
+  if (!a || !b || a.length === 0 || b.length === 0) return false;
+  return a.some((d) => b.includes(d));
+}
+
+async function notifyUser(ctx: MutationCtx, userId: Id<"users">, title: string, body: string) {
+  await ctx.db.insert("notifications", {
+    userId,
+    title,
+    body,
+    type: "transport",
+    isRead: false,
+    createdAt: Date.now(),
+  });
+}
+
+async function notifyLearnerAndParents(ctx: MutationCtx, learnerUserId: Id<"users">, title: string, body: string) {
+  const recipients = new Set<Id<"users">>([learnerUserId]);
+  const links = await ctx.db
+    .query("parentStudentLinks")
+    .withIndex("by_student", (q) => q.eq("studentId", learnerUserId))
+    .collect();
+  for (const link of links) recipients.add(link.parentId);
+  await Promise.all([...recipients].map((userId) => notifyUser(ctx, userId, title, body)));
+}
+
+// Check the driver isn't already scheduled on another active route at an
+// overlapping day/time — wires up what was previously a dead-schema check.
+async function checkDriverScheduleConflict(
+  ctx: MutationCtx,
+  driverUserId: Id<"users"> | undefined,
+  scheduleDays: string[] | undefined,
+  scheduleTime: string | undefined,
+  excludeRouteId?: Id<"transportRoutes">,
+) {
+  if (!driverUserId || !scheduleDays?.length || !scheduleTime) return;
+  const driverRoutes = await ctx.db
+    .query("transportRoutes")
+    .withIndex("by_driver", (q) => q.eq("driverUserId", driverUserId))
+    .filter((q) => q.eq(q.field("isActive"), true))
+    .collect();
+  const conflict = driverRoutes.find(
+    (r) => r._id !== excludeRouteId && r.scheduleTime === scheduleTime && daysOverlap(r.scheduleDays, scheduleDays),
+  );
+  if (conflict) {
+    throw new Error(`This driver already runs route ${conflict.routeCode} at ${scheduleTime} on an overlapping day.`);
+  }
+}
+
+// Keeps the (previously entirely unused) busAssignments table as the real
+// daily operational record: which driver/bus is actually on a route today,
+// and catches a driver being double-assigned to two routes on the same day.
+async function upsertTodayBusAssignment(
+  ctx: MutationCtx,
+  routeId: Id<"transportRoutes">,
+  driverUserId: Id<"users">,
+  busLabel: string | undefined,
+  assignedByUserId: Id<"users">,
+) {
+  const today = todayDateString();
+  const driverAssignmentsToday = await ctx.db
+    .query("busAssignments")
+    .withIndex("by_driver", (q) => q.eq("driverUserId", driverUserId))
+    .filter((q) => q.eq(q.field("assignmentDate"), today))
+    .collect();
+  const conflict = driverAssignmentsToday.find((a) => a.status === "active" && a.routeId !== routeId);
+  if (conflict) {
+    throw new Error("This driver is already actively assigned to a different route today.");
+  }
+
+  const existing = await ctx.db
+    .query("busAssignments")
+    .withIndex("by_route", (q) => q.eq("routeId", routeId))
+    .filter((q) => q.eq(q.field("assignmentDate"), today))
+    .first();
+  if (existing) {
+    await ctx.db.patch(existing._id, { driverUserId, busLabel: busLabel ?? existing.busLabel, status: "active" });
+  } else {
+    await ctx.db.insert("busAssignments", {
+      routeId,
+      driverUserId,
+      busLabel: busLabel ?? "Unassigned",
+      assignmentDate: today,
+      status: "active",
+      assignedByUserId,
+      createdAt: Date.now(),
+    });
+  }
+}
+
 async function getLinkedLearners(ctx: QueryCtx | MutationCtx, parentId: Id<"users">) {
   const links = await ctx.db
     .query("parentStudentLinks")
@@ -186,6 +280,8 @@ export const createRoute = mutation({
     capacity: v.optional(v.number()),
     driverUserId: v.optional(v.id("users")),
     busLabel: v.optional(v.string()),
+    scheduleDays: v.optional(v.array(v.string())),
+    scheduleTime: v.optional(v.string()),
     stops: v.array(
       v.object({
         label: v.string(),
@@ -209,6 +305,8 @@ export const createRoute = mutation({
       throw new Error("A route with this code already exists.");
     }
 
+    await checkDriverScheduleConflict(ctx, args.driverUserId, args.scheduleDays, args.scheduleTime);
+
     const now = Date.now();
     const routeId = await ctx.db.insert("transportRoutes", {
       routeCode,
@@ -218,6 +316,8 @@ export const createRoute = mutation({
       capacity: args.capacity,
       driverUserId: args.driverUserId,
       busLabel: args.busLabel?.trim() || undefined,
+      scheduleDays: args.scheduleDays,
+      scheduleTime: args.scheduleTime,
       isActive: true,
       createdByUserId: user._id,
       createdAt: now,
@@ -236,6 +336,10 @@ export const createRoute = mutation({
       });
     }
 
+    if (args.driverUserId) {
+      await upsertTodayBusAssignment(ctx, routeId, args.driverUserId, args.busLabel, user._id);
+    }
+
     return routeId;
   },
 });
@@ -250,6 +354,8 @@ export const updateRoute = mutation({
     capacity: v.optional(v.number()),
     driverUserId: v.optional(v.id("users")),
     busLabel: v.optional(v.string()),
+    scheduleDays: v.optional(v.array(v.string())),
+    scheduleTime: v.optional(v.string()),
     isActive: v.optional(v.boolean()),
     stops: v.optional(
       v.array(
@@ -281,7 +387,21 @@ export const updateRoute = mutation({
       }
     }
 
+    const nextDriverId = args.driverUserId ?? route.driverUserId;
+    const nextDays = args.scheduleDays ?? route.scheduleDays;
+    const nextTime = args.scheduleTime ?? route.scheduleTime;
+    await checkDriverScheduleConflict(ctx, nextDriverId, nextDays, nextTime, route._id);
+
     const now = Date.now();
+
+    // Detect what's meaningfully changing before patching, so we can notify
+    // affected riders about the actual change (UC16) rather than nothing.
+    const changes: string[] = [];
+    if (args.driverUserId !== undefined && args.driverUserId !== route.driverUserId) changes.push("driver reassigned");
+    if (args.busLabel !== undefined && args.busLabel !== route.busLabel) changes.push(`bus changed to ${args.busLabel}`);
+    if (args.isActive === false && route.isActive) changes.push("route deactivated");
+    if (args.stops) changes.push("stops updated");
+
     await ctx.db.patch(args.routeId, {
       routeCode: args.routeCode?.trim().toUpperCase(),
       name: args.name?.trim(),
@@ -290,6 +410,8 @@ export const updateRoute = mutation({
       capacity: args.capacity,
       driverUserId: args.driverUserId,
       busLabel: args.busLabel?.trim(),
+      scheduleDays: args.scheduleDays,
+      scheduleTime: args.scheduleTime,
       isActive: args.isActive,
       updatedAt: now,
     });
@@ -313,6 +435,28 @@ export const updateRoute = mutation({
           updatedAt: now,
         });
       }
+    }
+
+    if (args.driverUserId) {
+      await upsertTodayBusAssignment(ctx, args.routeId, args.driverUserId, args.busLabel ?? route.busLabel, user._id);
+    }
+
+    if (changes.length > 0) {
+      const approvedBookings = await ctx.db
+        .query("transportBookings")
+        .withIndex("by_route_and_status", (q) => q.eq("routeId", args.routeId).eq("status", "approved"))
+        .collect();
+      const summary = changes.join(", ");
+      await Promise.all(
+        approvedBookings.map((b) =>
+          notifyLearnerAndParents(
+            ctx,
+            b.learnerUserId,
+            "Transport route updated",
+            `${route.name}: ${summary}.`,
+          ),
+        ),
+      );
     }
 
     return args.routeId;
@@ -392,7 +536,13 @@ export const requestBooking = mutation({
 });
 
 export const approveBooking = mutation({
-  args: { bookingId: v.id("transportBookings"), note: v.optional(v.string()) },
+  args: {
+    bookingId: v.id("transportBookings"),
+    note: v.optional(v.string()),
+    // Lets the admin actually assign/reassign which route the learner rides,
+    // not just rubber-stamp whatever the parent originally picked.
+    routeId: v.optional(v.id("transportRoutes")),
+  },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!isTransportAdminish(user.role)) throw new Error("Only transport admins can approve bookings.");
@@ -400,8 +550,25 @@ export const approveBooking = mutation({
     const booking = await ctx.db.get(args.bookingId);
     if (!booking) throw new Error("Booking not found.");
 
+    const targetRouteId = args.routeId ?? booking.routeId;
+    const route = await ctx.db.get(targetRouteId);
+    if (!route || !route.isActive) throw new Error("Target route not found or inactive.");
+
+    // Capacity check — capacity was stored but never actually enforced before.
+    if (route.capacity != null) {
+      const approvedOnRoute = await ctx.db
+        .query("transportBookings")
+        .withIndex("by_route_and_status", (q) => q.eq("routeId", targetRouteId).eq("status", "approved"))
+        .collect();
+      const alreadyOnThisRoute = approvedOnRoute.some((b) => b._id === booking._id);
+      if (!alreadyOnThisRoute && approvedOnRoute.length >= route.capacity) {
+        throw new Error(`${route.name} is at capacity (${route.capacity}) — reassign to a different route or increase capacity.`);
+      }
+    }
+
     const now = Date.now();
     await ctx.db.patch(args.bookingId, {
+      routeId: targetRouteId,
       status: "approved",
       approvedByUserId: user._id,
       approvedAt: now,
@@ -411,14 +578,13 @@ export const approveBooking = mutation({
 
     const learner = await ctx.db.get(booking.learnerUserId);
     const recipients = new Set([booking.requestedByUserId, booking.learnerUserId]);
-    const route = await ctx.db.get(booking.routeId);
 
     await Promise.all(
       [...recipients].map((userId) =>
         ctx.db.insert("notifications", {
           userId,
           title: "Transport booking approved",
-          body: `${learner?.fullName ?? learner?.email ?? "A learner"} has been approved for ${route?.name ?? "transport"}.`,
+          body: `${learner?.fullName ?? learner?.email ?? "A learner"} has been approved for ${route.name}.`,
           type: "transport",
           isRead: false,
           createdAt: now,
@@ -442,6 +608,14 @@ export const rejectBooking = mutation({
       updatedAt: Date.now(),
       notes: args.note?.trim() || booking.notes,
     });
+
+    const route = await ctx.db.get(booking.routeId);
+    await notifyUser(
+      ctx,
+      booking.requestedByUserId,
+      "Transport booking rejected",
+      `Your transport request${route ? ` for ${route.name}` : ""} was not approved.${args.note ? ` Note: ${args.note}` : ""}`,
+    );
   },
 });
 
@@ -516,17 +690,23 @@ export const reportIncident = mutation({
       updatedAt: now,
     });
 
+    // Notify admins AND transport admins — previously admin-only, which
+    // silently excluded the role actually responsible for transport.
     const admins = await ctx.db
       .query("users")
       .withIndex("by_role", (q) => q.eq("role", "admin"))
       .collect();
+    const transportAdmins = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "transport_admin"))
+      .collect();
 
     await Promise.all(
-      admins
-        .filter((admin) => admin.isActive)
-        .map((admin) =>
+      [...admins, ...transportAdmins]
+        .filter((a) => a.isActive)
+        .map((a) =>
           ctx.db.insert("notifications", {
-            userId: admin._id,
+            userId: a._id,
             title: "Transport incident reported",
             body: `${route.name}: ${args.title}`,
             type: "transport",
@@ -536,6 +716,23 @@ export const reportIncident = mutation({
         ),
     );
 
+    // Notify the learners (and their parents) actually booked on this route —
+    // the UI has always claimed this happens; it never actually did.
+    const approvedBookings = await ctx.db
+      .query("transportBookings")
+      .withIndex("by_route_and_status", (q) => q.eq("routeId", args.routeId).eq("status", "approved"))
+      .collect();
+    await Promise.all(
+      approvedBookings.map((b) =>
+        notifyLearnerAndParents(
+          ctx,
+          b.learnerUserId,
+          "Transport incident on your route",
+          `${route.name}: ${args.title}. ${args.description}`,
+        ),
+      ),
+    );
+
     return incidentId;
   },
 });
@@ -543,7 +740,7 @@ export const reportIncident = mutation({
 export const scanBusPassengerByQR = mutation({
   args: {
     routeId: v.id("transportRoutes"),
-    learnerUserId: v.id("users"),
+    scanCode: v.string(),
     scanType: v.union(v.literal("board"), v.literal("dropoff")),
     locationText: v.optional(v.string()),
   },
@@ -556,30 +753,45 @@ export const scanBusPassengerByQR = mutation({
     const route = await ctx.db.get(args.routeId);
     if (!route) throw new Error("Route not found.");
 
+    const profile = await ctx.db
+      .query("studentProfiles")
+      .withIndex("by_scan_code", (q) => q.eq("scanCode", args.scanCode))
+      .first();
+    if (!profile) throw new Error("Unrecognized code — this student doesn't have a registered scan code.");
+    const learnerUserId = profile.userId;
+
     // Check if the learner is actually booked on this route
     const bookings = await ctx.db
       .query("transportBookings")
       .withIndex("by_route", (q) => q.eq("routeId", args.routeId))
-      .filter((q) => q.eq(q.field("learnerUserId"), args.learnerUserId))
+      .filter((q) => q.eq(q.field("learnerUserId"), learnerUserId))
       .collect();
 
-    const activeBooking = bookings.find(b => b.status === "approved" || b.status === "pending");
-    
+    const activeBooking = bookings.find((b) => b.status === "approved" || b.status === "pending");
+
     if (!activeBooking) {
       throw new Error("This student is not booked on this route.");
     }
 
-    const learner = await ctx.db.get(args.learnerUserId);
+    const learner = await ctx.db.get(learnerUserId);
 
     await ctx.db.insert("transportScans", {
       routeId: args.routeId,
       bookingId: activeBooking._id,
-      learnerUserId: args.learnerUserId,
+      learnerUserId,
       driverUserId: user._id,
       scanType: args.scanType,
       scannedAt: Date.now(),
       locationText: args.locationText?.trim() || undefined,
     });
+
+    const action = args.scanType === "board" ? "boarded" : "got off";
+    await notifyLearnerAndParents(
+      ctx,
+      learnerUserId,
+      args.scanType === "board" ? "Bus boarding confirmed" : "Bus drop-off confirmed",
+      `${learner?.fullName ?? learner?.email ?? "Your learner"} just ${action} ${route.name} at ${new Date(Date.now()).toLocaleTimeString()}.`,
+    );
 
     return learner;
   },
