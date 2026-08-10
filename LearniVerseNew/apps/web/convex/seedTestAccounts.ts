@@ -313,6 +313,144 @@ export const seedTestAccounts = mutation({
       }
     }
 
+    // ── 5b2. Richer sports history (Phase 3): a couple of fully-past
+    // sessions with attendance already recorded, a second completed
+    // fixture (a draw, for standings variety), two prior evaluations, and
+    // a venue booking — so reports/standings/evaluations show real
+    // computed numbers immediately, not just zeros. ───────────────────────
+    if (footballTeamId) {
+      const priorSessionSpecs = [
+        { title: "Tactics & Set Pieces", daysAgo: 10, attendanceStatus: "present" as const },
+        { title: "Preseason Conditioning", daysAgo: 17, attendanceStatus: "late" as const },
+      ];
+      for (const spec of priorSessionSpecs) {
+        const existing = await ctx.db
+          .query("trainingSessions")
+          .withIndex("by_team", (q) => q.eq("teamId", footballTeamId))
+          .filter((q) => q.eq(q.field("title"), spec.title))
+          .first();
+        let sessionId = existing?._id;
+        if (!existing) {
+          const start = now - spec.daysAgo * 24 * 60 * 60 * 1000;
+          sessionId = await ctx.db.insert("trainingSessions", {
+            teamId: footballTeamId,
+            title: spec.title,
+            startTime: start,
+            endTime: start + 90 * 60 * 1000,
+            venue: "Main Field",
+            status: "scheduled", // status field isn't what determines "held" — see coach.ts note
+            createdByUserId: coachId,
+            createdAt: now,
+          });
+        }
+        if (sessionId) {
+          const existingAttendance = await ctx.db
+            .query("sportsAttendance")
+            .withIndex("by_session_and_student", (q) => q.eq("sessionId", sessionId!).eq("studentUserId", studentId))
+            .first();
+          if (!existingAttendance) {
+            await ctx.db.insert("sportsAttendance", {
+              sessionId,
+              studentUserId: studentId,
+              status: spec.attendanceStatus,
+              markedByUserId: coachId,
+              markedAt: now,
+            });
+          }
+        }
+      }
+
+      const existingDrawFixture = await ctx.db
+        .query("matchFixtures")
+        .withIndex("by_team", (q) => q.eq("teamId", footballTeamId))
+        .filter((q) => q.eq(q.field("opponentName"), "Lakeside College"))
+        .first();
+      let drawFixtureId = existingDrawFixture?._id;
+      if (!existingDrawFixture) {
+        drawFixtureId = await ctx.db.insert("matchFixtures", {
+          teamId: footballTeamId,
+          opponentName: "Lakeside College",
+          venue: "Lakeside Grounds",
+          isHomeFixture: false,
+          matchTime: now - 14 * 24 * 60 * 60 * 1000,
+          status: "completed",
+          createdByUserId: coachId,
+          createdAt: now,
+        });
+      }
+      if (drawFixtureId) {
+        const existingDrawResult = await ctx.db
+          .query("matchResults")
+          .withIndex("by_fixture", (q) => q.eq("fixtureId", drawFixtureId!))
+          .first();
+        if (!existingDrawResult) {
+          await ctx.db.insert("matchResults", {
+            fixtureId: drawFixtureId,
+            ourScore: 2,
+            opponentScore: 2,
+            result: "draw",
+            matchReport: "Hard-fought away draw, seed data.",
+            recordedByUserId: coachId,
+            recordedAt: now,
+          });
+        }
+      }
+
+      const existingReports = await ctx.db
+        .query("sportsReports")
+        .withIndex("by_student", (q) => q.eq("studentUserId", studentId))
+        .collect();
+      if (existingReports.length === 0) {
+        const footballSportForReports = await ctx.db
+          .query("sports")
+          .withIndex("by_name", (q) => q.eq("name", "Football"))
+          .first();
+        if (footballSportForReports) {
+          await ctx.db.insert("sportsReports", {
+            studentUserId: studentId,
+            coachUserId: coachId,
+            sportId: footballSportForReports._id,
+            evaluationDate: now - 17 * 24 * 60 * 60 * 1000,
+            performanceScore: 6,
+            comments: "Solid fundamentals, needs to work on off-ball movement. Seed data.",
+            createdAt: now,
+          });
+          await ctx.db.insert("sportsReports", {
+            studentUserId: studentId,
+            coachUserId: coachId,
+            sportId: footballSportForReports._id,
+            evaluationDate: now - 3 * 24 * 60 * 60 * 1000,
+            performanceScore: 8,
+            comments: "Great improvement in match awareness and finishing. Seed data.",
+            createdAt: now,
+          });
+        }
+      }
+
+      const mainFieldVenue = await ctx.db
+        .query("sportsVenues")
+        .withIndex("by_name", (q) => q.eq("name", "main field"))
+        .first();
+      if (mainFieldVenue) {
+        const existingBooking = await ctx.db
+          .query("sportsVenueBookings")
+          .withIndex("by_coach", (q) => q.eq("coachUserId", coachId))
+          .first();
+        if (!existingBooking) {
+          const start = now + 2 * 24 * 60 * 60 * 1000;
+          await ctx.db.insert("sportsVenueBookings", {
+            venueId: mainFieldVenue._id,
+            coachUserId: coachId,
+            title: "1st XI training block",
+            startTime: start,
+            endTime: start + 2 * 60 * 60 * 1000,
+            status: "active",
+            createdAt: now,
+          });
+        }
+      }
+    }
+
     // ── 5c. A ticketed sports event (UC07) — upcoming, priced, so the
     // seeded parent/student have something real to buy against. ──────────
     if (footballTeamId) {
@@ -386,6 +524,86 @@ export const seedTestAccounts = mutation({
         notes: "Seed data",
         createdAt: now,
         updatedAt: now,
+      });
+    }
+
+    // ── 6b2. A second route with a PENDING booking (Phase 3) — so the
+    // transport admin's approval queue has something real to act on
+    // instead of being empty by default. ─────────────────────────────────
+    const existingEventRoute = await ctx.db
+      .query("transportRoutes")
+      .withIndex("by_route_code", (q) => q.eq("routeCode", "TEST-RT-02"))
+      .first();
+    let eventRouteId: Id<"transportRoutes"> | undefined = existingEventRoute?._id;
+    if (!existingEventRoute) {
+      eventRouteId = await ctx.db.insert("transportRoutes", {
+        routeCode: "TEST-RT-02",
+        name: "Saturday Sports Fixture Shuttle",
+        description: "Seeded test route — event transport",
+        serviceType: "event",
+        capacity: 20,
+        driverUserId: driverId,
+        busLabel: "Bus 02",
+        isActive: true,
+        createdByUserId: transportAdminId,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    if (eventRouteId) {
+      const existingPendingBooking = await ctx.db
+        .query("transportBookings")
+        .withIndex("by_route", (q) => q.eq("routeId", eventRouteId!))
+        .filter((q) => q.eq(q.field("learnerUserId"), studentId))
+        .first();
+      if (!existingPendingBooking) {
+        await ctx.db.insert("transportBookings", {
+          routeId: eventRouteId,
+          learnerUserId: studentId,
+          requestedByUserId: parentId,
+          status: "pending",
+          notes: "Seed data — awaiting approval",
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
+    // ── 6b3. A resolved incident (alongside whatever real ones exist) so
+    // the Incidents tab shows the full open -> resolved lifecycle. ───────
+    const existingResolvedIncident = await ctx.db
+      .query("transportIncidents")
+      .withIndex("by_route", (q) => q.eq("routeId", routeId))
+      .filter((q) => q.eq(q.field("title"), "Minor delay — traffic"))
+      .first();
+    if (!existingResolvedIncident) {
+      await ctx.db.insert("transportIncidents", {
+        routeId,
+        reportedByUserId: driverId,
+        title: "Minor delay — traffic",
+        description: "Route ran ~10 minutes behind schedule due to road closure. Seed data.",
+        status: "resolved",
+        latitude: -26.2041,
+        longitude: 28.0473,
+        createdAt: now - 2 * 24 * 60 * 60 * 1000,
+        updatedAt: now - 2 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000,
+      });
+    }
+
+    // ── 6b4. A live GPS position for the route (Phase 3, UC14) — so the
+    // parent's tracking panel shows something immediately without needing
+    // the driver to physically drive first. ──────────────────────────────
+    const existingLocation = await ctx.db
+      .query("busLocations")
+      .withIndex("by_route", (q) => q.eq("routeId", routeId))
+      .first();
+    if (!existingLocation) {
+      await ctx.db.insert("busLocations", {
+        routeId,
+        driverUserId: driverId,
+        latitude: -26.2041,
+        longitude: 28.0473,
+        recordedAt: now,
       });
     }
 
@@ -511,6 +729,49 @@ export const seedTestAccounts = mutation({
             createdByUserId: warehouseAdminId,
             notes: "Seed data — ready to acknowledge",
             createdAt: now,
+          });
+        }
+      }
+
+      // A second delivery already completed, so the delivery history shows
+      // the full pending -> acknowledged -> delivered lifecycle, not just
+      // one static pending row.
+      const existingCompletedDelivery = await ctx.db
+        .query("deliveries")
+        .withIndex("by_driver", (q) => q.eq("driverUserId", driverId))
+        .filter((q) => q.eq(q.field("recipientLabel"), "Coach John (sports equipment)"))
+        .first();
+      if (!existingCompletedDelivery) {
+        const ballsItem = await ctx.db
+          .query("inventoryItems")
+          .withIndex("by_name", (q) => q.eq("name", "Rugby Balls"))
+          .first();
+        if (ballsItem && ballsItem.quantityOnHand >= 1) {
+          await ctx.db.patch(ballsItem._id, {
+            quantityOnHand: ballsItem.quantityOnHand - 1,
+            updatedAt: now,
+          });
+          await ctx.db.insert("inventoryTransactions", {
+            itemId: ballsItem._id,
+            type: "issue",
+            quantityDelta: -1,
+            issuedToLabel: "Delivery: Coach John (sports equipment)",
+            performedByUserId: warehouseAdminId,
+            note: "Seed data",
+            createdAt: now - 3 * 24 * 60 * 60 * 1000,
+          });
+          await ctx.db.insert("deliveries", {
+            itemId: ballsItem._id,
+            quantity: 1,
+            recipientLabel: "Coach John (sports equipment)",
+            recipientUserId: coachId,
+            driverUserId: driverId,
+            status: "delivered",
+            createdByUserId: warehouseAdminId,
+            notes: "Seed data — completed lifecycle example",
+            createdAt: now - 3 * 24 * 60 * 60 * 1000,
+            acknowledgedAt: now - 3 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000,
+            deliveredAt: now - 3 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000,
           });
         }
       }

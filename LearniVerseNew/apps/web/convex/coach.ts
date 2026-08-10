@@ -529,11 +529,14 @@ export const getAthleteStats = query({
   args: { teamId: v.id("sportsTeams"), studentUserId: v.id("users") },
   handler: async (ctx, args) => {
     await requireCoach(ctx);
-    const sessions = await ctx.db
+    // "Held" means the session's end time has passed — status never actually
+    // transitions to "completed" anywhere (no mutation does that), so
+    // filtering on status here would always return zero sessions.
+    const allSessions = await ctx.db
       .query("trainingSessions")
       .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
-      .filter((q) => q.eq(q.field("status"), "completed"))
       .collect();
+    const sessions = allSessions.filter((s) => s.status !== "cancelled" && s.endTime < Date.now());
 
     const attendanceRows = await Promise.all(
       sessions.map((s) =>
@@ -632,7 +635,7 @@ export const generateSeasonReport = query({
     const sport = await ctx.db.get(team.sportId);
     const coach = team.coachUserId ? await ctx.db.get(team.coachUserId) : null;
 
-    const [members, sessions, fixtures] = await Promise.all([
+    const [members, allSessions, fixtures] = await Promise.all([
       ctx.db
         .query("teamMemberships")
         .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
@@ -641,13 +644,16 @@ export const generateSeasonReport = query({
       ctx.db
         .query("trainingSessions")
         .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
-        .filter((q) => q.eq(q.field("status"), "completed"))
         .collect(),
       ctx.db
         .query("matchFixtures")
         .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
         .collect(),
     ]);
+
+    // "Held" means the session's end time has passed — see the same note
+    // in getAthleteStats above.
+    const sessions = allSessions.filter((s) => s.status !== "cancelled" && s.endTime < Date.now());
 
     // Standings — same aggregation as getTeamStandings, inlined so this is
     // one self-contained report query.
