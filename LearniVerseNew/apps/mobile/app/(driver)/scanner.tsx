@@ -42,10 +42,9 @@ export default function DriverScannerScreen() {
     setLoading(true);
 
     try {
-      const learnerUserId = data as Id<"users">;
       const response = await scanBusPassengerByQR({ 
         routeId: routeId as Id<"transportRoutes">, 
-        learnerUserId,
+        scanCode: data,
         scanType 
       });
       setResult({

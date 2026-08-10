@@ -6,7 +6,6 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Colors } from "@/constants/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
-// @ts-expect-error
 import { format } from "date-fns";
 
 export default function EventDetailsScreen() {

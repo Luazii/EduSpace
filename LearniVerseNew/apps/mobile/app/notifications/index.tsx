@@ -27,11 +27,11 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function NotificationsScreen() {
-  const notifications = useQuery(api.notifications.listMine, {}) ?? [];
-  const markRead = useMutation(api.notifications.markRead);
-  const markAllRead = useMutation(api.notifications.markAllRead);
+  const notifications = useQuery(api.notifications.list, {}) ?? [];
+  const markRead = useMutation(api.notifications.markAsRead);
+  const markAllRead = useMutation(api.notifications.markAllAsRead);
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const unreadCount = notifications.filter((n: any) => !n.isRead).length;
 
   return (
     <ScrollView className="flex-1 bg-slate-50" showsVerticalScrollIndicator={false}>
@@ -58,7 +58,7 @@ export default function NotificationsScreen() {
           </View>
         ) : (
           <View className="gap-2">
-            {notifications.map((notif) => (
+            {notifications.map((notif: any) => (
               <TouchableOpacity
                 key={notif._id}
                 onPress={() => markRead({ notificationId: notif._id })}

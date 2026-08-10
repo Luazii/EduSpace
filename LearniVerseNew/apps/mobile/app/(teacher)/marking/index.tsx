@@ -47,11 +47,11 @@ export default function MarkingScreen() {
                 <View className="flex-row items-start justify-between">
                   <View className="flex-1 mr-3">
                     <Text className="text-[10px] font-black uppercase tracking-widest text-violet-600 mb-1">
-                      {sub.courseCode ?? "Assignment"}
+                      {sub.course?.courseCode ?? "Assignment"}
                     </Text>
-                    <Text className="text-slate-950 font-bold">{sub.assignmentTitle}</Text>
+                    <Text className="text-slate-950 font-bold">{sub.assignment?.title}</Text>
                     <Text className="text-slate-500 text-sm mt-0.5">
-                      {sub.studentName}
+                      {sub.student?.fullName ?? sub.student?.email}
                     </Text>
                     <Text className="text-slate-400 text-xs mt-1">
                       Submitted {format(sub.submittedAt, "MMM d, p")}

@@ -8,12 +8,9 @@ import { Colors } from "@/constants/colors";
 
 export default function BehaviourScreen() {
   const user = useQuery(api.users.current);
-  const teacherCourses = useQuery(
-    api.teachers.getTeacherCourses,
-    user ? { teacherUserId: user._id } : "skip"
-  ) ?? [];
-  const recentRecords = useQuery(api.behaviour.listByTeacher, {}) ?? [];
-  const createRecord = useMutation(api.behaviour.create);
+  const teacherCourses = useQuery(api.courses.listTeachingDashboard) ?? [];
+  const recentRecords = useQuery(api.behaviour.listRecent, {}) ?? [];
+  const createRecord = useMutation(api.behaviour.awardRecord);
 
   const [showModal, setShowModal] = useState(false);
   const [type, setType] = useState<"merit" | "demerit">("merit");
@@ -24,7 +21,7 @@ export default function BehaviourScreen() {
   const [saving, setSaving] = useState(false);
 
   const students = useQuery(
-    api.admin.listStudents,
+    api.behaviour.listMyStudents,
     {}
   ) ?? [];
 
@@ -81,7 +78,7 @@ export default function BehaviourScreen() {
           </View>
         ) : (
           <View className="gap-3">
-            {recentRecords.slice(0, 20).map((record) => (
+            {recentRecords.slice(0, 20).map((record: any) => (
               <View key={record._id} className="bg-white rounded-3xl p-4 border border-slate-100 shadow-sm">
                 <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center gap-3">
@@ -148,7 +145,7 @@ export default function BehaviourScreen() {
                 className="mb-4"
               >
                 <View className="flex-row gap-2">
-                  {students.slice(0, 20).map((s) => (
+                  {students.slice(0, 20).map((s: any) => (
                     <TouchableOpacity
                       key={s._id}
                       onPress={() => setStudentId(s._id)}
@@ -157,7 +154,7 @@ export default function BehaviourScreen() {
                       }`}
                     >
                       <Text className={`text-sm font-semibold ${studentId === s._id ? "text-white" : "text-slate-700"}`}>
-                        {s.firstName} {s.lastName}
+                        {s.fullName}
                       </Text>
                     </TouchableOpacity>
                   ))}

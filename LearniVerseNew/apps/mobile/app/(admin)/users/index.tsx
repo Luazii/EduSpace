@@ -7,7 +7,7 @@ import { Colors } from "@/constants/colors";
 import { format } from "date-fns";
 
 export default function UsersAdminScreen() {
-  const users = useQuery(api.admin.listUsers) ?? [];
+  const users = useQuery(api.users.list) ?? [];
   const [filter, setFilter] = useState<"all" | "student" | "teacher" | "admin" | "parent">("all");
 
   if (users === undefined) {
@@ -18,7 +18,7 @@ export default function UsersAdminScreen() {
     );
   }
 
-  const filteredUsers = filter === "all" ? users : users.filter((u) => u.role === filter);
+  const filteredUsers = filter === "all" ? users : users.filter((u: any) => u.role === filter);
 
   return (
     <ScrollView className="flex-1 bg-slate-50" showsVerticalScrollIndicator={false}>
@@ -26,15 +26,15 @@ export default function UsersAdminScreen() {
         {/* Stats */}
         <View className="flex-row gap-3 mb-6">
           <View className="flex-1 bg-sky-50 rounded-2xl p-3 items-center">
-            <Text className="text-sky-700 text-2xl font-black">{users.filter((u) => u.role === "student").length}</Text>
+            <Text className="text-sky-700 text-2xl font-black">{users.filter((u: any) => u.role === "student").length}</Text>
             <Text className="text-sky-500 text-[10px] font-bold uppercase tracking-widest mt-0.5">Students</Text>
           </View>
           <View className="flex-1 bg-violet-50 rounded-2xl p-3 items-center">
-            <Text className="text-violet-700 text-2xl font-black">{users.filter((u) => u.role === "teacher").length}</Text>
+            <Text className="text-violet-700 text-2xl font-black">{users.filter((u: any) => u.role === "teacher").length}</Text>
             <Text className="text-violet-500 text-[10px] font-bold uppercase tracking-widest mt-0.5">Teachers</Text>
           </View>
           <View className="flex-1 bg-amber-50 rounded-2xl p-3 items-center">
-            <Text className="text-amber-700 text-2xl font-black">{users.filter((u) => u.role === "parent").length}</Text>
+            <Text className="text-amber-700 text-2xl font-black">{users.filter((u: any) => u.role === "parent").length}</Text>
             <Text className="text-amber-500 text-[10px] font-bold uppercase tracking-widest mt-0.5">Parents</Text>
           </View>
         </View>
@@ -62,7 +62,7 @@ export default function UsersAdminScreen() {
         </Text>
 
         <View className="gap-3">
-          {filteredUsers.map((user) => (
+          {filteredUsers.map((user: any) => (
             <View key={user._id} className="bg-white rounded-3xl p-4 border border-slate-100 flex-row items-center justify-between">
               <View className="flex-row items-center gap-3 flex-1">
                 <View className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center">

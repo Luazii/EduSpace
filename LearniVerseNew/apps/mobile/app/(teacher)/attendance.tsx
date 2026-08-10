@@ -9,18 +9,15 @@ import { format } from "date-fns";
 
 export default function AttendanceScreen() {
   const user = useQuery(api.users.current);
-  const teacherCourses = useQuery(
-    api.teachers.getTeacherCourses,
-    user ? { teacherUserId: user._id } : "skip"
-  ) ?? [];
-  const markAttendance = useMutation(api.attendance.markBulk);
+  const teacherCourses = useQuery(api.courses.listTeachingDashboard) ?? [];
+  const markAttendance = useMutation(api.attendance.markAttendance);
 
   const [selectedCourse, setSelectedCourse] = useState<Id<"courses"> | null>(null);
   const [sessionDate] = useState(new Date().toISOString().split("T")[0]);
   const [saving, setSaving] = useState(false);
 
   const enrolledStudents = useQuery(
-    api.enrollments.listByCourse,
+    api.attendance.listEnrolledStudents,
     selectedCourse ? { courseId: selectedCourse } : "skip"
   ) ?? [];
 
@@ -37,9 +34,9 @@ export default function AttendanceScreen() {
 
   async function handleSave() {
     if (!selectedCourse) return;
-    const records = enrolledStudents.map((s) => ({
-      studentUserId: s.studentUserId as Id<"users">,
-      status: attendance[s.studentUserId] ?? "absent",
+    const records = enrolledStudents.map((s: any) => ({
+      studentUserId: s.userId as Id<"users">,
+      status: attendance[s.userId] ?? "absent",
     }));
     setSaving(true);
     try {
@@ -82,7 +79,7 @@ export default function AttendanceScreen() {
               <Text className="text-slate-400 text-sm">No subjects assigned</Text>
             </View>
           ) : (
-            teacherCourses.map((course) => (
+            teacherCourses.map((course: any) => (
               <TouchableOpacity
                 key={course._id}
                 onPress={() => {
@@ -113,10 +110,10 @@ export default function AttendanceScreen() {
               Students ({enrolledStudents.length})
             </Text>
             <View className="gap-3 mb-5">
-              {enrolledStudents.map((student) => {
-                const status = attendance[student.studentUserId] ?? "absent";
+              {enrolledStudents.map((student: any) => {
+                const status = attendance[student.userId] ?? "absent";
                 return (
-                  <View key={student.studentUserId} className="bg-white rounded-3xl p-4 border border-slate-100">
+                  <View key={student.userId} className="bg-white rounded-3xl p-4 border border-slate-100">
                     <View className="flex-row items-center justify-between mb-3">
                       <View className="flex-row items-center gap-3">
                         <View className="w-9 h-9 rounded-full bg-slate-100 items-center justify-center">
@@ -136,7 +133,7 @@ export default function AttendanceScreen() {
                       {(["present", "absent", "late", "excused"] as const).map((s) => (
                         <TouchableOpacity
                           key={s}
-                          onPress={() => toggleStatus(student.studentUserId, s)}
+                          onPress={() => toggleStatus(student.userId, s)}
                           className={`flex-1 py-2 rounded-xl items-center ${
                             status === s ? statusColors[s].bg : "bg-slate-100"
                           }`}

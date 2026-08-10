@@ -12,13 +12,9 @@ export default function QuizDetailScreen() {
   const router = useRouter();
 
   const quiz = useQuery(
-    api.quizzes.getById,
+    api.quizzes.getDetail,
     quizId ? { quizId: quizId as Id<"quizzes"> } : "skip"
   );
-  const myAttempts = useQuery(
-    api.quizAttempts.listMine,
-    quizId ? { quizId: quizId as Id<"quizzes"> } : "skip"
-  ) ?? [];
 
   if (quiz === undefined) {
     return (
@@ -28,11 +24,8 @@ export default function QuizDetailScreen() {
     );
   }
 
-  const remainingAttempts = quiz ? quiz.maxAttempts - myAttempts.length : 0;
-  const bestAttempt = myAttempts.length > 0
-    ? myAttempts.reduce((best, a) => a.score > best.score ? a : best)
-    : null;
-
+  const remainingAttempts = quiz?.attemptsRemaining ?? 0;
+  const bestAttempt = quiz?.bestAttempt ?? null;
   const canStart = remainingAttempts > 0 && quiz?.status === "published";
 
   return (
@@ -64,7 +57,7 @@ export default function QuizDetailScreen() {
                 <Text className="text-white text-lg font-black">{remainingAttempts}</Text>
                 <Text className="text-white/60 text-[10px]">attempts left</Text>
               </View>
-              {myAttempts.length > 0 && bestAttempt && (
+              {(quiz?.attemptsUsed ?? 0) > 0 && bestAttempt && (
                 <View className="bg-white/20 rounded-2xl px-3 py-2 items-center">
                   <Text className="text-white text-lg font-black">
                     {Math.round((bestAttempt.score / bestAttempt.maxScore) * 100)}%
@@ -97,27 +90,7 @@ export default function QuizDetailScreen() {
             </View>
           )}
 
-          {/* Past attempts */}
-          {myAttempts.length > 1 && (
-            <View className="bg-white rounded-3xl p-5 border border-slate-100 mb-4">
-              <Text className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">
-                All Attempts ({myAttempts.length})
-              </Text>
-              {myAttempts.map((attempt, i) => (
-                <View key={attempt._id} className="flex-row items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                  <Text className="text-slate-500 text-sm">Attempt {i + 1}</Text>
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-slate-950 font-bold text-sm">
-                      {attempt.score}/{attempt.maxScore}
-                    </Text>
-                    <Text className="text-slate-400 text-xs">
-                      ({Math.round((attempt.score / attempt.maxScore) * 100)}%)
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
+
 
           {/* Start button */}
           {canStart ? (
@@ -129,7 +102,7 @@ export default function QuizDetailScreen() {
             >
               <Ionicons name="play-circle-outline" size={24} color="white" />
               <Text className="text-white font-bold text-base">
-                {myAttempts.length > 0 ? "Start New Attempt" : "Start Quiz"}
+                {(quiz?.attemptsUsed ?? 0) > 0 ? "Start New Attempt" : "Start Quiz"}
               </Text>
             </TouchableOpacity>
           ) : (

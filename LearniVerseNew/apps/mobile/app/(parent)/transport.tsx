@@ -6,7 +6,6 @@ import { Colors } from "@/constants/colors";
 import { useState } from "react";
 import { Id } from "@/convex/_generated/dataModel";
 import { Ionicons } from "@expo/vector-icons";
-// @ts-expect-error
 import { format } from "date-fns";
 
 export default function ParentTransportScreen() {

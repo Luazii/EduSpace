@@ -4,7 +4,6 @@ import { api } from "@/convex/_generated/api";
 import { Colors } from "@/constants/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-// @ts-expect-error
 import { format } from "date-fns";
 
 export default function EventsIndexScreen() {

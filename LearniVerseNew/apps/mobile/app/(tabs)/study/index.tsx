@@ -51,10 +51,7 @@ export default function StudyScreen() {
   const [selectedSession, setSelectedSession] = useState<Id<"studySessions"> | null>(null);
   const [creating, setCreating] = useState(false);
 
-  const sessionTasks = useQuery(
-    api.taskItems.listBySession,
-    selectedSession ? { studySessionId: selectedSession } : "skip"
-  ) ?? [];
+  const sessionTasks = sessions.find((s) => s._id === selectedSession)?.taskItems ?? [];
 
   async function handleCreateSession() {
     if (!title.trim()) return;
@@ -79,7 +76,6 @@ export default function StudyScreen() {
     await createTask({
       studySessionId: selectedSession,
       title: newTask.trim(),
-      position: sessionTasks.length,
     });
     setNewTask("");
   }
@@ -139,7 +135,7 @@ export default function StudyScreen() {
                   {selectedSession === session._id && (
                     <View className="px-5 pb-5 border-t border-slate-50">
                       {/* Tasks */}
-                      {sessionTasks.map((task) => (
+                      {sessionTasks.map((task: any) => (
                         <TaskItem
                           key={task._id}
                           task={task}

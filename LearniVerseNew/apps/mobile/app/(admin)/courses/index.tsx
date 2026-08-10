@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/colors";
 
 export default function CoursesAdminScreen() {
-  const courses = useQuery(api.courses.listAll) ?? [];
+  const courses = useQuery(api.courses.list, {}) ?? [];
 
   if (courses === undefined) {
     return (

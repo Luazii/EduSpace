@@ -12,17 +12,14 @@ export default function QuizTakeScreen() {
   const router = useRouter();
 
   const quiz = useQuery(
-    api.quizzes.getById,
+    api.quizzes.getDetail,
     quizId ? { quizId: quizId as Id<"quizzes"> } : "skip"
   );
-  const questions = useQuery(
-    api.questions.listByQuiz,
-    quizId ? { quizId: quizId as Id<"quizzes"> } : "skip"
-  ) ?? [];
+  const questions = quiz?.questions ?? [];
 
-  const startSession = useMutation(api.quizSessions.start);
+  const startSession = useMutation(api.quizSessions.startSession);
   const saveAnswer = useMutation(api.quizSessions.saveAnswer);
-  const submitSession = useMutation(api.quizSessions.submit);
+  const submitSession = useMutation(api.quizSessions.submitSession);
 
   const [sessionId, setSessionId] = useState<Id<"quizSessions"> | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -38,7 +35,7 @@ export default function QuizTakeScreen() {
     if (!quizId) return;
     startSession({ quizId: quizId as Id<"quizzes"> })
       .then((id) => {
-        setSessionId(id);
+        setSessionId(id.sessionId);
         setStarting(false);
         if (quiz?.durationMinutes) {
           setTimeLeft(quiz.durationMinutes * 60);
@@ -89,6 +86,7 @@ export default function QuizTakeScreen() {
         sessionId,
         questionId: questionId as Id<"questions">,
         answer,
+        currentQuestionIndex: currentIndex,
       }).catch(() => {});
     }
   }
@@ -191,7 +189,7 @@ export default function QuizTakeScreen() {
 
             {/* Options */}
             <View className="gap-3">
-              {currentQuestion?.options.map((option, i) => {
+              {currentQuestion?.options.map((option: any, i: any) => {
                 const isSelected = answers[currentQuestion._id] === option;
                 return (
                   <TouchableOpacity

@@ -11,8 +11,7 @@ import { useState } from "react";
 export default function BookingsScreen() {
   const router = useRouter();
   const myBookings = useQuery(api.bookings.listMine) ?? [];
-  const rooms = useQuery(api.rooms.listRooms) ?? [];
-  const cancelBooking = useMutation(api.bookings.cancel);
+  const rooms = useQuery(api.rooms.list) ?? [];
   const [tab, setTab] = useState<"rooms" | "teachers">("rooms");
 
   return (
@@ -43,13 +42,13 @@ export default function BookingsScreen() {
         {tab === "rooms" && (
           <>
             {/* Available rooms */}
-            {rooms.filter((r) => r.isActive).length > 0 && (
+            {rooms.filter((r: any) => r.isActive).length > 0 && (
               <View className="mb-6">
                 <Text className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">
                   Available Rooms
                 </Text>
                 <View className="gap-3">
-                  {rooms.filter((r) => r.isActive).map((room) => (
+                  {rooms.filter((r: any) => r.isActive).map((room: any) => (
                     <TouchableOpacity
                       key={room._id}
                       onPress={() => router.push(`/bookings/room/${room._id}` as never)}
@@ -87,27 +86,13 @@ export default function BookingsScreen() {
                   <View key={booking._id} className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm">
                     <View className="flex-row items-start justify-between">
                       <View className="flex-1">
-                        <Text className="text-slate-950 font-bold">{booking.roomName ?? "Room"}</Text>
-                        <Text className="text-slate-500 text-sm mt-0.5">{booking.slotName}</Text>
+                        <Text className="text-slate-950 font-bold">{booking.room?.name ?? "Room"}</Text>
+                        <Text className="text-slate-500 text-sm mt-0.5">{booking.timeSlot?.slotName}</Text>
                         <Text className="text-slate-400 text-xs mt-1">
                           {format(new Date(booking.bookingDate), "EEEE, MMM d, yyyy")}
                         </Text>
                       </View>
-                      <TouchableOpacity
-                        onPress={() => {
-                          Alert.alert("Cancel Booking?", "Are you sure?", [
-                            { text: "No", style: "cancel" },
-                            {
-                              text: "Cancel Booking",
-                              style: "destructive",
-                              onPress: () => cancelBooking({ bookingId: booking._id }),
-                            },
-                          ]);
-                        }}
-                        className="bg-rose-50 rounded-xl px-3 py-1.5"
-                      >
-                        <Text className="text-rose-600 text-xs font-bold">Cancel</Text>
-                      </TouchableOpacity>
+
                     </View>
                   </View>
                 ))}

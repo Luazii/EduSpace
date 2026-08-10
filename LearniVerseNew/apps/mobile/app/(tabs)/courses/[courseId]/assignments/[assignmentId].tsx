@@ -17,16 +17,15 @@ export default function AssignmentDetailScreen() {
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
 
-  const assignment = useQuery(
-    api.assignments.getById,
-    assignmentId ? { assignmentId: assignmentId as Id<"assignments"> } : "skip"
+  const assignments = useQuery(
+    api.assignments.listByCourse,
+    courseId ? { courseId: courseId as Id<"courses"> } : "skip"
   );
-  const mySubmission = useQuery(
-    api.submissions.getMySubmission,
-    assignmentId ? { assignmentId: assignmentId as Id<"assignments"> } : "skip"
-  );
+  
+  const assignment = assignments?.find(a => a._id === assignmentId);
+  const mySubmission = assignment?.myLatestSubmission;
   const generateUploadUrl = useMutation(api.submissions.generateUploadUrl);
-  const submit = useMutation(api.submissions.submit);
+  const submit = useMutation(api.submissions.create);
 
   async function handleUpload() {
     try {
@@ -43,10 +42,7 @@ export default function AssignmentDetailScreen() {
 
       setUploading(true);
 
-      // Get upload URL from Convex storage
-      const uploadUrl = await generateUploadUrl({
-        assignmentId: assignmentId as Id<"assignments">
-      });
+      const uploadUrl = await generateUploadUrl();
 
       // Upload the file
       const response = await fetch(file.uri);
@@ -64,8 +60,6 @@ export default function AssignmentDetailScreen() {
         assignmentId: assignmentId as Id<"assignments">,
         storageId,
         fileName: file.name,
-        mimeType: file.mimeType ?? undefined,
-        size: file.size ?? undefined,
       });
 
       Alert.alert("Submitted!", "Your assignment has been submitted successfully.");
@@ -76,7 +70,7 @@ export default function AssignmentDetailScreen() {
     }
   }
 
-  if (assignment === undefined) {
+  if (assignments === undefined) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator size="large" color={Colors.primary} />

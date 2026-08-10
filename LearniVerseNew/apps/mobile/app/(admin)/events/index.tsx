@@ -4,7 +4,6 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Colors } from "@/constants/colors";
 import { Ionicons } from "@expo/vector-icons";
-// @ts-expect-error
 import { format } from "date-fns";
 
 export default function AdminEventsIndexScreen() {

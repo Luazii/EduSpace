@@ -12,10 +12,8 @@ export default function GradeSubmissionScreen() {
   const { assignmentId } = useLocalSearchParams<{ assignmentId: string }>();
   const router = useRouter();
 
-  const submission = useQuery(
-    api.submissions.getForGrading,
-    assignmentId ? { submissionId: assignmentId as Id<"submissions"> } : "skip"
-  );
+  const pendingSubmissions = useQuery(api.submissions.listNeedsGrading) ?? [];
+  const submission = pendingSubmissions.find((s) => s._id === assignmentId);
   const gradeSubmission = useMutation(api.submissions.grade);
   const releaseGrade = useMutation(api.submissions.releaseGrade);
 
@@ -77,14 +75,14 @@ export default function GradeSubmissionScreen() {
             <Text className="text-xs font-black uppercase tracking-widest text-violet-600 mb-2">
               Submission
             </Text>
-            <Text className="text-slate-950 font-bold text-lg">{submission?.assignmentTitle}</Text>
-            <Text className="text-slate-500 text-sm mt-1">{submission?.studentName}</Text>
+            <Text className="text-slate-950 font-bold text-lg">{submission?.assignment?.title}</Text>
+            <Text className="text-slate-500 text-sm mt-1">{submission?.student?.fullName ?? submission?.student?.email}</Text>
             <Text className="text-slate-400 text-xs mt-1">
               Submitted {submission ? format(submission.submittedAt, "MMM d, yyyy 'at' p") : "—"}
             </Text>
-            {submission?.maxMark && (
+            {submission?.assignment?.maxMark && (
               <View className="mt-3 bg-slate-50 rounded-2xl px-3 py-2 self-start">
-                <Text className="text-slate-600 text-sm font-bold">Max: {submission.maxMark} marks</Text>
+                <Text className="text-slate-600 text-sm font-bold">Max: {submission.assignment.maxMark} marks</Text>
               </View>
             )}
           </View>
@@ -105,7 +103,7 @@ export default function GradeSubmissionScreen() {
             <Text className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Grade</Text>
             <TextInput
               className="bg-slate-50 rounded-2xl px-4 py-4 text-slate-950 text-2xl font-black border border-slate-100 text-center"
-              placeholder={submission?.maxMark ? `0–${submission.maxMark}` : "Mark"}
+              placeholder={submission?.assignment?.maxMark ? `0–${submission.assignment.maxMark}` : "Mark"}
               placeholderTextColor={Colors.onSurfaceSubtle}
               keyboardType="numeric"
               value={mark}

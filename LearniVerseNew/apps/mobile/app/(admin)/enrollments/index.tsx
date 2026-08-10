@@ -17,7 +17,7 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }>
 
 export default function EnrollmentsAdminScreen() {
   const router = useRouter();
-  const applications = useQuery(api.enrollments.listAll, {}) ?? [];
+  const applications = useQuery(api.enrollments.listForAdmin) ?? [];
 
   if (applications === undefined) {
     return (
@@ -27,10 +27,10 @@ export default function EnrollmentsAdminScreen() {
     );
   }
 
-  const pending = applications.filter((a) => a.status === "submitted");
-  const preApproved = applications.filter((a) => a.status === "pre_approved");
+  const pending = applications.filter((a: any) => a.status === "submitted");
+  const preApproved = applications.filter((a: any) => a.status === "pre_approved");
   const others = applications.filter(
-    (a) => !["submitted", "pre_approved"].includes(a.status)
+    (a: any) => !["submitted", "pre_approved"].includes(a.status)
   );
 
   return (
@@ -48,7 +48,7 @@ export default function EnrollmentsAdminScreen() {
           </View>
           <View className="flex-1 bg-emerald-50 rounded-2xl p-3 items-center">
             <Text className="text-emerald-700 text-2xl font-black">
-              {applications.filter((a) => a.status === "approved").length}
+              {applications.filter((a: any) => a.status === "approved").length}
             </Text>
             <Text className="text-emerald-500 text-[10px] font-bold uppercase tracking-widest mt-0.5">Approved</Text>
           </View>
@@ -61,7 +61,7 @@ export default function EnrollmentsAdminScreen() {
               Awaiting Review ({pending.length})
             </Text>
             <View className="gap-3">
-              {pending.map((app) => (
+              {pending.map((app: any) => (
                 <TouchableOpacity
                   key={app._id}
                   onPress={() => router.push(`/(admin)/enrollments/${app._id}` as never)}
@@ -101,7 +101,7 @@ export default function EnrollmentsAdminScreen() {
               All Applications ({applications.length})
             </Text>
             <View className="gap-2">
-              {applications.map((app) => {
+              {applications.map((app: any) => {
                 const config = STATUS_CONFIG[app.status] ?? STATUS_CONFIG.draft;
                 return (
                   <TouchableOpacity

@@ -16,7 +16,7 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
 
 export default function ProgressScreen() {
   const overview = useQuery(api.progress.getOverview);
-  const finalMarks = useQuery(api.marks.getMyFinalMarks);
+  const finalMarks = useQuery(api.progress.getAcademicRecord);
 
   if (overview === undefined) {
     return (
@@ -43,8 +43,8 @@ export default function ProgressScreen() {
           <View className="mb-6">
             <Text className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Final Marks</Text>
             <View className="gap-3">
-              {finalMarks.filter((m) => m.status === "published").map((mark) => {
-                const finalVal = mark.overrideMark ?? mark.computedFinalMark;
+              {finalMarks.map((mark: any) => {
+                const finalVal = mark.mark;
                 return (
                   <View key={mark._id} className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm">
                     <View className="flex-row items-start justify-between">

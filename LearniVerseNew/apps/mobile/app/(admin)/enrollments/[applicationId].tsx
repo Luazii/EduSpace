@@ -13,35 +13,20 @@ export default function ApplicationDetailScreen() {
   const router = useRouter();
 
   const application = useQuery(
-    api.enrollments.getApplicationById,
+    api.enrollments.getById,
     applicationId ? { applicationId: applicationId as Id<"enrollmentApplications"> } : "skip"
   );
 
-  const preApprove = useMutation(api.enrollments.preApproveApplication);
   const approve = useMutation(api.enrollments.approveApplication);
   const reject = useMutation(api.enrollments.rejectApplication);
 
   const [notes, setNotes] = useState("");
   const [processing, setProcessing] = useState(false);
 
-  async function handlePreApprove() {
-    setProcessing(true);
-    try {
-      await preApprove({ applicationId: applicationId as Id<"enrollmentApplications">, notes: notes || undefined });
-      Alert.alert("Pre-Approved!", "Application has been pre-approved.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
-    } catch {
-      Alert.alert("Error", "Could not pre-approve application.");
-    } finally {
-      setProcessing(false);
-    }
-  }
-
   async function handleApprove() {
     setProcessing(true);
     try {
-      await approve({ applicationId: applicationId as Id<"enrollmentApplications">, notes: notes || undefined });
+      await approve({ applicationId: applicationId as Id<"enrollmentApplications"> });
       Alert.alert("Approved! 🎉", "Student enrollment confirmed.", [
         { text: "OK", onPress: () => router.back() },
       ]);
@@ -113,12 +98,12 @@ export default function ApplicationDetailScreen() {
           </View>
 
           {/* Selected courses */}
-          {application?.selectedCourses && application.selectedCourses.length > 0 && (
+          {application?.courses && application.courses.length > 0 && (
             <View className="bg-white rounded-3xl p-5 border border-slate-100 mb-4">
               <Text className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">
-                Selected Subjects ({application.selectedCourses.length})
+                Selected Subjects ({application.courses.length})
               </Text>
-              {application.selectedCourses.map((c) => (
+              {application.courses.map((c: any) => (
                 <View key={c._id} className="flex-row items-center gap-2 py-2 border-b border-slate-50 last:border-0">
                   <Ionicons name="book-outline" size={14} color={Colors.primary} />
                   <Text className="text-slate-700 text-sm flex-1">{c.courseName}</Text>
@@ -175,20 +160,7 @@ export default function ApplicationDetailScreen() {
           {/* Action buttons */}
           {canReview && (
             <View className="gap-3">
-              {application?.status === "submitted" && (
-                <TouchableOpacity
-                  onPress={handlePreApprove}
-                  disabled={processing}
-                  className="bg-sky-600 rounded-3xl py-4 items-center"
-                  style={{ opacity: processing ? 0.6 : 1 }}
-                >
-                  {processing ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="text-white font-bold text-base">Pre-Approve</Text>
-                  )}
-                </TouchableOpacity>
-              )}
+
               <TouchableOpacity
                 onPress={handleApprove}
                 disabled={processing}

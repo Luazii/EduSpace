@@ -4,8 +4,10 @@ import { api } from "@/convex/_generated/api";
 import { Colors } from "@/constants/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
+import { useRouter } from "expo-router";
 
 export default function DriverScanScreen() {
+  const router = useRouter();
   const bookings = useQuery(api.transport.listMyBookings);
   const recordScan = useMutation(api.transport.recordScan);
   

@@ -1,4 +1,3 @@
-// @ts-expect-error Types are not properly exported in date-fns v4 for bundler module resolution
 import { format, formatDistanceToNow, isPast } from "date-fns";
 
 /** Format a timestamp (ms since epoch) to a human-readable date string */

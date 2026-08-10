@@ -4,7 +4,6 @@ import { useState } from "react";
 import { api } from "@/convex/_generated/api";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/colors";
-// @ts-expect-error - date-fns v4 has module resolution issues
 import { format, addHours, startOfHour } from "date-fns";
 import { Id } from "@/convex/_generated/dataModel";
 

@@ -8,15 +8,12 @@ import type { Id } from "@/convex/_generated/dataModel";
 
 export default function GradeBookScreen() {
   const user = useQuery(api.users.current);
-  const teacherCourses = useQuery(
-    api.teachers.getTeacherCourses,
-    user ? { teacherUserId: user._id } : "skip"
-  ) ?? [];
+  const teacherCourses = useQuery(api.courses.listTeachingDashboard) ?? [];
 
   const [selectedCourse, setSelectedCourse] = useState<Id<"courses"> | null>(null);
 
   const students = useQuery(
-    api.enrollments.listByCourse,
+    api.attendance.listEnrolledStudents,
     selectedCourse ? { courseId: selectedCourse } : "skip"
   ) ?? [];
 
@@ -31,7 +28,7 @@ export default function GradeBookScreen() {
               <Text className="text-slate-400 text-sm">No subjects assigned</Text>
             </View>
           ) : (
-            teacherCourses.map((course) => (
+            teacherCourses.map((course: any) => (
               <TouchableOpacity
                 key={course._id}
                 onPress={() => setSelectedCourse(course._id)}
@@ -65,8 +62,8 @@ export default function GradeBookScreen() {
               </View>
             ) : (
               <View className="gap-3">
-                {students.map((student) => (
-                  <View key={student.studentUserId} className="bg-white rounded-3xl p-4 border border-slate-100 flex-row items-center justify-between">
+                {students.map((student: any) => (
+                  <View key={student.userId} className="bg-white rounded-3xl p-4 border border-slate-100 flex-row items-center justify-between">
                     <View className="flex-row items-center gap-3">
                        <View className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center">
                           <Text className="text-slate-500 font-bold text-sm">

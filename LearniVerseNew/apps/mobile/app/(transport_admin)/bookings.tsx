@@ -3,7 +3,6 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "@/constants/colors";
-// @ts-expect-error - date-fns module resolution issue
 import { format } from "date-fns";
 
 export default function TransportAdminBookingsScreen() {

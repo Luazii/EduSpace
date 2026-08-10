@@ -57,23 +57,23 @@ export default function CoursesScreen() {
 
               return (
                 <TouchableOpacity
-                  key={course._id}
-                  onPress={() => router.push(`/(tabs)/courses/${course._id}`)}
+                  key={course?._id}
+                  onPress={() => router.push(`/(tabs)/courses/${course?._id}`)}
                   className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm"
                 >
                   {/* Accent bar */}
                   <View className={`${accent} px-5 py-4`}>
                     <Text className="text-white/70 text-[10px] font-black uppercase tracking-widest">
-                      {course.department ?? course.courseCode}
+                      {course?.department ?? course?.courseCode}
                     </Text>
                     <Text className="text-white text-lg font-bold mt-1 leading-tight">
-                      {course.courseName}
+                      {course?.courseName}
                     </Text>
                   </View>
 
                   {/* Body */}
                   <View className="px-5 py-4">
-                    {course.description ? (
+                    {course?.description ? (
                       <Text className="text-slate-500 text-sm leading-6 mb-3" numberOfLines={2}>
                         {course.description}
                       </Text>
