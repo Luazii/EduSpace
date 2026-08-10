@@ -234,7 +234,7 @@ export const scanTicket = mutation({
     }
 
     const event = await ctx.db.get(ticket.eventId);
-    const attendee = await ctx.db.get(ticket.userId);
+    const attendee = ticket.userId ? await ctx.db.get(ticket.userId) : null;
 
     await ctx.db.patch(ticket._id, {
       status: "scanned",
@@ -244,7 +244,7 @@ export const scanTicket = mutation({
 
     return {
       success: true,
-      attendeeName: attendee?.fullName ?? attendee?.email ?? "Attendee",
+      attendeeName: attendee?.fullName ?? attendee?.email ?? ticket.guestName ?? "Attendee",
       eventName: event?.title ?? "Event",
     };
   }
@@ -452,5 +452,245 @@ export const internalRecordTicketVerification = internalMutation({
         createdAt: Date.now(),
       });
     }
+  },
+});
+
+// ── Guest (non-platform-user) ticketing — no Clerk identity required at all.
+// A guest is identified purely by name + email; nothing here calls
+// getCurrentUser/getCurrentUserForAction. ───────────────────────────────────
+
+export const listPublicEvents = query({
+  args: {},
+  handler: async (ctx) => {
+    const events = await ctx.db.query("events").collect();
+    return events.filter((e) => e.isActive).sort((a, b) => a.eventDate - b.eventDate);
+  },
+});
+
+export const lookupGuestTicket = query({
+  args: { eventId: v.id("events"), guestEmail: v.string() },
+  handler: async (ctx, args) => {
+    const normalized = args.guestEmail.trim().toLowerCase();
+    return ctx.db
+      .query("eventTickets")
+      .withIndex("by_event_guest_email", (q) => q.eq("eventId", args.eventId).eq("guestEmail", normalized))
+      .first();
+  },
+});
+
+export const getGuestTicket = mutation({
+  args: { eventId: v.id("events"), guestName: v.string(), guestEmail: v.string() },
+  handler: async (ctx, args) => {
+    const guestEmail = args.guestEmail.trim().toLowerCase();
+    const guestName = args.guestName.trim();
+    if (!guestName || !guestEmail.includes("@")) throw new Error("A valid name and email are required.");
+
+    const event = await ctx.db.get(args.eventId);
+    if (!event || !event.isActive) throw new Error("Event not available.");
+    if (event.ticketPrice && event.ticketPrice > 0) {
+      throw new Error("This event requires payment — use the checkout flow instead.");
+    }
+
+    const tickets = await ctx.db
+      .query("eventTickets")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    const activeCount = tickets.filter((t) => t.status !== "cancelled").length;
+    if (event.capacity && activeCount >= event.capacity) {
+      throw new Error("Event is fully booked.");
+    }
+
+    const existing = await ctx.db
+      .query("eventTickets")
+      .withIndex("by_event_guest_email", (q) => q.eq("eventId", args.eventId).eq("guestEmail", guestEmail))
+      .first();
+    if (existing) {
+      if (existing.status === "cancelled") {
+        await ctx.db.patch(existing._id, { status: "valid", guestName });
+        return existing.ticketCode;
+      }
+      return existing.ticketCode; // already has one — just show it again
+    }
+
+    const ticketCode = generateTicketCode();
+    await ctx.db.insert("eventTickets", {
+      eventId: args.eventId,
+      guestName,
+      guestEmail,
+      ticketCode,
+      status: "valid",
+      paymentStatus: "free",
+      createdAt: Date.now(),
+    });
+    return ticketCode;
+  },
+});
+
+export const initializeGuestTicketCheckout = action({
+  args: {
+    eventId: v.id("events"),
+    guestName: v.string(),
+    guestEmail: v.string(),
+    origin: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const guestEmail = args.guestEmail.trim().toLowerCase();
+    const guestName = args.guestName.trim();
+    if (!guestName || !guestEmail.includes("@")) throw new Error("A valid name and email are required.");
+
+    const event = await ctx.runQuery(internal.events.internalGetEventForPayment, { eventId: args.eventId });
+    if (!event || !event.isActive) throw new Error("Event not available.");
+    if (!event.ticketPrice || event.ticketPrice <= 0) {
+      throw new Error("This event doesn't require payment — use getGuestTicket instead.");
+    }
+
+    const existing = await ctx.runQuery(internal.events.internalGetGuestTicketForEvent, {
+      eventId: args.eventId,
+      guestEmail,
+    });
+    if (existing && existing.status !== "cancelled" && existing.paymentStatus !== "failed") {
+      throw new Error("A ticket for this email already exists for this event.");
+    }
+
+    if (event.capacity != null) {
+      const activeCount = await ctx.runQuery(internal.events.internalCountActiveTickets, { eventId: args.eventId });
+      if (activeCount >= event.capacity) throw new Error("Event is fully booked.");
+    }
+
+    const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecret) throw new ConvexError("PAYSTACK_SECRET_KEY is not configured yet.");
+
+    const reference = `eduspace-ticket-guest-${args.eventId}-${Date.now()}`;
+
+    const response = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${paystackSecret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: guestEmail,
+        amount: Math.round(event.ticketPrice * 100),
+        reference,
+        callback_url: `${args.origin}/events/callback?eventId=${args.eventId}&guest=1&email=${encodeURIComponent(guestEmail)}`,
+        metadata: { eventId: args.eventId, guestEmail, guestName },
+      }),
+    });
+
+    const result = (await response.json()) as {
+      status: boolean;
+      message?: string;
+      data?: { authorization_url: string; access_code: string; reference: string };
+    };
+
+    if (!result.status || !result.data) {
+      throw new Error(result.message ?? "Unable to initialize Paystack checkout.");
+    }
+
+    await ctx.runMutation(internal.events.internalRecordInitializedGuestTicket, {
+      eventId: args.eventId,
+      guestName,
+      guestEmail,
+      amount: event.ticketPrice,
+      reference: result.data.reference,
+    });
+
+    return { authorizationUrl: result.data.authorization_url, reference: result.data.reference };
+  },
+});
+
+export const verifyGuestTicketPayment = action({
+  args: { reference: v.string() },
+  handler: async (ctx, args): Promise<{ ok: boolean; status: string; ticketCode: string | null }> => {
+    const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecret) throw new ConvexError("PAYSTACK_SECRET_KEY is not configured yet.");
+
+    const response = await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(args.reference)}`,
+      { headers: { Authorization: `Bearer ${paystackSecret}` } },
+    );
+
+    const result = (await response.json()) as {
+      status: boolean;
+      message?: string;
+      data?: { status?: string };
+    };
+
+    if (!result.status || !result.data) {
+      throw new Error(result.message ?? "Unable to verify payment with Paystack.");
+    }
+
+    const isSuccess = result.data.status === "success";
+
+    const ticketCode: string | null = await ctx.runMutation(internal.events.internalRecordGuestTicketVerification, {
+      reference: args.reference,
+      status: isSuccess ? "paid" : "failed",
+    });
+
+    return { ok: isSuccess, status: result.data.status ?? "unknown", ticketCode };
+  },
+});
+
+export const internalGetGuestTicketForEvent = internalQuery({
+  args: { eventId: v.id("events"), guestEmail: v.string() },
+  handler: async (ctx, args) =>
+    ctx.db
+      .query("eventTickets")
+      .withIndex("by_event_guest_email", (q) => q.eq("eventId", args.eventId).eq("guestEmail", args.guestEmail))
+      .first(),
+});
+
+export const internalRecordInitializedGuestTicket = internalMutation({
+  args: {
+    eventId: v.id("events"),
+    guestName: v.string(),
+    guestEmail: v.string(),
+    amount: v.number(),
+    reference: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("eventTickets")
+      .withIndex("by_event_guest_email", (q) => q.eq("eventId", args.eventId).eq("guestEmail", args.guestEmail))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        status: "valid",
+        guestName: args.guestName,
+        amount: args.amount,
+        paymentStatus: "pending",
+        paymentReference: args.reference,
+      });
+    } else {
+      await ctx.db.insert("eventTickets", {
+        eventId: args.eventId,
+        guestName: args.guestName,
+        guestEmail: args.guestEmail,
+        ticketCode: generateTicketCode(),
+        status: "valid",
+        amount: args.amount,
+        paymentStatus: "pending",
+        paymentReference: args.reference,
+        createdAt: Date.now(),
+      });
+    }
+  },
+});
+
+export const internalRecordGuestTicketVerification = internalMutation({
+  args: {
+    reference: v.string(),
+    status: v.union(v.literal("paid"), v.literal("failed")),
+  },
+  handler: async (ctx, args) => {
+    const ticket = await ctx.db
+      .query("eventTickets")
+      .withIndex("by_reference", (q) => q.eq("paymentReference", args.reference))
+      .first();
+    if (!ticket) throw new Error("No ticket found for this payment reference.");
+
+    await ctx.db.patch(ticket._id, { paymentStatus: args.status });
+    return args.status === "paid" ? ticket.ticketCode : null;
   },
 });

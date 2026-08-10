@@ -12,6 +12,7 @@ import {
   Users,
   GraduationCap,
   Trophy,
+  Ticket,
 } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { clsx, type ClassValue } from "clsx";
@@ -93,6 +94,12 @@ export function MobileNav() {
       label: "Sports",
       icon: <Trophy className="h-3.5 w-3.5" />,
       show: isStudent,
+    },
+    {
+      href: "/events",
+      label: "Events",
+      icon: <Ticket className="h-3.5 w-3.5" />,
+      show: true,
     },
     {
       href: "/profile",

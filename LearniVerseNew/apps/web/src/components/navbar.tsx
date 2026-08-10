@@ -47,6 +47,8 @@ export function Navbar() {
     : "/dashboard";
 
   const links = [
+    // Events — public ticketing hub, visible to everyone including signed-out visitors
+    { href: "/events", label: "Events", show: true },
     // Apply / Applications — admin sees enrollment queue, parents apply for children
     {
       href: isAdmin ? "/admin/enrollments" : "/apply",

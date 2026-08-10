@@ -932,7 +932,11 @@ export default defineSchema({
   }),
   eventTickets: defineTable({
     eventId: v.id("events"),
-    userId: v.id("users"), // Owner of the ticket
+    // Owner of the ticket — a signed-in user, OR a guest identified by name/email.
+    // Exactly one of (userId) / (guestName + guestEmail) is set, never neither.
+    userId: v.optional(v.id("users")),
+    guestName: v.optional(v.string()),
+    guestEmail: v.optional(v.string()),
     ticketCode: v.string(), // Unique string for QR code
     status: v.union(v.literal("valid"), v.literal("scanned"), v.literal("cancelled")),
     scannedAt: v.optional(v.number()),
@@ -946,7 +950,8 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_code", ["ticketCode"])
     .index("by_event_user", ["eventId", "userId"])
-    .index("by_reference", ["paymentReference"]),
+    .index("by_reference", ["paymentReference"])
+    .index("by_event_guest_email", ["eventId", "guestEmail"]),
 
   // ── Bus live location — one row per route, upserted on each driver ping ───
   busLocations: defineTable({
