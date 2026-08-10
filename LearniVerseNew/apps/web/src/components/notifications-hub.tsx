@@ -108,7 +108,7 @@ export function NotificationsHub() {
                     <Link 
                       key={item._id}
                       href={item.link || "#"}
-                      onClick={(e) => {
+                      onClick={(e: React.MouseEvent) => {
                         if (!item.link) e.preventDefault();
                         handleNotificationClick(item);
                       }}
