@@ -15,6 +15,7 @@ function StudentDashboard() {
   const applications = useQuery(api.enrollments.listMine) ?? [];
   const deadlines = useQuery(api.enrollments.listAllMyDeadlines) ?? [];
   const liveSessions = useQuery(api.enrollments.listAllMyLiveSessions) ?? [];
+  const sportsSchedule = useQuery(api.sports.listStudentTrainingSchedule, user?.role === "student" ? {} : "skip");
   const announcements = useQuery(
     api.parentServices.listAnnouncements,
     user ? { role: user.role } : "skip",
@@ -135,6 +136,37 @@ function StudentDashboard() {
               </View>
               <Ionicons name="chevron-forward" size={16} color="white" />
             </TouchableOpacity>
+
+            {/* Upcoming Sports Practice */}
+            {sportsSchedule?.upcomingSessions && sportsSchedule.upcomingSessions.length > 0 && (
+              <View className="bg-emerald-50 rounded-3xl p-5 border border-emerald-100 shadow-sm mb-5">
+                <View className="flex-row items-center justify-between mb-3">
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons name="fitness-outline" size={18} color="#059669" />
+                    <Text className="text-emerald-950 text-sm font-black uppercase tracking-widest">
+                      Sports Practice
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => router.push("/(student)/id")}>
+                    <Text className="text-emerald-700 text-xs font-bold">QR Pass</Text>
+                  </TouchableOpacity>
+                </View>
+                {sportsSchedule.upcomingSessions.slice(0, 2).map((session: any) => (
+                  <View key={session._id} className="bg-white rounded-2xl p-3.5 mb-2.5 last:mb-0 border border-emerald-100">
+                    <Text className="text-[9px] font-black uppercase tracking-widest text-emerald-700 mb-0.5">
+                      {session.sportName} · {session.teamName}
+                    </Text>
+                    <Text className="text-slate-900 font-bold text-sm">{session.title}</Text>
+                    <View className="flex-row items-center gap-3 mt-1.5">
+                      <Text className="text-slate-500 text-[11px]">
+                        {format(session.startTime, "EEE, d MMM · HH:mm")}
+                      </Text>
+                      <Text className="text-slate-400 text-[11px]">· {session.venueName}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
 
             {/* Upcoming deadlines */}
             {deadlines.length > 0 && (

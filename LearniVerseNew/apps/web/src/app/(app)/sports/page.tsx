@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { QrScanner } from "@/components/qr-scanner";
+import { StudentQrCode } from "@/components/student-qr-code";
 
 type Tab = "teams" | "training" | "fixtures" | "attendance" | "venues" | "evaluations" | "reports";
 
@@ -138,12 +139,22 @@ export default function CoachSportsPage() {
   );
 }
 
-/* ───────────────────────────── Student: Browse & Register for Sports ───────────────────────────── */
+/* ───────────────────────────── Student: Sports & Training Hub ───────────────────────────── */
+
+type StudentTab = "schedule" | "sports" | "attendance" | "pass";
 
 function StudentSportsView({ sports }: { sports: any[] }) {
+  const scheduleData = useQuery(api.sports.listStudentTrainingSchedule, {});
   const register = useMutation(api.sports.register);
   const withdraw = useMutation(api.sports.withdraw);
+  const [tab, setTab] = useState<StudentTab>("schedule");
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const registeredSports = sports.filter((s) => s.isRegistered);
+  const upcomingSessions = scheduleData?.upcomingSessions ?? [];
+  const pastSessions = scheduleData?.pastSessions ?? [];
+  const upcomingFixtures = scheduleData?.upcomingFixtures ?? [];
+  const attendancePercentage = scheduleData?.attendancePercentage;
 
   const handleRegister = async (sportId: string) => {
     setBusyId(sportId);
@@ -165,71 +176,375 @@ function StudentSportsView({ sports }: { sports: any[] }) {
     }
   };
 
+  const tabs: { key: StudentTab; label: string; icon: React.ElementType; badge?: number }[] = [
+    { key: "schedule", label: "Training & Matches", icon: CalendarDays, badge: upcomingSessions.length || undefined },
+    { key: "sports", label: "Browse Sports", icon: Trophy, badge: registeredSports.length || undefined },
+    { key: "attendance", label: "Attendance Record", icon: ClipboardCheck },
+    { key: "pass", label: "My Sports Pass (QR)", icon: QrCode },
+  ];
+
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-10 sm:px-10">
+      {/* Header */}
       <header className="mb-8 border-b border-slate-100 pb-8">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">Sports</span>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-emerald-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">Student Athletics</span>
+            {registeredSports.length > 0 && (
+              <span className="rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-800">
+                {registeredSports.length} Sport{registeredSports.length > 1 ? "s" : ""} Enrolled
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setTab("pass")}
+            className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-800 shadow-sm transition hover:bg-slate-50 hover:border-slate-300"
+          >
+            <QrCode className="h-4 w-4 text-emerald-600" />
+            <span>Show QR Check-in Pass</span>
+          </button>
         </div>
-        <h1 className="text-4xl font-black tracking-tight text-slate-950">Pick a Sport to Play</h1>
-        <p className="mt-2 text-sm text-slate-500 max-w-2xl">Browse what's on offer and register for the ones you'd like to join.</p>
+
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <h1 className="text-4xl font-black tracking-tight text-slate-950">Sports & Training</h1>
+            <p className="mt-2 text-sm text-slate-500 max-w-2xl">
+              Track your upcoming practice sessions, match fixtures, team schedules, and training attendance.
+            </p>
+          </div>
+
+          {/* Quick stats */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-center">
+              <span className="block text-2xl font-black text-slate-950">{upcomingSessions.length}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Upcoming Practice</span>
+            </div>
+            {attendancePercentage !== null && attendancePercentage !== undefined && (
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-center">
+                <span className="block text-2xl font-black text-emerald-700">{attendancePercentage}%</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Attendance Rate</span>
+              </div>
+            )}
+          </div>
+        </div>
       </header>
 
-      {sports.length === 0 ? (
-        <div className="flex flex-col items-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-16 text-center">
-          <Trophy className="mb-4 h-12 w-12 text-slate-300" />
-          <p className="font-bold text-slate-500">No sports available yet.</p>
-          <p className="mt-1 text-sm text-slate-400">Check back once the school has added some.</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sports.map((sport) => (
-            <div key={sport._id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md flex flex-col">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-black text-slate-950 text-lg">{sport.name}</h3>
-                  {sport.category && <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">{sport.category}</span>}
-                </div>
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50">
-                  <Trophy className="h-5 w-5 text-emerald-600" />
-                </div>
-              </div>
+      {/* Tabs */}
+      <div className="mb-8 flex flex-wrap gap-1 rounded-2xl bg-slate-100 p-1">
+        {tabs.map(({ key, label, icon: Icon, badge }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition ${
+              tab === key ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+            {!!badge && (
+              <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-black ${
+                tab === key ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700"
+              }`}>
+                {badge}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
 
-              {sport.description && <p className="text-xs text-slate-500 mb-3">{sport.description}</p>}
+      {/* TAB 1: Training Schedule & Fixtures */}
+      {tab === "schedule" && (
+        <div className="space-y-8">
+          {/* Upcoming Training Sessions */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
+                <Dumbbell className="h-5 w-5 text-emerald-600" /> Upcoming Training Sessions
+              </h2>
+              <span className="text-xs font-bold text-slate-400">{upcomingSessions.length} Scheduled</span>
+            </div>
 
-              <div className="space-y-1 mb-4 text-xs text-slate-500">
-                {sport.coachName && <p className="flex items-center gap-1.5"><User className="h-3 w-3" />{sport.coachName}</p>}
-                {sport.venue && <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{sport.venue}</p>}
-                {sport.schedule && <p className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{sport.schedule}</p>}
-                <p className="flex items-center gap-1.5"><Users className="h-3 w-3" />{sport.enrolledCount} registered{sport.maxCapacity ? ` / ${sport.maxCapacity}` : ""}</p>
-              </div>
-
-              <div className="mt-auto">
-                {sport.isRegistered ? (
+            {upcomingSessions.length === 0 ? (
+              <div className="flex flex-col items-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-12 text-center">
+                <CalendarDays className="mb-3 h-10 w-10 text-slate-300" />
+                <p className="font-bold text-slate-600">No upcoming training sessions scheduled.</p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {registeredSports.length === 0
+                    ? "Register for a sport below to join a team and view training dates."
+                    : "Your coach hasn't scheduled any new training sessions yet."}
+                </p>
+                {registeredSports.length === 0 && (
                   <button
-                    onClick={() => handleWithdraw(sport.registrationId)}
-                    disabled={busyId === sport.registrationId}
-                    className="w-full flex items-center justify-center gap-1.5 rounded-2xl border border-emerald-200 bg-emerald-50 py-2.5 text-xs font-black text-emerald-700 transition hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 disabled:opacity-50"
+                    onClick={() => setTab("sports")}
+                    className="mt-4 rounded-2xl bg-slate-950 px-5 py-2 text-xs font-black text-white hover:bg-slate-800"
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    {busyId === sport.registrationId ? "Withdrawing…" : "Registered — Withdraw"}
-                  </button>
-                ) : sport.isFull ? (
-                  <button disabled className="w-full rounded-2xl border border-slate-200 py-2.5 text-xs font-bold text-slate-400">
-                    Full
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleRegister(sport._id)}
-                    disabled={busyId === sport._id}
-                    className="w-full rounded-2xl bg-slate-950 py-2.5 text-xs font-black text-white transition hover:bg-slate-800 disabled:opacity-50"
-                  >
-                    {busyId === sport._id ? "Registering…" : "Register"}
+                    Browse Sports
                   </button>
                 )}
               </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {upcomingSessions.map((session: any) => {
+                  const isTodaySession = new Date(session.startTime).toDateString() === new Date().toDateString();
+                  return (
+                    <div
+                      key={session._id}
+                      className={`rounded-3xl border p-6 shadow-sm transition hover:shadow-md flex flex-col justify-between ${
+                        isTodaySession ? "border-emerald-300 bg-emerald-50/40 ring-2 ring-emerald-500/20" : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <div>
+                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">
+                              {session.sportName} · {session.teamName}
+                            </span>
+                            <h3 className="font-black text-slate-950 text-lg leading-snug">{session.title}</h3>
+                          </div>
+                          {isTodaySession && (
+                            <span className="shrink-0 rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-black text-white uppercase">
+                              Today
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-2 text-xs text-slate-600 mb-4">
+                          <p className="flex items-center gap-2 font-medium">
+                            <Calendar className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                            {format(session.startTime, "EEEE, d MMMM yyyy")}
+                          </p>
+                          <p className="flex items-center gap-2 font-medium">
+                            <Clock className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                            {format(session.startTime, "HH:mm")} – {format(session.endTime, "HH:mm")}
+                          </p>
+                          <p className="flex items-center gap-2 font-medium">
+                            <MapPin className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                            {session.venueName}
+                          </p>
+                          <p className="flex items-center gap-2 font-medium">
+                            <User className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                            {session.coachName}
+                          </p>
+                        </div>
+
+                        {session.notes && (
+                          <div className="rounded-2xl bg-slate-50 border border-slate-100 p-3 text-xs text-slate-600 mb-4">
+                            <span className="font-bold text-slate-800 block mb-0.5">Focus & Drills:</span>
+                            {session.notes}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                        {session.attendanceStatus ? (
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${
+                            session.attendanceStatus === "present" ? "bg-emerald-100 text-emerald-800"
+                            : session.attendanceStatus === "late" ? "bg-amber-100 text-amber-800"
+                            : "bg-slate-100 text-slate-600"
+                          }`}>
+                            <CheckCircle2 className="h-3 w-3" /> Marked {session.attendanceStatus}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-400">Scan QR at venue to check in</span>
+                        )}
+                        <button
+                          onClick={() => setTab("pass")}
+                          className="text-xs font-bold text-emerald-700 hover:underline flex items-center gap-1"
+                        >
+                          <QrCode className="h-3.5 w-3.5" /> ID Pass
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Upcoming Match Fixtures */}
+          {upcomingFixtures.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
+                  <Swords className="h-5 w-5 text-rose-600" /> Upcoming Match Fixtures
+                </h2>
+                <span className="text-xs font-bold text-slate-400">{upcomingFixtures.length} Matches</span>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {upcomingFixtures.map((fixture: any) => (
+                  <div key={fixture._id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-rose-600">{fixture.sportName} · {fixture.teamName}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${fixture.isHomeFixture ? "bg-emerald-50 text-emerald-700" : "bg-sky-50 text-sky-700"}`}>
+                          {fixture.isHomeFixture ? "Home" : "Away"}
+                        </span>
+                      </div>
+                      <h3 className="font-black text-slate-950 text-lg mb-3">vs {fixture.opponentName}</h3>
+                      <div className="space-y-1 text-xs text-slate-500 mb-4">
+                        <p className="flex items-center gap-1.5"><Calendar className="h-3 w-3" />{format(fixture.matchTime, "EEEE, d MMMM yyyy")}</p>
+                        <p className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{format(fixture.matchTime, "HH:mm")}</p>
+                        <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{fixture.venueName}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: Browse Sports & Registration */}
+      {tab === "sports" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-emerald-600" /> Available Sports & Extracurriculars
+            </h2>
+          </div>
+
+          {sports.length === 0 ? (
+            <div className="flex flex-col items-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-16 text-center">
+              <Trophy className="mb-4 h-12 w-12 text-slate-300" />
+              <p className="font-bold text-slate-500">No sports available yet.</p>
+              <p className="mt-1 text-sm text-slate-400">Check back once the school has added some.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {sports.map((sport) => (
+                <div key={sport._id} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-black text-slate-950 text-lg">{sport.name}</h3>
+                        {sport.category && <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">{sport.category}</span>}
+                      </div>
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50">
+                        <Trophy className="h-5 w-5 text-emerald-600" />
+                      </div>
+                    </div>
+
+                    {sport.description && <p className="text-xs text-slate-500 mb-3">{sport.description}</p>}
+
+                    <div className="space-y-1 mb-4 text-xs text-slate-500">
+                      {sport.coachName && <p className="flex items-center gap-1.5"><User className="h-3 w-3" />{sport.coachName}</p>}
+                      {sport.venue && <p className="flex items-center gap-1.5"><MapPin className="h-3 w-3" />{sport.venue}</p>}
+                      {sport.schedule && <p className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{sport.schedule}</p>}
+                      <p className="flex items-center gap-1.5"><Users className="h-3 w-3" />{sport.enrolledCount} registered{sport.maxCapacity ? ` / ${sport.maxCapacity}` : ""}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-slate-100">
+                    {sport.isRegistered ? (
+                      <button
+                        onClick={() => handleWithdraw(sport.registrationId)}
+                        disabled={busyId === sport.registrationId}
+                        className="w-full flex items-center justify-center gap-1.5 rounded-2xl border border-emerald-200 bg-emerald-50 py-2.5 text-xs font-black text-emerald-700 transition hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {busyId === sport.registrationId ? "Withdrawing…" : "Enrolled — Click to Withdraw"}
+                      </button>
+                    ) : sport.isFull ? (
+                      <button disabled className="w-full rounded-2xl border border-slate-200 py-2.5 text-xs font-bold text-slate-400">
+                        Full
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleRegister(sport._id)}
+                        disabled={busyId === sport._id}
+                        className="w-full rounded-2xl bg-slate-950 py-2.5 text-xs font-black text-white transition hover:bg-slate-800 disabled:opacity-50"
+                      >
+                        {busyId === sport._id ? "Registering…" : "Register for Sport"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: Attendance History */}
+      {tab === "attendance" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-emerald-600" /> Attendance History
+            </h2>
+            {scheduleData?.totalSessions ? (
+              <span className="text-xs font-bold text-slate-500">
+                {scheduleData.attendedCount} / {scheduleData.totalSessions} sessions attended
+              </span>
+            ) : null}
+          </div>
+
+          {pastSessions.length === 0 ? (
+            <div className="flex flex-col items-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-16 text-center">
+              <ClipboardCheck className="mb-4 h-12 w-12 text-slate-300" />
+              <p className="font-bold text-slate-500">No past session attendance logged yet.</p>
+              <p className="mt-1 text-sm text-slate-400">Attendance records will appear here after training sessions.</p>
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+              <div className="grid grid-cols-[1fr_auto_auto] gap-4 bg-slate-50 px-6 py-3.5 text-xs font-bold uppercase tracking-widest text-slate-500">
+                <span>Session / Sport</span>
+                <span>Date & Time</span>
+                <span>Attendance Status</span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {pastSessions.map((session: any) => (
+                  <div key={session._id} className="grid grid-cols-[1fr_auto_auto] gap-4 items-center px-6 py-4">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">{session.title}</p>
+                      <p className="text-xs text-slate-400">{session.sportName} · {session.teamName} · {session.venueName}</p>
+                    </div>
+                    <div className="text-right text-xs text-slate-500">
+                      <p className="font-bold text-slate-700">{format(session.startTime, "d MMM yyyy")}</p>
+                      <p>{format(session.startTime, "HH:mm")} - {format(session.endTime, "HH:mm")}</p>
+                    </div>
+                    <div>
+                      {session.attendanceStatus === "present" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Present
+                        </span>
+                      ) : session.attendanceStatus === "late" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700 border border-amber-200">
+                          <Clock className="h-3.5 w-3.5" /> Late
+                        </span>
+                      ) : session.attendanceStatus === "excused" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-xs font-black text-sky-700 border border-sky-200">
+                          Excused
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                          Not Recorded
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 4: Digital Sports Pass / QR Code */}
+      {tab === "pass" && (
+        <div className="flex flex-col items-center justify-center py-6">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-lg">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+              <QrCode className="h-6 w-6" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-950">Student Sports Pass</h2>
+            <p className="mt-1 text-xs text-slate-500 mb-6">
+              Present this QR pass to your coach at the start of training to check in and record your attendance.
+            </p>
+            <StudentQrCode />
+          </div>
         </div>
       )}
     </main>

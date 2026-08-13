@@ -10,7 +10,7 @@ import { ActiveCoursesGrid } from "@/components/dashboard/active-courses-grid";
 import { ApplicationStatusCard } from "@/components/dashboard/application-status-card";
 import { TeacherDashboard } from "@/components/teacher/teacher-dashboard";
 import { api } from "../../../../convex/_generated/api";
-import { Clock, Bell, Calendar, PlayCircle, AlertCircle, Megaphone, ChevronRight } from "lucide-react";
+import { Clock, Bell, Calendar, PlayCircle, AlertCircle, Megaphone, ChevronRight, Trophy, Dumbbell } from "lucide-react";
 import { format } from "date-fns";
 
 // Roles with their own dedicated portal — /dashboard is a student-oriented
@@ -36,6 +36,7 @@ export default function DashboardPage() {
   const applications = useQuery(api.enrollments.listMine) ?? [];
   const deadlines = useQuery(api.enrollments.listAllMyDeadlines) ?? [];
   const liveSessions = useQuery(api.enrollments.listAllMyLiveSessions) ?? [];
+  const sportsSchedule = useQuery(api.sports.listStudentTrainingSchedule, user?.role === "student" ? {} : "skip");
   const announcements = useQuery(
     api.parentServices.listAnnouncements,
     user ? { role: user.role } : "skip",
@@ -134,6 +135,38 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
+
+              {/* Upcoming Sports Training Widget */}
+              {sportsSchedule?.upcomingSessions && sportsSchedule.upcomingSessions.length > 0 && (
+                <div className="rounded-4xl border border-emerald-200 bg-emerald-50/40 p-8 shadow-sm">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <Trophy className="h-5 w-5 text-emerald-600" />
+                      <h3 className="font-bold text-sm uppercase tracking-widest text-slate-950">Sports Practice</h3>
+                    </div>
+                    <Link href="/sports" className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 transition">
+                      View Hub
+                    </Link>
+                  </div>
+                  <div className="space-y-4">
+                    {sportsSchedule.upcomingSessions.slice(0, 2).map((session: any) => (
+                      <Link key={session._id} href="/sports" className="block group">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-700 mb-1">
+                          {session.sportName} · {session.teamName}
+                        </p>
+                        <h4 className="font-bold text-sm text-slate-900 leading-tight mb-2 group-hover:text-emerald-700 transition">
+                          {session.title}
+                        </h4>
+                        <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-slate-500">
+                          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{format(session.startTime, "MMM d")}</span>
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{format(session.startTime, "HH:mm")}</span>
+                          <span>{session.venueName}</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="rounded-4xl border border-slate-100 bg-slate-50/50 p-8">
                  <div className="flex items-center gap-3 mb-4 text-slate-400">

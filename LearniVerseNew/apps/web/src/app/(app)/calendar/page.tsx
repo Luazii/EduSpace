@@ -15,15 +15,18 @@ import {
   ChevronRight,
   Clock,
   ArrowRight,
+  Trophy,
 } from "lucide-react";
 
-type EventType = "assignment" | "quiz" | "live_session" | "meeting";
+type EventType = "assignment" | "quiz" | "live_session" | "meeting" | "training" | "sports";
 
 const TYPE_CONFIG: Record<EventType, { color: string; dot: string; icon: React.ElementType; label: string }> = {
   assignment: { color: "bg-amber-50 border-amber-200 text-amber-800", dot: "bg-amber-400", icon: ClipboardList, label: "Assignment" },
   quiz: { color: "bg-indigo-50 border-indigo-200 text-indigo-800", dot: "bg-indigo-500", icon: HelpCircle, label: "Quiz/Test" },
   live_session: { color: "bg-emerald-50 border-emerald-200 text-emerald-800", dot: "bg-emerald-500", icon: Video, label: "Live Class" },
   meeting: { color: "bg-sky-50 border-sky-200 text-sky-800", dot: "bg-sky-500", icon: Users, label: "Meeting" },
+  training: { color: "bg-teal-50 border-teal-200 text-teal-800", dot: "bg-teal-500", icon: Trophy, label: "Sports Training" },
+  sports: { color: "bg-rose-50 border-rose-200 text-rose-800", dot: "bg-rose-500", icon: Trophy, label: "Match Fixture" },
 };
 
 export default function CalendarPage() {

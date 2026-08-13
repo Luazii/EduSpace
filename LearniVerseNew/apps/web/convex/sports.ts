@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query, type QueryCtx, type MutationCtx } from "./_generated/server";
+import type { Id, Doc } from "./_generated/dataModel";
 
 async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -207,5 +208,150 @@ export const markAttendanceByQR = mutation({
     }
 
     return learner;
+  },
+});
+
+// ── Student: Training Schedule & Fixtures ─────────────────────────────────────
+
+export const listStudentTrainingSchedule = query({
+  args: {
+    studentUserId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    let targetUserId: Id<"users">;
+    if (args.studentUserId) {
+      targetUserId = args.studentUserId;
+    } else {
+      const user = await getCurrentUser(ctx);
+      targetUserId = user._id;
+    }
+
+    // 1. Direct team memberships
+    const memberships = await ctx.db
+      .query("teamMemberships")
+      .withIndex("by_student", (q) => q.eq("studentUserId", targetUserId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+
+    const teamIds = new Set<Id<"sportsTeams">>(memberships.map((m) => m.teamId));
+
+    // 2. Registrations for sports
+    const registrations = await ctx.db
+      .query("sportRegistrations")
+      .withIndex("by_student", (q) => q.eq("studentUserId", targetUserId))
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+
+    for (const reg of registrations) {
+      const teamsForSport = await ctx.db
+        .query("sportsTeams")
+        .withIndex("by_sport", (q) => q.eq("sportId", reg.sportId))
+        .filter((q) => q.eq(q.field("isActive"), true))
+        .collect();
+      for (const t of teamsForSport) {
+        teamIds.add(t._id);
+      }
+    }
+
+    const teamList = Array.from(teamIds);
+    const sessionsList: any[] = [];
+    const fixturesList: any[] = [];
+    const myTeams: any[] = [];
+
+    for (const teamId of teamList) {
+      const team = await ctx.db.get(teamId);
+      if (!team) continue;
+      const sport = await ctx.db.get(team.sportId);
+      const coach = team.coachUserId ? await ctx.db.get(team.coachUserId) : null;
+
+      myTeams.push({
+        ...team,
+        sportName: sport?.name ?? "Sport",
+        coachName: coach?.fullName ?? coach?.email ?? sport?.coachName ?? "Team Coach",
+      });
+
+      // Training sessions
+      const sessions = await ctx.db
+        .query("trainingSessions")
+        .withIndex("by_team", (q) => q.eq("teamId", team._id))
+        .collect();
+
+      for (const s of sessions) {
+        const attendance = await ctx.db
+          .query("sportsAttendance")
+          .withIndex("by_session_and_student", (q) =>
+            q.eq("sessionId", s._id).eq("studentUserId", targetUserId),
+          )
+          .first();
+
+        let venueName = s.venue;
+        if (s.venueId) {
+          const venueDoc = await ctx.db.get(s.venueId);
+          if (venueDoc) venueName = venueDoc.name;
+        }
+
+        sessionsList.push({
+          ...s,
+          venueName: venueName || "Sports Grounds",
+          teamName: team.name,
+          sportName: sport?.name ?? "Sport",
+          sportCategory: sport?.category,
+          coachName: coach?.fullName ?? coach?.email ?? sport?.coachName ?? "Team Coach",
+          attendanceStatus: attendance?.status ?? null,
+          attendanceMarkedAt: attendance?.markedAt ?? null,
+        });
+      }
+
+      // Match fixtures
+      const fixtures = await ctx.db
+        .query("matchFixtures")
+        .withIndex("by_team", (q) => q.eq("teamId", team._id))
+        .collect();
+
+      for (const f of fixtures) {
+        let venueName = f.venue;
+        if (f.venueId) {
+          const venueDoc = await ctx.db.get(f.venueId);
+          if (venueDoc) venueName = venueDoc.name;
+        }
+
+        fixturesList.push({
+          ...f,
+          venueName: venueName || "Sports Grounds",
+          teamName: team.name,
+          sportName: sport?.name ?? "Sport",
+          sportCategory: sport?.category,
+        });
+      }
+    }
+
+    const now = Date.now();
+    const upcomingSessions = sessionsList
+      .filter((s) => s.status !== "cancelled" && s.endTime >= now - 2 * 60 * 60 * 1000)
+      .sort((a, b) => a.startTime - b.startTime);
+
+    const pastSessions = sessionsList
+      .filter((s) => s.endTime < now - 2 * 60 * 60 * 1000 || s.status === "completed")
+      .sort((a, b) => b.startTime - a.startTime);
+
+    const upcomingFixtures = fixturesList
+      .filter((f) => f.status !== "cancelled" && f.matchTime >= now - 2 * 60 * 60 * 1000)
+      .sort((a, b) => a.matchTime - b.matchTime);
+
+    const totalSessions = pastSessions.length;
+    const attendedCount = pastSessions.filter(
+      (s) => s.attendanceStatus === "present" || s.attendanceStatus === "late",
+    ).length;
+    const attendancePercentage = totalSessions > 0 ? Math.round((attendedCount / totalSessions) * 100) : null;
+
+    return {
+      upcomingSessions,
+      pastSessions,
+      upcomingFixtures,
+      myTeams,
+      attendancePercentage,
+      totalSessions,
+      attendedCount,
+    };
   },
 });
