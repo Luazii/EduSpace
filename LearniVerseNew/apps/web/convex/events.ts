@@ -186,6 +186,14 @@ export const getTicket = mutation({
       if (existing.status === "cancelled") {
         // Re-activate ticket
         await ctx.db.patch(existing._id, { status: "valid" });
+        await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
+          to: user.email,
+          recipientName: user.fullName ?? user.email,
+          eventTitle: event.title,
+          eventDate: event.eventDate,
+          eventLocation: event.location,
+          ticketCode: existing.ticketCode,
+        });
         return existing._id;
       }
       throw new Error("You already have a ticket for this event.");
@@ -194,13 +202,24 @@ export const getTicket = mutation({
     // Generate unique code
     const ticketCode = `TKT-${Math.random().toString(36).substring(2, 9).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
 
-    return await ctx.db.insert("eventTickets", {
+    const ticketId = await ctx.db.insert("eventTickets", {
       eventId: args.eventId,
       userId: user._id,
       ticketCode,
       status: "valid",
       createdAt: Date.now(),
     });
+
+    await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
+      to: user.email,
+      recipientName: user.fullName ?? user.email,
+      eventTitle: event.title,
+      eventDate: event.eventDate,
+      eventLocation: event.location,
+      ticketCode,
+    });
+
+    return ticketId;
   }
 });
 
@@ -442,6 +461,7 @@ export const internalRecordTicketVerification = internalMutation({
 
     if (args.status === "paid") {
       const event = await ctx.db.get(ticket.eventId);
+      const user = await ctx.db.get(args.userId);
       await ctx.db.insert("notifications", {
         userId: args.userId,
         title: "Ticket payment confirmed",
@@ -451,6 +471,17 @@ export const internalRecordTicketVerification = internalMutation({
         isRead: false,
         createdAt: Date.now(),
       });
+      if (event && user) {
+        await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
+          to: user.email,
+          recipientName: user.fullName ?? user.email,
+          eventTitle: event.title,
+          eventDate: event.eventDate,
+          eventLocation: event.location,
+          ticketCode: ticket.ticketCode,
+          amount: ticket.amount,
+        });
+      }
     }
   },
 });
@@ -507,6 +538,14 @@ export const getGuestTicket = mutation({
     if (existing) {
       if (existing.status === "cancelled") {
         await ctx.db.patch(existing._id, { status: "valid", guestName });
+        await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
+          to: guestEmail,
+          recipientName: guestName,
+          eventTitle: event.title,
+          eventDate: event.eventDate,
+          eventLocation: event.location,
+          ticketCode: existing.ticketCode,
+        });
         return existing.ticketCode;
       }
       return existing.ticketCode; // already has one — just show it again
@@ -522,6 +561,16 @@ export const getGuestTicket = mutation({
       paymentStatus: "free",
       createdAt: Date.now(),
     });
+
+    await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
+      to: guestEmail,
+      recipientName: guestName,
+      eventTitle: event.title,
+      eventDate: event.eventDate,
+      eventLocation: event.location,
+      ticketCode,
+    });
+
     return ticketCode;
   },
 });
@@ -691,6 +740,22 @@ export const internalRecordGuestTicketVerification = internalMutation({
     if (!ticket) throw new Error("No ticket found for this payment reference.");
 
     await ctx.db.patch(ticket._id, { paymentStatus: args.status });
+
+    if (args.status === "paid" && ticket.guestEmail) {
+      const event = await ctx.db.get(ticket.eventId);
+      if (event) {
+        await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
+          to: ticket.guestEmail,
+          recipientName: ticket.guestName ?? ticket.guestEmail,
+          eventTitle: event.title,
+          eventDate: event.eventDate,
+          eventLocation: event.location,
+          ticketCode: ticket.ticketCode,
+          amount: ticket.amount,
+        });
+      }
+    }
+
     return args.status === "paid" ? ticket.ticketCode : null;
   },
 });
