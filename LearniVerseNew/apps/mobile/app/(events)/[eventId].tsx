@@ -15,6 +15,7 @@ export default function EventDetailsScreen() {
   const events = useQuery(api.events.listEvents, {});
   const getTicket = useMutation(api.events.getTicket);
 
+  const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
 
   if (events === undefined) {
@@ -37,10 +38,12 @@ export default function EventDetailsScreen() {
   async function handleGetTicket() {
     setLoading(true);
     try {
-      const ticketId = await getTicket({ eventId: event!._id });
-      Alert.alert("Success", "You have secured your ticket!", [
-        { text: "View Ticket", onPress: () => router.push(`/(events)/ticket/${ticketId}` as never) }
-      ]);
+      const ticketId = await getTicket({ eventId: event!._id, quantity });
+      Alert.alert(
+        "Success",
+        quantity > 1 ? `You have secured ${quantity} tickets!` : "You have secured your ticket!",
+        [{ text: "View Ticket", onPress: () => router.push(`/(events)/ticket/${ticketId}` as never) }]
+      );
     } catch (error) {
       Alert.alert("Error", error instanceof Error ? error.message : "Failed to get ticket.");
     } finally {
@@ -70,13 +73,38 @@ export default function EventDetailsScreen() {
             </View>
           </View>
 
-          <View className="flex-row items-center gap-4 mb-8">
+          <View className="flex-row items-center gap-4 mb-6">
             <View className="bg-white p-3 rounded-2xl border border-slate-200 items-center justify-center w-[70px]">
               <Ionicons name="location" size={24} color={Colors.primary} />
             </View>
             <View className="flex-1">
               <Text className="text-slate-900 font-bold text-base">Location</Text>
               <Text className="text-slate-500 text-sm mt-0.5">{event.location}</Text>
+            </View>
+          </View>
+
+          {/* Quantity Selector */}
+          <View className="bg-white p-4 rounded-3xl border border-slate-200 flex-row items-center justify-between mb-6">
+            <View>
+              <Text className="text-slate-900 font-bold text-base">Number of Tickets</Text>
+              <Text className="text-slate-400 text-xs mt-0.5">Select how many tickets you need</Text>
+            </View>
+            <View className="flex-row items-center gap-3">
+              <TouchableOpacity
+                onPress={() => setQuantity(q => Math.max(1, q - 1))}
+                disabled={quantity <= 1 || loading}
+                className="w-9 h-9 rounded-full bg-slate-100 items-center justify-center border border-slate-200"
+              >
+                <Text className="text-slate-800 font-black text-lg">-</Text>
+              </TouchableOpacity>
+              <Text className="text-slate-900 font-black text-lg w-6 text-center">{quantity}</Text>
+              <TouchableOpacity
+                onPress={() => setQuantity(q => Math.min(20, q + 1))}
+                disabled={quantity >= 20 || loading}
+                className="w-9 h-9 rounded-full bg-slate-100 items-center justify-center border border-slate-200"
+              >
+                <Text className="text-slate-800 font-black text-lg">+</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -95,7 +123,9 @@ export default function EventDetailsScreen() {
             ) : (
               <>
                 <Ionicons name="ticket-outline" size={20} color="white" />
-                <Text className="text-white font-bold text-lg">Get Free Ticket</Text>
+                <Text className="text-white font-bold text-lg">
+                  {quantity > 1 ? `Get ${quantity} Free Tickets` : "Get Free Ticket"}
+                </Text>
               </>
             )}
           </TouchableOpacity>

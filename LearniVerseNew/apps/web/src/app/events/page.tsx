@@ -59,7 +59,7 @@ function EventMeta({ event }: { event: any }) {
   );
 }
 
-/* ───────────────────────── Signed-in flow (unchanged) ───────────────────────── */
+/* ───────────────────────── Signed-in flow ───────────────────────── */
 
 function SignedInEventsPage() {
   const events = useQuery(api.events.listEvents, {});
@@ -70,8 +70,15 @@ function SignedInEventsPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [viewTicket, setViewTicket] = useState<string | null>(null);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+  const getQty = (eventId: string) => quantities[eventId] ?? 1;
+  const setQty = (eventId: string, qty: number) => {
+    setQuantities((prev) => ({ ...prev, [eventId]: Math.max(1, Math.min(20, qty)) }));
+  };
 
   const handleGetTicket = async (event: any) => {
+    const qty = getQty(event._id);
     setLoading(event._id);
     setMessage(null);
     try {
@@ -79,12 +86,16 @@ function SignedInEventsPage() {
         const { authorizationUrl } = await initTicketCheckout({
           eventId: event._id,
           origin: window.location.origin,
+          quantity: qty,
         });
         window.location.href = authorizationUrl;
         return;
       }
-      await getTicketMut({ eventId: event._id });
-      setMessage({ text: "Ticket secured! Check 'My Tickets' below.", ok: true });
+      await getTicketMut({ eventId: event._id, quantity: qty });
+      setMessage({
+        text: qty > 1 ? `${qty} tickets secured! Check 'My Tickets' below.` : "Ticket secured! Check 'My Tickets' below.",
+        ok: true,
+      });
     } catch (e) {
       setMessage({ text: e instanceof Error ? e.message : "Failed to get ticket.", ok: false });
     } finally {
@@ -94,10 +105,10 @@ function SignedInEventsPage() {
 
   if (events === undefined) return <LoadingSpinner />;
 
-  const hasTicket = (eventId: Id<"events">) =>
-    myTickets?.some(
+  const getOwnedTickets = (eventId: Id<"events">) =>
+    myTickets?.filter(
       (t) => t.eventId === eventId && t.status !== "cancelled" && t.paymentStatus !== "pending" && t.paymentStatus !== "failed",
-    );
+    ) ?? [];
 
   const upcomingEvents = events.filter((e) => e.eventDate >= Date.now());
   const pastEvents = events.filter((e) => e.eventDate < Date.now());
@@ -136,32 +147,66 @@ function SignedInEventsPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {upcomingEvents.map((event) => {
-              const owned = hasTicket(event._id);
+              const ownedList = getOwnedTickets(event._id);
+              const ownedCount = ownedList.length;
+              const qty = getQty(event._id);
+              const totalPrice = (event.ticketPrice ?? 0) * qty;
+
               return (
-                <div key={event._id} className={`rounded-3xl border bg-white p-6 shadow-sm transition hover:shadow-md ${owned ? "border-emerald-200 ring-2 ring-emerald-100" : "border-slate-200"}`}>
+                <div key={event._id} className={`rounded-3xl border bg-white p-6 shadow-sm transition hover:shadow-md ${ownedCount > 0 ? "border-emerald-200 ring-2 ring-emerald-100" : "border-slate-200"}`}>
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <h3 className="text-base font-black text-slate-950">{event.title}</h3>
                       <p className="mt-1 text-xs text-slate-500 leading-relaxed line-clamp-2">{event.description}</p>
                     </div>
-                    {owned && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500 ml-2" />}
+                    {ownedCount > 0 && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500 ml-2" />}
                   </div>
 
                   <EventMeta event={event} />
 
-                  {owned ? (
-                    <div className="rounded-2xl bg-emerald-50 border border-emerald-200 py-2.5 text-center text-xs font-bold text-emerald-700">
-                      ✓ Ticket Secured
+                  {ownedCount > 0 && (
+                    <div className="mb-3 rounded-2xl bg-emerald-50 border border-emerald-200 py-1.5 px-3 text-center text-xs font-bold text-emerald-700">
+                      ✓ {ownedCount} Ticket{ownedCount > 1 ? "s" : ""} Secured
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => handleGetTicket(event)}
-                      disabled={loading === event._id}
-                      className="w-full rounded-2xl bg-rose-600 py-2.5 text-xs font-bold text-white transition hover:bg-rose-700 disabled:opacity-50"
-                    >
-                      {loading === event._id ? "Processing…" : event.ticketPrice ? `Buy Ticket — R${event.ticketPrice}` : "Get Ticket"}
-                    </button>
                   )}
+
+                  {/* Quantity selector */}
+                  <div className="mb-3 flex items-center justify-between rounded-2xl bg-slate-50 border border-slate-200 px-3 py-2">
+                    <span className="text-xs font-bold text-slate-600">Quantity</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setQty(event._id, qty - 1)}
+                        disabled={qty <= 1 || loading === event._id}
+                        className="flex h-7 w-7 items-center justify-center rounded-xl bg-white border border-slate-300 text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                      >
+                        -
+                      </button>
+                      <span className="w-6 text-center text-xs font-black text-slate-900">{qty}</span>
+                      <button
+                        type="button"
+                        onClick={() => setQty(event._id, qty + 1)}
+                        disabled={qty >= 20 || loading === event._id}
+                        className="flex h-7 w-7 items-center justify-center rounded-xl bg-white border border-slate-300 text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleGetTicket(event)}
+                    disabled={loading === event._id}
+                    className="w-full rounded-2xl bg-rose-600 py-2.5 text-xs font-bold text-white transition hover:bg-rose-700 disabled:opacity-50"
+                  >
+                    {loading === event._id
+                      ? "Processing…"
+                      : event.ticketPrice
+                      ? `Buy ${qty} Ticket${qty > 1 ? "s" : ""} — R${totalPrice}`
+                      : qty > 1
+                      ? `Get ${qty} Free Tickets`
+                      : "Get Free Ticket"}
+                  </button>
                 </div>
               );
             })}
@@ -257,18 +302,22 @@ function GuestEventCard({
   event, guestName, guestEmail,
 }: { event: any; guestName: string; guestEmail: string }) {
   const emailValid = guestEmail.includes("@");
-  const existingTicket = useQuery(
-    api.events.lookupGuestTicket,
+  const guestTickets = useQuery(
+    api.events.lookupGuestTickets,
     emailValid ? { eventId: event._id, guestEmail } : "skip",
   );
   const getGuestTicketMut = useMutation(api.events.getGuestTicket);
   const initGuestCheckout = useAction(api.events.initializeGuestTicketCheckout);
+  const [qty, setQty] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showQr, setShowQr] = useState(false);
+  const [selectedTicketIndex, setSelectedTicketIndex] = useState(0);
 
-  const owned = !!existingTicket && existingTicket.status !== "cancelled" && existingTicket.paymentStatus !== "failed" && existingTicket.paymentStatus !== "pending";
-  const pending = existingTicket?.paymentStatus === "pending";
+  const validTickets = guestTickets?.filter((t) => t.status !== "cancelled" && t.paymentStatus !== "failed" && t.paymentStatus !== "pending") ?? [];
+  const owned = validTickets.length > 0;
+  const pending = guestTickets?.some((t) => t.paymentStatus === "pending");
+  const totalPrice = (event.ticketPrice ?? 0) * qty;
 
   const handleGet = async () => {
     setError(null);
@@ -284,11 +333,12 @@ function GuestEventCard({
           guestName,
           guestEmail,
           origin: window.location.origin,
+          quantity: qty,
         });
         window.location.href = authorizationUrl;
         return;
       }
-      await getGuestTicketMut({ eventId: event._id, guestName, guestEmail });
+      await getGuestTicketMut({ eventId: event._id, guestName, guestEmail, quantity: qty });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to get ticket.");
     } finally {
@@ -310,36 +360,97 @@ function GuestEventCard({
 
       {error && <p className="mb-3 text-xs font-bold text-rose-600">{error}</p>}
 
-      {pending ? (
-        <div className="rounded-2xl bg-amber-50 border border-amber-200 py-2.5 text-center text-xs font-bold text-amber-700">
-          Payment pending — complete checkout to unlock this ticket.
+      {owned && (
+        <div className="mb-3 rounded-2xl bg-emerald-50 border border-emerald-200 py-1.5 px-3 text-center text-xs font-bold text-emerald-700">
+          ✓ {validTickets.length} Ticket{validTickets.length > 1 ? "s" : ""} Secured
         </div>
-      ) : owned && existingTicket ? (
-        showQr ? (
-          <div className="text-center">
-            <div className="inline-flex flex-col items-center rounded-2xl bg-slate-50 border border-slate-200 p-5">
-              <TicketQrImage code={existingTicket.ticketCode} />
-              <p className="mt-3 text-xs font-mono font-bold text-slate-700 tracking-widest">{existingTicket.ticketCode}</p>
-            </div>
-            <p className="mt-2 text-[10px] text-slate-400">Save or screenshot this — present it at the entrance.</p>
-          </div>
-        ) : (
-          <button
-            onClick={() => setShowQr(true)}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
-          >
-            <QrCode className="h-3.5 w-3.5" /> View E-Ticket
-          </button>
-        )
-      ) : (
-        <button
-          onClick={handleGet}
-          disabled={loading}
-          className="w-full rounded-2xl bg-rose-600 py-2.5 text-xs font-bold text-white transition hover:bg-rose-700 disabled:opacity-50"
-        >
-          {loading ? "Processing…" : event.ticketPrice ? `Buy Ticket — R${event.ticketPrice}` : "Get Free Ticket"}
-        </button>
       )}
+
+      {pending && (
+        <div className="mb-3 rounded-2xl bg-amber-50 border border-amber-200 py-2 text-center text-xs font-bold text-amber-700">
+          Payment pending — complete checkout to unlock tickets.
+        </div>
+      )}
+
+      {owned && (
+        <div className="mb-4">
+          {showQr ? (
+            <div className="text-center">
+              {validTickets.length > 1 && (
+                <div className="mb-3 flex items-center justify-center gap-1">
+                  {validTickets.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setSelectedTicketIndex(i)}
+                      className={`rounded-xl px-2.5 py-1 text-xs font-bold transition ${selectedTicketIndex === i ? "bg-rose-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                    >
+                      Ticket {i + 1}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="inline-flex flex-col items-center rounded-2xl bg-slate-50 border border-slate-200 p-5">
+                <TicketQrImage code={validTickets[selectedTicketIndex]?.ticketCode ?? validTickets[0].ticketCode} />
+                <p className="mt-3 text-xs font-mono font-bold text-slate-700 tracking-widest">
+                  {validTickets[selectedTicketIndex]?.ticketCode ?? validTickets[0].ticketCode}
+                </p>
+              </div>
+              <p className="mt-2 text-[10px] text-slate-400">Save or screenshot this — present it at the entrance.</p>
+              <button
+                onClick={() => setShowQr(false)}
+                className="mt-2 text-xs font-bold text-slate-500 hover:underline"
+              >
+                Hide QR Code
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowQr(true)}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition"
+            >
+              <QrCode className="h-3.5 w-3.5" /> View {validTickets.length > 1 ? `E-Tickets (${validTickets.length})` : "E-Ticket"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Quantity selector */}
+      <div className="mb-3 flex items-center justify-between rounded-2xl bg-slate-50 border border-slate-200 px-3 py-2">
+        <span className="text-xs font-bold text-slate-600">Quantity</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setQty((q) => Math.max(1, q - 1))}
+            disabled={qty <= 1 || loading}
+            className="flex h-7 w-7 items-center justify-center rounded-xl bg-white border border-slate-300 text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+          >
+            -
+          </button>
+          <span className="w-6 text-center text-xs font-black text-slate-900">{qty}</span>
+          <button
+            type="button"
+            onClick={() => setQty((q) => Math.min(20, q + 1))}
+            disabled={qty >= 20 || loading}
+            className="flex h-7 w-7 items-center justify-center rounded-xl bg-white border border-slate-300 text-xs font-black text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      <button
+        onClick={handleGet}
+        disabled={loading}
+        className="w-full rounded-2xl bg-rose-600 py-2.5 text-xs font-bold text-white transition hover:bg-rose-700 disabled:opacity-50"
+      >
+        {loading
+          ? "Processing…"
+          : event.ticketPrice
+          ? `Buy ${qty} Ticket${qty > 1 ? "s" : ""} — R${totalPrice}`
+          : qty > 1
+          ? `Get ${qty} Free Tickets`
+          : "Get Free Ticket"}
+      </button>
     </div>
   );
 }
@@ -363,7 +474,7 @@ function GuestEventsPage() {
         </div>
         <h1 className="text-4xl font-black tracking-tight text-slate-950">School Events & Tickets</h1>
         <p className="mt-2 text-sm text-slate-500 max-w-2xl">
-          Browse upcoming sports fixtures and school events, and buy your ticket as a guest — no account needed.{" "}
+          Browse upcoming sports fixtures and school events, and buy your tickets as a guest — no account needed.{" "}
           Already part of the school?{" "}
           <Link href="/sign-in" className="font-bold text-rose-600 underline">Sign in</Link> to manage tickets from your account instead.
         </p>

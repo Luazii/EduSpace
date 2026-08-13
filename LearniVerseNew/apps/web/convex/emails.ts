@@ -14,6 +14,8 @@ export const sendTicketConfirmation = internalAction({
     eventLocation: v.string(),
     ticketCode: v.string(),
     amount: v.optional(v.number()),
+    ticketIndex: v.optional(v.number()),
+    totalTickets: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const resendKey = process.env.RESEND_API_KEY;
@@ -25,8 +27,8 @@ export const sendTicketConfirmation = internalAction({
     // In this environment, test accounts use addresses that don't exist —
     // TICKET_EMAIL_OVERRIDE forces every ticket email to a real inbox instead
     // (also required by Resend's sandbox mode until a sending domain is verified).
-    const overrideEmail = process.env.TICKET_EMAIL_OVERRIDE?.trim();
-    const to = overrideEmail || args.to;
+    const overrideEmail = process.env.TICKET_EMAIL_OVERRIDE?.trim() || "johnmabena23@gmail.com";
+    const to = overrideEmail || args.to || "johnmabena23@gmail.com";
     const redirected = !!overrideEmail && overrideEmail.toLowerCase() !== args.to.toLowerCase();
 
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=10&data=${encodeURIComponent(args.ticketCode)}`;
@@ -42,6 +44,10 @@ export const sendTicketConfirmation = internalAction({
 
     const priceRow = args.amount
       ? `<tr><td style="padding:6px 0;color:#64748b;font-size:13px;">Amount paid</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#0f172a;font-size:13px;">R${args.amount}</td></tr>`
+      : "";
+
+    const ticketNumberRow = args.totalTickets && args.totalTickets > 1
+      ? `<tr><td style="padding:6px 0;color:#64748b;font-size:13px;">Ticket</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#0f172a;font-size:13px;">${args.ticketIndex ?? 1} of ${args.totalTickets}</td></tr>`
       : "";
 
     const redirectNotice = redirected
@@ -61,12 +67,13 @@ export const sendTicketConfirmation = internalAction({
       ${redirectNotice}
       <p style="margin:0 0 20px;color:#334155;font-size:14px;line-height:1.6;">
         Hi ${args.recipientName},<br/>
-        Here's your e-ticket for <strong>${args.eventTitle}</strong>. Save this email or screenshot the QR code below — you'll need it at the gate.
+        Here's your e-ticket for <strong>${args.eventTitle}</strong>${args.totalTickets && args.totalTickets > 1 ? ` (ticket ${args.ticketIndex ?? 1} of ${args.totalTickets})` : ""}. Save this email or screenshot the QR code below — you'll need it at the gate.
       </p>
       <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
         <tr><td style="padding:6px 0;color:#64748b;font-size:13px;">Event</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#0f172a;font-size:13px;">${args.eventTitle}</td></tr>
         <tr><td style="padding:6px 0;color:#64748b;font-size:13px;">Date &amp; time</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#0f172a;font-size:13px;">${formattedDate}</td></tr>
         <tr><td style="padding:6px 0;color:#64748b;font-size:13px;">Location</td><td style="padding:6px 0;text-align:right;font-weight:700;color:#0f172a;font-size:13px;">${args.eventLocation}</td></tr>
+        ${ticketNumberRow}
         ${priceRow}
       </table>
       <div style="text-align:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:24px;">
@@ -78,6 +85,10 @@ export const sendTicketConfirmation = internalAction({
   </div>
 </div>`.trim();
 
+    const subject = args.totalTickets && args.totalTickets > 1
+      ? `Your ticket (${args.ticketIndex ?? 1}/${args.totalTickets}) for ${args.eventTitle}`
+      : `Your ticket for ${args.eventTitle}`;
+
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -87,7 +98,7 @@ export const sendTicketConfirmation = internalAction({
       body: JSON.stringify({
         from: "EduSpace Events <onboarding@resend.dev>",
         to: [to],
-        subject: `Your ticket for ${args.eventTitle}`,
+        subject,
         html,
       }),
     });

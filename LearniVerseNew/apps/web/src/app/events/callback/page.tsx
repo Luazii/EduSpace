@@ -24,7 +24,8 @@ function TicketCallbackContent() {
   const verifyGuestPayment = useAction(api.events.verifyGuestTicketPayment);
   const [status, setStatus] = useState<"verifying" | "success" | "failed">("verifying");
   const [message, setMessage] = useState("");
-  const [ticketCode, setTicketCode] = useState<string | null>(null);
+  const [ticketCodes, setTicketCodes] = useState<string[]>([]);
+  const [selectedTicketIndex, setSelectedTicketIndex] = useState(0);
 
   useEffect(() => {
     if (!reference) {
@@ -36,10 +37,15 @@ function TicketCallbackContent() {
     if (isGuest) {
       verifyGuestPayment({ reference })
         .then((res) => {
-          if (res.ok && res.ticketCode) {
+          if (res.ok && (res.ticketCodes?.length || res.ticketCode)) {
+            const codes = res.ticketCodes && res.ticketCodes.length > 0 ? res.ticketCodes : [res.ticketCode!];
             setStatus("success");
-            setTicketCode(res.ticketCode);
-            setMessage("Your ticket is ready — save or screenshot the QR code below.");
+            setTicketCodes(codes);
+            setMessage(
+              codes.length > 1
+                ? `Your ${codes.length} tickets are ready — save or screenshot the QR codes below.`
+                : "Your ticket is ready — save or screenshot the QR code below."
+            );
           } else {
             setStatus("failed");
             setMessage(`Payment status: ${res.status}.`);
@@ -56,7 +62,7 @@ function TicketCallbackContent() {
       .then((res) => {
         if (res.ok) {
           setStatus("success");
-          setMessage("Your ticket is ready — find it under My Tickets.");
+          setMessage("Your tickets are ready — find them under My Tickets.");
           setTimeout(() => router.push("/events"), 3000);
         } else {
           setStatus("failed");
@@ -84,11 +90,24 @@ function TicketCallbackContent() {
             <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-emerald-500" />
             <h2 className="text-xl font-black text-slate-950">Ticket secured!</h2>
             <p className="mt-2 text-sm text-slate-500">{message}</p>
-            {ticketCode && (
+            {ticketCodes.length > 0 && (
               <>
-                <div className="mt-6 inline-flex flex-col items-center rounded-2xl bg-slate-50 border border-slate-200 p-5">
-                  <TicketQrImage code={ticketCode} />
-                  <p className="mt-3 text-xs font-mono font-bold text-slate-700 tracking-widest">{ticketCode}</p>
+                {ticketCodes.length > 1 && (
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+                    {ticketCodes.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedTicketIndex(i)}
+                        className={`rounded-xl px-2.5 py-1 text-xs font-bold transition ${selectedTicketIndex === i ? "bg-rose-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                      >
+                        Ticket {i + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-4 inline-flex flex-col items-center rounded-2xl bg-slate-50 border border-slate-200 p-5">
+                  <TicketQrImage code={ticketCodes[selectedTicketIndex]} />
+                  <p className="mt-3 text-xs font-mono font-bold text-slate-700 tracking-widest">{ticketCodes[selectedTicketIndex]}</p>
                 </div>
                 <p className="mt-3 text-[10px] text-slate-400">Present this QR code at the entrance.</p>
                 <button onClick={() => router.push("/events")} className="mt-6 w-full rounded-2xl bg-slate-950 py-3 text-sm font-black text-white">
@@ -96,7 +115,7 @@ function TicketCallbackContent() {
                 </button>
               </>
             )}
-            {!ticketCode && <p className="mt-3 text-xs text-slate-400">Redirecting to your tickets…</p>}
+            {ticketCodes.length === 0 && <p className="mt-3 text-xs text-slate-400">Redirecting to your tickets…</p>}
           </>
         )}
         {status === "failed" && (

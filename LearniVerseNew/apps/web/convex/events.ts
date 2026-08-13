@@ -160,67 +160,58 @@ export const createSportsEvent = mutation({
 });
 
 export const getTicket = mutation({
-  args: { eventId: v.id("events") },
+  args: {
+    eventId: v.id("events"),
+    quantity: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const event = await ctx.db.get(args.eventId);
     if (!event || !event.isActive) throw new Error("Event not available.");
 
+    const quantity = Math.max(1, Math.floor(args.quantity ?? 1));
+
     // Check capacity
     const tickets = await ctx.db
       .query("eventTickets")
-      .withIndex("by_event", q => q.eq("eventId", args.eventId))
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
-      
-    if (event.capacity && tickets.length >= event.capacity) {
-      throw new Error("Event is fully booked.");
+
+    const activeCount = tickets.filter((t) => t.status !== "cancelled").length;
+    if (event.capacity && activeCount + quantity > event.capacity) {
+      const remaining = Math.max(0, event.capacity - activeCount);
+      throw new Error(`Only ${remaining} ticket${remaining === 1 ? "" : "s"} remaining for this event.`);
     }
 
-    // Check if already has ticket
-    const existing = await ctx.db
-      .query("eventTickets")
-      .withIndex("by_event_user", q => q.eq("eventId", args.eventId).eq("userId", user._id))
-      .first();
+    const createdIds: Id<"eventTickets">[] = [];
+    const now = Date.now();
 
-    if (existing) {
-      if (existing.status === "cancelled") {
-        // Re-activate ticket
-        await ctx.db.patch(existing._id, { status: "valid" });
-        await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
-          to: user.email,
-          recipientName: user.fullName ?? user.email,
-          eventTitle: event.title,
-          eventDate: event.eventDate,
-          eventLocation: event.location,
-          ticketCode: existing.ticketCode,
-        });
-        return existing._id;
-      }
-      throw new Error("You already have a ticket for this event.");
+    for (let i = 0; i < quantity; i++) {
+      const ticketCode = generateTicketCode();
+      const ticketId = await ctx.db.insert("eventTickets", {
+        eventId: args.eventId,
+        userId: user._id,
+        ticketCode,
+        status: "valid",
+        paymentStatus: "free",
+        createdAt: now + i,
+      });
+      createdIds.push(ticketId);
+
+      await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
+        to: user.email,
+        recipientName: user.fullName ?? user.email,
+        eventTitle: event.title,
+        eventDate: event.eventDate,
+        eventLocation: event.location,
+        ticketCode,
+        ticketIndex: i + 1,
+        totalTickets: quantity,
+      });
     }
 
-    // Generate unique code
-    const ticketCode = `TKT-${Math.random().toString(36).substring(2, 9).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
-
-    const ticketId = await ctx.db.insert("eventTickets", {
-      eventId: args.eventId,
-      userId: user._id,
-      ticketCode,
-      status: "valid",
-      createdAt: Date.now(),
-    });
-
-    await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
-      to: user.email,
-      recipientName: user.fullName ?? user.email,
-      eventTitle: event.title,
-      eventDate: event.eventDate,
-      eventLocation: event.location,
-      ticketCode,
-    });
-
-    return ticketId;
-  }
+    return createdIds[0];
+  },
 });
 
 export const scanTicket = mutation({
@@ -276,6 +267,7 @@ export const initializeTicketCheckout = action({
   args: {
     eventId: v.id("events"),
     origin: v.string(),
+    quantity: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserForAction(ctx);
@@ -285,23 +277,21 @@ export const initializeTicketCheckout = action({
       throw new Error("This event doesn't require payment — use getTicket instead.");
     }
 
-    const existing = await ctx.runQuery(internal.events.internalGetMyTicketForEvent, {
-      eventId: args.eventId,
-      userId: user._id,
-    });
-    if (existing && existing.status !== "cancelled" && existing.paymentStatus !== "failed") {
-      throw new Error("You already have a ticket for this event.");
-    }
+    const quantity = Math.max(1, Math.floor(args.quantity ?? 1));
 
     if (event.capacity != null) {
       const activeCount = await ctx.runQuery(internal.events.internalCountActiveTickets, { eventId: args.eventId });
-      if (activeCount >= event.capacity) throw new Error("Event is fully booked.");
+      if (activeCount + quantity > event.capacity) {
+        const remaining = Math.max(0, event.capacity - activeCount);
+        throw new Error(`Only ${remaining} ticket${remaining === 1 ? "" : "s"} remaining for this event.`);
+      }
     }
 
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
     if (!paystackSecret) throw new ConvexError("PAYSTACK_SECRET_KEY is not configured yet.");
 
     const reference = `eduspace-ticket-${args.eventId}-${Date.now()}`;
+    const totalAmount = event.ticketPrice * quantity;
 
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
@@ -311,10 +301,10 @@ export const initializeTicketCheckout = action({
       },
       body: JSON.stringify({
         email: user.email,
-        amount: Math.round(event.ticketPrice * 100),
+        amount: Math.round(totalAmount * 100),
         reference,
-        callback_url: `${args.origin}/events/callback?eventId=${args.eventId}`,
-        metadata: { eventId: args.eventId, userId: user._id },
+        callback_url: `${args.origin}/events/callback?eventId=${args.eventId}&quantity=${quantity}`,
+        metadata: { eventId: args.eventId, userId: user._id, quantity },
       }),
     });
 
@@ -333,6 +323,7 @@ export const initializeTicketCheckout = action({
       userId: user._id,
       amount: event.ticketPrice,
       reference: result.data.reference,
+      quantity,
     });
 
     return { authorizationUrl: result.data.authorization_url, reference: result.data.reference };
@@ -415,21 +406,12 @@ export const internalRecordInitializedTicket = internalMutation({
     userId: v.id("users"),
     amount: v.number(),
     reference: v.string(),
+    quantity: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("eventTickets")
-      .withIndex("by_event_user", (q) => q.eq("eventId", args.eventId).eq("userId", args.userId))
-      .first();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        status: "valid",
-        amount: args.amount,
-        paymentStatus: "pending",
-        paymentReference: args.reference,
-      });
-    } else {
+    const qty = Math.max(1, Math.floor(args.quantity ?? 1));
+    const now = Date.now();
+    for (let i = 0; i < qty; i++) {
       await ctx.db.insert("eventTickets", {
         eventId: args.eventId,
         userId: args.userId,
@@ -438,7 +420,7 @@ export const internalRecordInitializedTicket = internalMutation({
         amount: args.amount,
         paymentStatus: "pending",
         paymentReference: args.reference,
-        createdAt: Date.now(),
+        createdAt: now + i,
       });
     }
   },
@@ -451,36 +433,47 @@ export const internalRecordTicketVerification = internalMutation({
     status: v.union(v.literal("paid"), v.literal("failed")),
   },
   handler: async (ctx, args) => {
-    const ticket = await ctx.db
+    const tickets = await ctx.db
       .query("eventTickets")
       .withIndex("by_reference", (q) => q.eq("paymentReference", args.reference))
-      .first();
-    if (!ticket) throw new Error("No ticket found for this payment reference.");
+      .collect();
+    if (tickets.length === 0) throw new Error("No ticket found for this payment reference.");
 
-    await ctx.db.patch(ticket._id, { paymentStatus: args.status });
+    for (const ticket of tickets) {
+      await ctx.db.patch(ticket._id, { paymentStatus: args.status });
+    }
 
     if (args.status === "paid") {
-      const event = await ctx.db.get(ticket.eventId);
+      const firstTicket = tickets[0];
+      const event = await ctx.db.get(firstTicket.eventId);
       const user = await ctx.db.get(args.userId);
+      const ticketCount = tickets.length;
       await ctx.db.insert("notifications", {
         userId: args.userId,
         title: "Ticket payment confirmed",
-        body: `Your ticket for ${event?.title ?? "the event"} is ready — find it under My Tickets.`,
+        body: ticketCount > 1
+          ? `Your ${ticketCount} tickets for ${event?.title ?? "the event"} are ready — find them under My Tickets.`
+          : `Your ticket for ${event?.title ?? "the event"} is ready — find it under My Tickets.`,
         type: "system",
         link: "/events",
         isRead: false,
         createdAt: Date.now(),
       });
       if (event && user) {
-        await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
-          to: user.email,
-          recipientName: user.fullName ?? user.email,
-          eventTitle: event.title,
-          eventDate: event.eventDate,
-          eventLocation: event.location,
-          ticketCode: ticket.ticketCode,
-          amount: ticket.amount,
-        });
+        let idx = 1;
+        for (const ticket of tickets) {
+          await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
+            to: user.email,
+            recipientName: user.fullName ?? user.email,
+            eventTitle: event.title,
+            eventDate: event.eventDate,
+            eventLocation: event.location,
+            ticketCode: ticket.ticketCode,
+            amount: ticket.amount,
+            ticketIndex: idx++,
+            totalTickets: ticketCount,
+          });
+        }
       }
     }
   },
@@ -509,8 +502,24 @@ export const lookupGuestTicket = query({
   },
 });
 
+export const lookupGuestTickets = query({
+  args: { eventId: v.id("events"), guestEmail: v.string() },
+  handler: async (ctx, args) => {
+    const normalized = args.guestEmail.trim().toLowerCase();
+    return ctx.db
+      .query("eventTickets")
+      .withIndex("by_event_guest_email", (q) => q.eq("eventId", args.eventId).eq("guestEmail", normalized))
+      .collect();
+  },
+});
+
 export const getGuestTicket = mutation({
-  args: { eventId: v.id("events"), guestName: v.string(), guestEmail: v.string() },
+  args: {
+    eventId: v.id("events"),
+    guestName: v.string(),
+    guestEmail: v.string(),
+    quantity: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const guestEmail = args.guestEmail.trim().toLowerCase();
     const guestName = args.guestName.trim();
@@ -522,56 +531,46 @@ export const getGuestTicket = mutation({
       throw new Error("This event requires payment — use the checkout flow instead.");
     }
 
+    const quantity = Math.max(1, Math.floor(args.quantity ?? 1));
+
     const tickets = await ctx.db
       .query("eventTickets")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
     const activeCount = tickets.filter((t) => t.status !== "cancelled").length;
-    if (event.capacity && activeCount >= event.capacity) {
-      throw new Error("Event is fully booked.");
+    if (event.capacity && activeCount + quantity > event.capacity) {
+      const remaining = Math.max(0, event.capacity - activeCount);
+      throw new Error(`Only ${remaining} ticket${remaining === 1 ? "" : "s"} remaining for this event.`);
     }
 
-    const existing = await ctx.db
-      .query("eventTickets")
-      .withIndex("by_event_guest_email", (q) => q.eq("eventId", args.eventId).eq("guestEmail", guestEmail))
-      .first();
-    if (existing) {
-      if (existing.status === "cancelled") {
-        await ctx.db.patch(existing._id, { status: "valid", guestName });
-        await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
-          to: guestEmail,
-          recipientName: guestName,
-          eventTitle: event.title,
-          eventDate: event.eventDate,
-          eventLocation: event.location,
-          ticketCode: existing.ticketCode,
-        });
-        return existing.ticketCode;
-      }
-      return existing.ticketCode; // already has one — just show it again
+    const codes: string[] = [];
+    const now = Date.now();
+    for (let i = 0; i < quantity; i++) {
+      const ticketCode = generateTicketCode();
+      codes.push(ticketCode);
+      await ctx.db.insert("eventTickets", {
+        eventId: args.eventId,
+        guestName,
+        guestEmail,
+        ticketCode,
+        status: "valid",
+        paymentStatus: "free",
+        createdAt: now + i,
+      });
+
+      await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
+        to: guestEmail,
+        recipientName: guestName,
+        eventTitle: event.title,
+        eventDate: event.eventDate,
+        eventLocation: event.location,
+        ticketCode,
+        ticketIndex: i + 1,
+        totalTickets: quantity,
+      });
     }
 
-    const ticketCode = generateTicketCode();
-    await ctx.db.insert("eventTickets", {
-      eventId: args.eventId,
-      guestName,
-      guestEmail,
-      ticketCode,
-      status: "valid",
-      paymentStatus: "free",
-      createdAt: Date.now(),
-    });
-
-    await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
-      to: guestEmail,
-      recipientName: guestName,
-      eventTitle: event.title,
-      eventDate: event.eventDate,
-      eventLocation: event.location,
-      ticketCode,
-    });
-
-    return ticketCode;
+    return codes[0];
   },
 });
 
@@ -581,6 +580,7 @@ export const initializeGuestTicketCheckout = action({
     guestName: v.string(),
     guestEmail: v.string(),
     origin: v.string(),
+    quantity: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const guestEmail = args.guestEmail.trim().toLowerCase();
@@ -593,23 +593,21 @@ export const initializeGuestTicketCheckout = action({
       throw new Error("This event doesn't require payment — use getGuestTicket instead.");
     }
 
-    const existing = await ctx.runQuery(internal.events.internalGetGuestTicketForEvent, {
-      eventId: args.eventId,
-      guestEmail,
-    });
-    if (existing && existing.status !== "cancelled" && existing.paymentStatus !== "failed") {
-      throw new Error("A ticket for this email already exists for this event.");
-    }
+    const quantity = Math.max(1, Math.floor(args.quantity ?? 1));
 
     if (event.capacity != null) {
       const activeCount = await ctx.runQuery(internal.events.internalCountActiveTickets, { eventId: args.eventId });
-      if (activeCount >= event.capacity) throw new Error("Event is fully booked.");
+      if (activeCount + quantity > event.capacity) {
+        const remaining = Math.max(0, event.capacity - activeCount);
+        throw new Error(`Only ${remaining} ticket${remaining === 1 ? "" : "s"} remaining for this event.`);
+      }
     }
 
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
     if (!paystackSecret) throw new ConvexError("PAYSTACK_SECRET_KEY is not configured yet.");
 
     const reference = `eduspace-ticket-guest-${args.eventId}-${Date.now()}`;
+    const totalAmount = event.ticketPrice * quantity;
 
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
@@ -619,10 +617,10 @@ export const initializeGuestTicketCheckout = action({
       },
       body: JSON.stringify({
         email: guestEmail,
-        amount: Math.round(event.ticketPrice * 100),
+        amount: Math.round(totalAmount * 100),
         reference,
-        callback_url: `${args.origin}/events/callback?eventId=${args.eventId}&guest=1&email=${encodeURIComponent(guestEmail)}`,
-        metadata: { eventId: args.eventId, guestEmail, guestName },
+        callback_url: `${args.origin}/events/callback?eventId=${args.eventId}&guest=1&email=${encodeURIComponent(guestEmail)}&quantity=${quantity}`,
+        metadata: { eventId: args.eventId, guestEmail, guestName, quantity },
       }),
     });
 
@@ -642,6 +640,7 @@ export const initializeGuestTicketCheckout = action({
       guestEmail,
       amount: event.ticketPrice,
       reference: result.data.reference,
+      quantity,
     });
 
     return { authorizationUrl: result.data.authorization_url, reference: result.data.reference };
@@ -650,7 +649,7 @@ export const initializeGuestTicketCheckout = action({
 
 export const verifyGuestTicketPayment = action({
   args: { reference: v.string() },
-  handler: async (ctx, args): Promise<{ ok: boolean; status: string; ticketCode: string | null }> => {
+  handler: async (ctx, args): Promise<{ ok: boolean; status: string; ticketCode: string | null; ticketCodes?: string[] }> => {
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
     if (!paystackSecret) throw new ConvexError("PAYSTACK_SECRET_KEY is not configured yet.");
 
@@ -671,12 +670,20 @@ export const verifyGuestTicketPayment = action({
 
     const isSuccess = result.data.status === "success";
 
-    const ticketCode: string | null = await ctx.runMutation(internal.events.internalRecordGuestTicketVerification, {
-      reference: args.reference,
-      status: isSuccess ? "paid" : "failed",
-    });
+    const verificationResult: { ticketCode: string | null; ticketCodes: string[] } = await ctx.runMutation(
+      internal.events.internalRecordGuestTicketVerification,
+      {
+        reference: args.reference,
+        status: isSuccess ? "paid" : "failed",
+      },
+    );
 
-    return { ok: isSuccess, status: result.data.status ?? "unknown", ticketCode };
+    return {
+      ok: isSuccess,
+      status: result.data.status ?? "unknown",
+      ticketCode: verificationResult.ticketCode,
+      ticketCodes: verificationResult.ticketCodes,
+    };
   },
 });
 
@@ -696,22 +703,12 @@ export const internalRecordInitializedGuestTicket = internalMutation({
     guestEmail: v.string(),
     amount: v.number(),
     reference: v.string(),
+    quantity: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("eventTickets")
-      .withIndex("by_event_guest_email", (q) => q.eq("eventId", args.eventId).eq("guestEmail", args.guestEmail))
-      .first();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        status: "valid",
-        guestName: args.guestName,
-        amount: args.amount,
-        paymentStatus: "pending",
-        paymentReference: args.reference,
-      });
-    } else {
+    const qty = Math.max(1, Math.floor(args.quantity ?? 1));
+    const now = Date.now();
+    for (let i = 0; i < qty; i++) {
       await ctx.db.insert("eventTickets", {
         eventId: args.eventId,
         guestName: args.guestName,
@@ -721,7 +718,7 @@ export const internalRecordInitializedGuestTicket = internalMutation({
         amount: args.amount,
         paymentStatus: "pending",
         paymentReference: args.reference,
-        createdAt: Date.now(),
+        createdAt: now + i,
       });
     }
   },
@@ -733,29 +730,44 @@ export const internalRecordGuestTicketVerification = internalMutation({
     status: v.union(v.literal("paid"), v.literal("failed")),
   },
   handler: async (ctx, args) => {
-    const ticket = await ctx.db
+    const tickets = await ctx.db
       .query("eventTickets")
       .withIndex("by_reference", (q) => q.eq("paymentReference", args.reference))
-      .first();
-    if (!ticket) throw new Error("No ticket found for this payment reference.");
+      .collect();
+    if (tickets.length === 0) throw new Error("No ticket found for this payment reference.");
 
-    await ctx.db.patch(ticket._id, { paymentStatus: args.status });
+    const ticketCodes: string[] = [];
+    for (const ticket of tickets) {
+      await ctx.db.patch(ticket._id, { paymentStatus: args.status });
+      ticketCodes.push(ticket.ticketCode);
+    }
 
-    if (args.status === "paid" && ticket.guestEmail) {
-      const event = await ctx.db.get(ticket.eventId);
+    if (args.status === "paid") {
+      const firstTicket = tickets[0];
+      const event = await ctx.db.get(firstTicket.eventId);
       if (event) {
-        await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
-          to: ticket.guestEmail,
-          recipientName: ticket.guestName ?? ticket.guestEmail,
-          eventTitle: event.title,
-          eventDate: event.eventDate,
-          eventLocation: event.location,
-          ticketCode: ticket.ticketCode,
-          amount: ticket.amount,
-        });
+        let idx = 1;
+        for (const ticket of tickets) {
+          if (ticket.guestEmail) {
+            await ctx.scheduler.runAfter(0, internal.emails.sendTicketConfirmation, {
+              to: ticket.guestEmail,
+              recipientName: ticket.guestName ?? ticket.guestEmail,
+              eventTitle: event.title,
+              eventDate: event.eventDate,
+              eventLocation: event.location,
+              ticketCode: ticket.ticketCode,
+              amount: ticket.amount,
+              ticketIndex: idx++,
+              totalTickets: tickets.length,
+            });
+          }
+        }
       }
     }
 
-    return args.status === "paid" ? ticket.ticketCode : null;
+    return {
+      ticketCode: args.status === "paid" && ticketCodes.length > 0 ? ticketCodes[0] : null,
+      ticketCodes: args.status === "paid" ? ticketCodes : [],
+    };
   },
 });
