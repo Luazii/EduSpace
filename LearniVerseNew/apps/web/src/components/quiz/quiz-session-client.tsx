@@ -48,6 +48,7 @@ export function QuizSessionClient({ courseId, quizId }: QuizSessionClientProps) 
     }
     setLocalAnswers((prev) => ({ ...serverAnswers, ...prev }));
     setCurrentIndex(sessionData.currentQuestionIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionData?._id]); // only run once when session id is known
 
   // Countdown timer
@@ -65,7 +66,8 @@ export function QuizSessionClient({ courseId, quizId }: QuizSessionClientProps) 
     if (timeRemainingMs === null || timeRemainingMs > 0) return;
     if (isSubmitting || result) return;
     void handleSubmit(true);
-  }, [timeRemainingMs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeRemainingMs, isSubmitting, result]);
 
   // Session locked on server (scheduler fired) → redirect
   useEffect(() => {
@@ -73,7 +75,7 @@ export function QuizSessionClient({ courseId, quizId }: QuizSessionClientProps) 
     if (sessionData.status === "locked" || sessionData.status === "submitted") {
       router.replace(`/courses/${courseId}/quizzes/${quizId}`);
     }
-  }, [sessionData?.status]);
+  }, [sessionData?.status, courseId, quizId, router, sessionData]);
 
   function handleSelectAnswer(questionId: string, answer: string) {
     setLocalAnswers((prev) => ({ ...prev, [questionId]: answer }));

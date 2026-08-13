@@ -29,8 +29,8 @@ export function CourseDetailClient({ courseId }: CourseDetailClientProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   
-  const liveSessions = useQuery(api.liveSessions.listByCourse, { courseId: typedCourseId }) ?? [];
-  const activeSession = useMemo(() => liveSessions.find(s => s.isLive), [liveSessions]);
+  const rawLiveSessions = useQuery(api.liveSessions.listByCourse, { courseId: typedCourseId });
+  const activeSession = useMemo(() => rawLiveSessions?.find(s => s.isLive), [rawLiveSessions]);
 
   const canManageResources = useMemo(() => {
     return currentUser?.role === "admin" || currentUser?.role === "teacher";

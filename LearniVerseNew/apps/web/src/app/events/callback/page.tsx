@@ -73,7 +73,7 @@ function TicketCallbackContent() {
         setStatus("failed");
         setMessage(e instanceof Error ? e.message : "Verification failed.");
       });
-  }, [reference, isGuest]);
+  }, [reference, isGuest, verifyGuestPayment, verifyPayment, router]);
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6">

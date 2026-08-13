@@ -9,7 +9,8 @@ import type { Id } from "../../../convex/_generated/dataModel";
 
 export function FeeManager() {
   const structures = useQuery(api.fees.listStructures) ?? [];
-  const invoices = useQuery(api.fees.listInvoices) ?? [];
+  const rawInvoices = useQuery(api.fees.listInvoices);
+  const invoices = useMemo(() => rawInvoices ?? [], [rawInvoices]);
   const receipts = useQuery(api.fees.listReceipts, {}) ?? [];
   const students = useQuery(api.users.list)?.filter((user) => user.role === "student") ?? [];
   const classes = useQuery(api.classes.list) ?? [];

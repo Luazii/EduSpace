@@ -1,10 +1,25 @@
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans, Manrope } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import Link from "next/link";
 import { ConvexClientProvider } from "@/components/convex-client-provider";
 import { UserBootstrapper } from "@/components/user-bootstrapper";
 import { AppHeader } from "@/components/app-header";
 import "./globals.css";
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-headline",
+  display: "swap",
+});
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-body",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "EduSpace",
@@ -17,15 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className={`h-full antialiased ${plusJakartaSans.variable} ${manrope.variable}`} suppressHydrationWarning>
       <body className="min-h-full bg-background font-body text-on-surface" suppressHydrationWarning>
         <ClerkProvider>
           <ConvexClientProvider>

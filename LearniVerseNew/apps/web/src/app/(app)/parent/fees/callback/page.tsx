@@ -37,7 +37,7 @@ export default function FeeCallbackPage() {
         setStatus("failed");
         setMessage(e instanceof Error ? e.message : "Verification failed.");
       });
-  }, [reference, invoiceId]);
+  }, [reference, invoiceId, verifyPayment, router]);
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6">

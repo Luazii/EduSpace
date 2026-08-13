@@ -8,7 +8,8 @@ import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
 export function ManualMarkCapture() {
-  const courses = useQuery(api.manualMarks.listMyCourses) ?? [];
+  const rawCourses = useQuery(api.manualMarks.listMyCourses);
+  const courses = useMemo(() => rawCourses ?? [], [rawCourses]);
   const [courseId, setCourseId] = useState<string>("");
   const students = useQuery(api.manualMarks.listStudentsByCourse, courseId ? { courseId: courseId as Id<"courses"> } : "skip") ?? [];
   const marks = useQuery(api.manualMarks.listMarksForCourse, courseId ? { courseId: courseId as Id<"courses"> } : "skip") ?? [];

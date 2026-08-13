@@ -34,7 +34,8 @@ export default function CalendarPage() {
   const from = startOfMonth(subMonths(currentMonth, 1)).getTime();
   const to = endOfMonth(addMonths(currentMonth, 1)).getTime();
 
-  const events = useQuery(api.calendar.getStudentCalendar, { fromDate: from, toDate: to }) ?? [];
+  const rawEvents = useQuery(api.calendar.getStudentCalendar, { fromDate: from, toDate: to });
+  const events = useMemo(() => rawEvents ?? [], [rawEvents]);
 
   const monthDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
