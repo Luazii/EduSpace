@@ -768,7 +768,7 @@ export const scanBusPassengerByQR = mutation({
       if (studentUser) {
         profile = await ctx.db
           .query("studentProfiles")
-          .withIndex("by_user", (q) => q.eq("userId", studentUser._id))
+          .withIndex("by_user_id", (q) => q.eq("userId", studentUser._id))
           .first();
       }
     }
