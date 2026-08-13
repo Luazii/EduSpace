@@ -70,7 +70,8 @@ export default function DriverPage() {
           scanType,
         });
         const verb = scanType === "board" ? "boarded" : "dropped off";
-        setScanResult({ text: `✓ ${(result as any)?.fullName ?? "Student"} ${verb} successfully!`, ok: true });
+        const noteMsg = (result as any)?.scanNote ? ` (${(result as any).scanNote})` : "";
+        setScanResult({ text: `✓ ${(result as any)?.fullName ?? "Student"} ${verb} successfully!${noteMsg}`, ok: true });
       } catch (e) {
         setScanResult({ text: e instanceof Error ? e.message : "Scan failed.", ok: false });
       }
@@ -240,7 +241,7 @@ export default function DriverPage() {
       {tab === "scan" && (
         <div className="space-y-6">
           <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
-            <ScanLine className="h-5 w-5 text-sky-600" /> Boarding Scanner
+            <ScanLine className="h-5 w-5 text-sky-600" /> Boarding Scanner {selectedRoute ? `— ${selectedRoute.name}` : ""}
           </h2>
 
           {scanResult && (

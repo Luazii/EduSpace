@@ -753,14 +753,32 @@ export const scanBusPassengerByQR = mutation({
     const route = await ctx.db.get(args.routeId);
     if (!route) throw new Error("Route not found.");
 
-    const profile = await ctx.db
+    const rawCode = args.scanCode.trim();
+    let profile = await ctx.db
       .query("studentProfiles")
-      .withIndex("by_scan_code", (q) => q.eq("scanCode", args.scanCode))
+      .withIndex("by_scan_code", (q) => q.eq("scanCode", rawCode))
       .first();
-    if (!profile) throw new Error("Unrecognized code — this student doesn't have a registered scan code.");
+
+    // Fallback: check if the QR contains student user's email or direct ID
+    if (!profile) {
+      const studentUser = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", rawCode.toLowerCase()))
+        .first();
+      if (studentUser) {
+        profile = await ctx.db
+          .query("studentProfiles")
+          .withIndex("by_user", (q) => q.eq("userId", studentUser._id))
+          .first();
+      }
+    }
+
+    if (!profile) {
+      throw new Error("Unrecognized code — no registered student found for this QR code.");
+    }
     const learnerUserId = profile.userId;
 
-    // Check if the learner is actually booked on this route
+    // Check if the learner is booked on this route
     const bookings = await ctx.db
       .query("transportBookings")
       .withIndex("by_route", (q) => q.eq("routeId", args.routeId))
@@ -768,32 +786,50 @@ export const scanBusPassengerByQR = mutation({
       .collect();
 
     const activeBooking = bookings.find((b) => b.status === "approved" || b.status === "pending");
+    let scanNote: string | undefined = undefined;
 
     if (!activeBooking) {
-      throw new Error("This student is not booked on this route.");
+      // Check if student has a booking on another route
+      const allStudentBookings = await ctx.db
+        .query("transportBookings")
+        .withIndex("by_learner", (q) => q.eq("learnerUserId", learnerUserId))
+        .collect();
+      const otherActiveBooking = allStudentBookings.find((b) => b.status === "approved" || b.status === "pending");
+
+      if (otherActiveBooking) {
+        const otherRoute = await ctx.db.get(otherActiveBooking.routeId);
+        scanNote = `Booked on ${otherRoute?.name ?? "another route"}`;
+      } else {
+        scanNote = "Walk-on passenger";
+      }
     }
 
     const learner = await ctx.db.get(learnerUserId);
 
     await ctx.db.insert("transportScans", {
       routeId: args.routeId,
-      bookingId: activeBooking._id,
+      bookingId: activeBooking?._id,
       learnerUserId,
       driverUserId: user._id,
       scanType: args.scanType,
       scannedAt: Date.now(),
       locationText: args.locationText?.trim() || undefined,
+      notes: scanNote,
     });
 
     const action = args.scanType === "board" ? "boarded" : "got off";
+    const noteSuffix = scanNote ? ` (${scanNote})` : "";
     await notifyLearnerAndParents(
       ctx,
       learnerUserId,
       args.scanType === "board" ? "Bus boarding confirmed" : "Bus drop-off confirmed",
-      `${learner?.fullName ?? learner?.email ?? "Your learner"} just ${action} ${route.name} at ${new Date(Date.now()).toLocaleTimeString()}.`,
+      `${learner?.fullName ?? learner?.email ?? "Your learner"} just ${action} ${route.name}${noteSuffix} at ${new Date(Date.now()).toLocaleTimeString()}.`,
     );
 
-    return learner;
+    return {
+      ...learner,
+      scanNote,
+    };
   },
 });
 
