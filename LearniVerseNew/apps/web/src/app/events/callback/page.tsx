@@ -1,8 +1,9 @@
 "use client";
 
-import { useAction } from "convex/react";
+import { useAction, useConvexAuth } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import QRCodeLib from "qrcode";
@@ -20,12 +21,14 @@ function TicketCallbackContent() {
   const router = useRouter();
   const reference = params.get("reference") ?? params.get("trxref");
   const isGuest = params.get("guest") === "1";
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const verifyPayment = useAction(api.events.verifyTicketPayment);
   const verifyGuestPayment = useAction(api.events.verifyGuestTicketPayment);
   const [status, setStatus] = useState<"verifying" | "success" | "failed">("verifying");
   const [message, setMessage] = useState("");
   const [ticketCodes, setTicketCodes] = useState<string[]>([]);
   const [selectedTicketIndex, setSelectedTicketIndex] = useState(0);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     if (!reference) {
@@ -58,6 +61,20 @@ function TicketCallbackContent() {
       return;
     }
 
+    // This page loads fresh after an external Paystack redirect — Convex's
+    // Clerk handshake (attaching the auth token to the Convex client) hasn't
+    // necessarily finished yet on that first render. Firing the action before
+    // it settles makes a genuinely signed-in user look signed-out to the
+    // action ("You must be signed in to perform this action"), even though
+    // the browser has a perfectly valid session. Wait for it to settle.
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      setStatus("failed");
+      setSessionExpired(true);
+      setMessage("Your session isn't active right now. Sign in again — your ticket was already reserved and will show up under My Tickets once you're signed back in.");
+      return;
+    }
+
     verifyPayment({ reference })
       .then((res) => {
         if (res.ok) {
@@ -73,7 +90,7 @@ function TicketCallbackContent() {
         setStatus("failed");
         setMessage(e instanceof Error ? e.message : "Verification failed.");
       });
-  }, [reference, isGuest, verifyGuestPayment, verifyPayment, router]);
+  }, [reference, isGuest, authLoading, isAuthenticated, verifyGuestPayment, verifyPayment, router]);
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6">
@@ -123,9 +140,15 @@ function TicketCallbackContent() {
             <XCircle className="mx-auto mb-4 h-14 w-14 text-rose-500" />
             <h2 className="text-xl font-black text-slate-950">Payment issue</h2>
             <p className="mt-2 text-sm text-slate-500">{message}</p>
-            <button onClick={() => router.push("/events")} className="mt-6 w-full rounded-2xl bg-slate-950 py-3 text-sm font-black text-white">
-              Back to events
-            </button>
+            {sessionExpired ? (
+              <Link href="/sign-in" className="mt-6 block w-full rounded-2xl bg-slate-950 py-3 text-sm font-black text-white">
+                Sign In
+              </Link>
+            ) : (
+              <button onClick={() => router.push("/events")} className="mt-6 w-full rounded-2xl bg-slate-950 py-3 text-sm font-black text-white">
+                Back to events
+              </button>
+            )}
           </>
         )}
       </div>

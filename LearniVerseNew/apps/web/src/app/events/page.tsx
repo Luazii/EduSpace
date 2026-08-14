@@ -455,13 +455,128 @@ function GuestEventCard({
   );
 }
 
+const GUEST_IDENTITY_STORAGE_KEY = "eduspace_guest_identity";
+
+function GuestSignInGate({ onSignedIn }: { onSignedIn: (name: string, email: string) => void }) {
+  const [name, setName] = useState("");
+  const [emailRaw, setEmailRaw] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedName = name.trim();
+    const email = emailRaw.trim().toLowerCase();
+    if (!trimmedName) {
+      setError("Enter your full name.");
+      return;
+    }
+    if (!email.includes("@")) {
+      setError("Enter a valid email address.");
+      return;
+    }
+    setError(null);
+    onSignedIn(trimmedName, email);
+  };
+
+  return (
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-6 py-16">
+      <span className="mb-4 rounded-full bg-rose-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">Events Hub</span>
+      <h1 className="text-center text-3xl font-black tracking-tight text-slate-950">Sign In as a Guest</h1>
+      <p className="mt-2 max-w-sm text-center text-sm text-slate-500">
+        No account needed — just your name and email so we know who each ticket belongs to and where to send the QR code.
+      </p>
+
+      <form onSubmit={handleSubmit} className="mt-8 w-full space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-600">Full name</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Jane Doe"
+            className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-rose-400"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-slate-600">Email</label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              value={emailRaw}
+              onChange={(e) => setEmailRaw(e.target.value)}
+              placeholder="you@example.com"
+              type="email"
+              className="w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-rose-400"
+            />
+          </div>
+        </div>
+        {error && <p className="text-xs font-bold text-rose-600">{error}</p>}
+        <button type="submit" className="w-full rounded-2xl bg-rose-600 py-3 text-sm font-black text-white transition hover:bg-rose-700">
+          Continue as Guest
+        </button>
+      </form>
+
+      <p className="mt-6 text-center text-xs text-slate-400">
+        Already part of the school?{" "}
+        <Link href="/sign-in" className="font-bold text-rose-600 underline">Sign in</Link> to manage tickets from your account instead.
+      </p>
+    </main>
+  );
+}
+
 function GuestEventsPage() {
   const events = useQuery(api.events.listPublicEvents, {});
   const [guestName, setGuestName] = useState("");
   const [guestEmailRaw, setGuestEmailRaw] = useState("");
+  const [guestConfirmed, setGuestConfirmed] = useState(false);
+  const [identityLoaded, setIdentityLoaded] = useState(false);
   const guestEmail = guestEmailRaw.trim().toLowerCase();
 
-  if (events === undefined) return <LoadingSpinner />;
+  // Remember the guest's identity across visits (and across the Paystack
+  // redirect round-trip) so "signing in as a guest" behaves like a real,
+  // if lightweight, session instead of a form they have to refill every time.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(GUEST_IDENTITY_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { name: string; email: string };
+        if (parsed.name && parsed.email) {
+          setGuestName(parsed.name);
+          setGuestEmailRaw(parsed.email);
+          setGuestConfirmed(true);
+        }
+      }
+    } catch {
+      // ignore malformed/inaccessible storage
+    } finally {
+      setIdentityLoaded(true);
+    }
+  }, []);
+
+  const handleSignedIn = (name: string, email: string) => {
+    setGuestName(name);
+    setGuestEmailRaw(email);
+    setGuestConfirmed(true);
+    try {
+      localStorage.setItem(GUEST_IDENTITY_STORAGE_KEY, JSON.stringify({ name, email }));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleSwitchGuest = () => {
+    setGuestConfirmed(false);
+    try {
+      localStorage.removeItem(GUEST_IDENTITY_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  };
+
+  if (events === undefined || !identityLoaded) return <LoadingSpinner />;
+
+  if (!guestConfirmed) {
+    return <GuestSignInGate onSignedIn={handleSignedIn} />;
+  }
 
   const upcomingEvents = events.filter((e) => e.eventDate >= Date.now());
   const pastEvents = events.filter((e) => e.eventDate < Date.now());
@@ -478,34 +593,16 @@ function GuestEventsPage() {
           Already part of the school?{" "}
           <Link href="/sign-in" className="font-bold text-rose-600 underline">Sign in</Link> to manage tickets from your account instead.
         </p>
-      </header>
-
-      <section className="mb-8 rounded-3xl border border-slate-200 bg-slate-50 p-6">
-        <h2 className="mb-1 text-sm font-black text-slate-950 flex items-center gap-2">
-          <User className="h-4 w-4 text-rose-600" /> Your details
-        </h2>
-        <p className="mb-4 text-xs text-slate-500">
-          Enter your name and email once — we&apos;ll use them for every ticket below, and to find tickets you already have.
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <input
-            value={guestName}
-            onChange={(e) => setGuestName(e.target.value)}
-            placeholder="Full name"
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-rose-400"
-          />
-          <div className="relative">
-            <Mail className="pointer-events-none absolute left-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            <input
-              value={guestEmailRaw}
-              onChange={(e) => setGuestEmailRaw(e.target.value)}
-              placeholder="you@example.com"
-              type="email"
-              className="w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-rose-400"
-            />
-          </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-2.5 text-xs">
+          <User className="h-3.5 w-3.5 text-rose-600" />
+          <span className="font-bold text-slate-600">Signed in as guest:</span>
+          <span className="font-black text-slate-900">{guestName}</span>
+          <span className="text-slate-400">({guestEmail})</span>
+          <button onClick={handleSwitchGuest} className="ml-auto font-bold text-rose-600 hover:underline">
+            Not you?
+          </button>
         </div>
-      </section>
+      </header>
 
       {/* Upcoming Events */}
       <section className="mb-12">
