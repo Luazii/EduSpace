@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
@@ -10,7 +10,8 @@ import { ActiveCoursesGrid } from "@/components/dashboard/active-courses-grid";
 import { ApplicationStatusCard } from "@/components/dashboard/application-status-card";
 import { TeacherDashboard } from "@/components/teacher/teacher-dashboard";
 import { api } from "../../../../convex/_generated/api";
-import { Clock, Bell, Calendar, PlayCircle, AlertCircle, Megaphone, ChevronRight, Trophy, Dumbbell } from "lucide-react";
+import type { Id } from "../../../../convex/_generated/dataModel";
+import { Clock, Bell, Calendar, PlayCircle, AlertCircle, Megaphone, ChevronRight, Trophy, Dumbbell, Bus } from "lucide-react";
 import { format } from "date-fns";
 
 // Roles with their own dedicated portal — /dashboard is a student-oriented
@@ -37,12 +38,31 @@ export default function DashboardPage() {
   const deadlines = useQuery(api.enrollments.listAllMyDeadlines) ?? [];
   const liveSessions = useQuery(api.enrollments.listAllMyLiveSessions) ?? [];
   const sportsSchedule = useQuery(api.sports.listStudentTrainingSchedule, user?.role === "student" ? {} : "skip");
+  const busRoutes = useQuery(api.transport.listRoutes, user?.role === "student" ? {} : "skip");
+  const myTransportBookings = useQuery(api.transport.listMyBookings, user?.role === "student" ? {} : "skip");
   const announcements = useQuery(
     api.parentServices.listAnnouncements,
     user ? { role: user.role } : "skip",
   ) ?? [];
   const claimEnrollments = useMutation(api.enrollments.claimMyEnrollments);
+  const requestTransportBooking = useMutation(api.transport.requestBooking);
   const claimedRef = useRef(false);
+  const [transportBusyRouteId, setTransportBusyRouteId] = useState<string | null>(null);
+  const [transportMessage, setTransportMessage] = useState<string | null>(null);
+
+  const handleRequestRoute = async (routeId: Id<"transportRoutes">) => {
+    if (!user) return;
+    setTransportBusyRouteId(routeId);
+    setTransportMessage(null);
+    try {
+      await requestTransportBooking({ routeId, learnerUserId: user._id });
+      setTransportMessage("Requested! Awaiting transport admin approval.");
+    } catch (e) {
+      setTransportMessage(e instanceof Error ? e.message : "Failed to request this route.");
+    } finally {
+      setTransportBusyRouteId(null);
+    }
+  };
 
   // Auto-claim pending enrollments on first load (handles Google sign-in bypass)
   useEffect(() => {
@@ -164,6 +184,59 @@ export default function DashboardPage() {
                         </div>
                       </Link>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bus Schedule Widget */}
+              {busRoutes && busRoutes.length > 0 && (
+                <div className="rounded-4xl border border-cyan-200 bg-cyan-50/40 p-8 shadow-sm">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Bus className="h-5 w-5 text-cyan-600" />
+                    <h3 className="font-bold text-sm uppercase tracking-widest text-slate-950">Bus Schedule</h3>
+                  </div>
+                  {transportMessage && (
+                    <p className="mb-4 text-xs font-bold text-cyan-800 bg-cyan-100/60 rounded-2xl px-3 py-2">{transportMessage}</p>
+                  )}
+                  <div className="space-y-4">
+                    {busRoutes.slice(0, 5).map((route, i) => {
+                      const myBooking = myTransportBookings?.find(
+                        (b) => b.routeId === route._id && b.status !== "rejected" && b.status !== "cancelled",
+                      );
+                      return (
+                        <div key={route._id} className={i > 0 ? "pt-4 border-t border-cyan-100" : ""}>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-cyan-700">{route.routeCode}</p>
+                            {myBooking && (
+                              <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${
+                                myBooking.status === "approved" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                              }`}>
+                                {myBooking.status === "approved" ? "Booked" : "Pending"}
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="font-bold text-sm text-slate-900 leading-tight mb-2">{route.name}</h4>
+                          <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-slate-500 mb-2">
+                            {!!route.scheduleDays?.length && (
+                              <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{route.scheduleDays.join(", ")}</span>
+                            )}
+                            {route.scheduleTime && (
+                              <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{route.scheduleTime}</span>
+                            )}
+                            {route.driverName && <span>Driver: {route.driverName}</span>}
+                          </div>
+                          {!myBooking && (
+                            <button
+                              onClick={() => handleRequestRoute(route._id)}
+                              disabled={transportBusyRouteId === route._id}
+                              className="rounded-full bg-cyan-600 px-3 py-1.5 text-[10px] font-black text-white transition hover:bg-cyan-700 disabled:opacity-50"
+                            >
+                              {transportBusyRouteId === route._id ? "Requesting…" : "Request This Route"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
