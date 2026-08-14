@@ -271,6 +271,104 @@ export const listMyBookings = query({
   },
 });
 
+// The passenger list was previously just the static approved-bookings list —
+// it never reflected an actual boarding scan, so a walk-on/cross-route
+// student (no approved booking on this route) who got scanned in via
+// scanBusPassengerByQR never appeared anywhere, and a pre-booked student who
+// HAD boarded looked identical to one who hadn't. This merges today's real
+// transportScans on top of the booking list and adds unbooked walk-ons too.
+export const listRoutePassengerManifest = query({
+  args: { routeId: v.id("transportRoutes") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const route = await ctx.db.get(args.routeId);
+    if (!route) throw new Error("Route not found.");
+    if (user.role === "driver") {
+      if (route.driverUserId && route.driverUserId !== user._id) {
+        throw new Error("You are not assigned to this route.");
+      }
+    } else if (!isTransportAdminish(user.role)) {
+      throw new Error("Only drivers and transport admins can view the passenger manifest.");
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStartMs = todayStart.getTime();
+
+    const [bookings, allScans] = await Promise.all([
+      ctx.db
+        .query("transportBookings")
+        .withIndex("by_route", (q) => q.eq("routeId", args.routeId))
+        .filter((q) => q.eq(q.field("status"), "approved"))
+        .collect(),
+      ctx.db
+        .query("transportScans")
+        .withIndex("by_route", (q) => q.eq("routeId", args.routeId))
+        .collect(),
+    ]);
+
+    const todaysScans = allScans.filter((s) => s.scannedAt >= todayStartMs);
+    const latestScan = (learnerUserId: Id<"users">, scanType: "board" | "dropoff") =>
+      todaysScans
+        .filter((s) => s.learnerUserId === learnerUserId && s.scanType === scanType)
+        .sort((a, b) => b.scannedAt - a.scannedAt)[0];
+
+    const bookedLearnerIds = new Set(bookings.map((b) => b.learnerUserId));
+
+    const bookedPassengers = await Promise.all(
+      bookings.map(async (b) => {
+        const learner = await ctx.db.get(b.learnerUserId);
+        const boardScan = latestScan(b.learnerUserId, "board");
+        const dropoffScan = latestScan(b.learnerUserId, "dropoff");
+        return {
+          learnerUserId: b.learnerUserId,
+          learner,
+          pickupStop: b.pickupStopId ? await ctx.db.get(b.pickupStopId) : null,
+          dropoffStop: b.dropoffStopId ? await ctx.db.get(b.dropoffStopId) : null,
+          bookingId: b._id as Id<"transportBookings"> | null,
+          walkOn: false,
+          boarded: !!boardScan,
+          boardedAt: boardScan?.scannedAt,
+          droppedOff: !!dropoffScan,
+          droppedOffAt: dropoffScan?.scannedAt,
+          scanNote: undefined as string | undefined,
+        };
+      }),
+    );
+
+    const walkOnLearnerIds = Array.from(
+      new Set(todaysScans.filter((s) => !bookedLearnerIds.has(s.learnerUserId)).map((s) => s.learnerUserId)),
+    );
+
+    const walkOnPassengers = await Promise.all(
+      walkOnLearnerIds.map(async (learnerUserId) => {
+        const learner = await ctx.db.get(learnerUserId);
+        const boardScan = latestScan(learnerUserId, "board");
+        const dropoffScan = latestScan(learnerUserId, "dropoff");
+        return {
+          learnerUserId,
+          learner,
+          pickupStop: null,
+          dropoffStop: null,
+          bookingId: null,
+          walkOn: true,
+          boarded: !!boardScan,
+          boardedAt: boardScan?.scannedAt,
+          droppedOff: !!dropoffScan,
+          droppedOffAt: dropoffScan?.scannedAt,
+          scanNote: boardScan?.notes ?? dropoffScan?.notes,
+        };
+      }),
+    );
+
+    return [...bookedPassengers, ...walkOnPassengers].sort((a, b) => {
+      const aName = a.learner?.fullName ?? a.learner?.email ?? "";
+      const bName = b.learner?.fullName ?? b.learner?.email ?? "";
+      return aName.localeCompare(bName);
+    });
+  },
+});
+
 export const createRoute = mutation({
   args: {
     routeCode: v.string(),

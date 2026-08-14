@@ -18,7 +18,6 @@ type ScanType = "board" | "dropoff";
 export default function DriverPage() {
   const user = useQuery(api.users.current);
   const routes = useQuery(api.transport.listRoutes);
-  const bookings = useQuery(api.transport.listMyBookings);
   const scanMut = useMutation(api.transport.scanBusPassengerByQR);
   const reportIncident = useMutation(api.transport.reportIncident);
   const pingLocation = useMutation(api.transport.pingLocation);
@@ -54,7 +53,10 @@ export default function DriverPage() {
   // return (Rules of Hooks — every hook must run on every render).
   const myRoutes = (routes ?? []).filter((r) => r.driverUserId === user?._id || user?.role === "admin");
   const selectedRoute = myRoutes.find((r) => r._id === selectedRouteId) ?? myRoutes[0];
-  const routeBookings = (bookings ?? []).filter((b) => b.routeId === selectedRoute?._id && b.status === "approved");
+  const manifest = useQuery(
+    api.transport.listRoutePassengerManifest,
+    selectedRoute ? { routeId: selectedRoute._id as Id<"transportRoutes"> } : "skip",
+  );
 
   // html5-qrcode keeps firing while the same code stays in frame — debounce.
   const handleScan = useCallback(
@@ -302,26 +304,52 @@ export default function DriverPage() {
           <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
             <Users className="h-5 w-5 text-emerald-600" /> Passenger Manifest — {selectedRoute?.name ?? "No route"}
           </h2>
+          <p className="text-xs text-slate-500 -mt-4">
+            Pre-booked passengers plus anyone actually scanned onto this route today, including walk-ons.
+          </p>
 
-          {routeBookings.length === 0 ? (
+          {(manifest ?? []).length === 0 ? (
             <div className="flex flex-col items-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 p-16 text-center">
               <Users className="mb-4 h-12 w-12 text-slate-300" />
               <p className="font-bold text-slate-500">No passengers on this route.</p>
+              <p className="mt-1 text-xs text-slate-400">Scanned walk-ons and booked learners will appear here once scanned.</p>
             </div>
           ) : (
             <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden">
-              <div className="grid grid-cols-[1fr_auto_auto] gap-4 bg-slate-50 px-6 py-3 text-xs font-bold uppercase tracking-widest text-slate-500">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 bg-slate-50 px-6 py-3 text-xs font-bold uppercase tracking-widest text-slate-500">
                 <span>Learner</span>
                 <span>Pickup</span>
                 <span>Drop-off</span>
+                <span>Status</span>
               </div>
-              {routeBookings.map((b) => (
-                <div key={b._id} className="grid grid-cols-[1fr_auto_auto] gap-4 items-center border-t border-slate-100 px-6 py-3">
+              {(manifest ?? []).map((p) => (
+                <div key={p.learnerUserId} className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center border-t border-slate-100 px-6 py-3">
                   <div>
-                    <p className="text-sm font-bold text-slate-800">{b.learner?.fullName ?? b.learner?.email ?? "—"}</p>
+                    <p className="text-sm font-bold text-slate-800">{p.learner?.fullName ?? p.learner?.email ?? "—"}</p>
+                    {p.walkOn && (
+                      <span className="mt-0.5 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-700">
+                        {p.scanNote ?? "Walk-on"}
+                      </span>
+                    )}
                   </div>
-                  <span className="text-xs text-slate-500">{b.pickupStop?.label ?? "—"}</span>
-                  <span className="text-xs text-slate-500">{b.dropoffStop?.label ?? "—"}</span>
+                  <span className="text-xs text-slate-500">{p.pickupStop?.label ?? "—"}</span>
+                  <span className="text-xs text-slate-500">{p.dropoffStop?.label ?? "—"}</span>
+                  <div className="flex flex-col items-end gap-1">
+                    {p.boarded ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-black text-emerald-700">
+                        <CheckCircle2 className="h-3 w-3" /> Boarded{p.boardedAt ? ` ${format(p.boardedAt, "HH:mm")}` : ""}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500">
+                        Not yet boarded
+                      </span>
+                    )}
+                    {p.droppedOff && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-black text-sky-700">
+                        <CheckCircle2 className="h-3 w-3" /> Dropped off{p.droppedOffAt ? ` ${format(p.droppedOffAt, "HH:mm")}` : ""}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
